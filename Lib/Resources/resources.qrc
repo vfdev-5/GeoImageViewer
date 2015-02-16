@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="default">Icons/cursor.png</file>
+        <file alias="selection">Icons/selection.png</file>
+        <file alias="hand">Icons/dragger.png</file>
+        <file alias="rectangle">Icons/rectangle.png</file>
+    </qresource>
+</RCC>
