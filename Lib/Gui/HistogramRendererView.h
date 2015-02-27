@@ -18,14 +18,14 @@
 
 // Project
 #include "Core/LibExport.h"
-#include "Core/HistogramLayerRenderer.h"
+#include "Core/HistogramImageRenderer.h"
 #include "ui_HistogramRendererView.h"
 #include "AbstractRendererView.h"
 #include "ColorPalette.h"
 #include "ColorPickerFrame.h"
 
 namespace Core {
-class ImageLayer;
+class ImageDataProvider;
 }
 
 namespace Gui
@@ -97,13 +97,13 @@ public:
     explicit HistogramRendererView(QWidget *parent = 0);
     virtual ~HistogramRendererView();
 
-    virtual void setup(Core::LayerRenderer * renderer, const Core::ImageLayer * layer);
+    virtual void setup(Core::ImageRenderer * renderer, const Core::ImageDataProvider * provider);
     virtual void applyNewRendererConfiguration();
 
 protected:
 
     void addHistogram(int id, const QString & name, const QVector<double> &data,
-                      const Core::LayerRendererConfiguration & conf, const Core::HistogramRendererConfiguration & histConf);
+                      const Core::ImageRendererConfiguration & conf, const Core::HistogramRendererConfiguration & histConf);
     void drawHistogram();
     void setTransferFunctionNames(const QStringList & transferFunctionNames);
 
@@ -113,6 +113,7 @@ public slots:
     void onSliderPositionChanged(int index, double position);
 
 protected slots:
+    // Slider management
     void onRemoveSlider();
     void onAddSlider();
     void onRevertSlider();
@@ -127,9 +128,13 @@ protected slots:
     void onTransferFunctionChanged(QString);
     void onIsAllBandsClicked(bool checked);
 
+
     void on__redChannel_editingFinished();
     void on__greenChannel_editingFinished();
     void on__blueChannel_editingFinished();
+
+    void on__isGrayMode_toggled();
+    void on__isRgbMode_toggled();
 
 protected:
 
@@ -182,7 +187,7 @@ private:
     Mode _mode;
     QTimer _updateDelayTimer;
 
-    Core::HistogramLayerRenderer * _renderer;
+//    Core::HistogramImageRenderer * _hRenderer;
 
 };
 

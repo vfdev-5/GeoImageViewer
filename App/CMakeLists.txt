@@ -7,8 +7,7 @@ link_libraries(${OpenCV_LIBS})
 
 ## include & link to GDAL :
 include_directories(${GDAL_INCLUDE_DIRS})
-link_directories(${GDAL_LIB_DIR})
-link_libraries(${GDAL_LIBS})
+link_libraries(${GDAL_LIBRARY})
 
 ## include & link to Qt :
 SET(INSTALL_DLLS ON)
@@ -30,5 +29,5 @@ add_executable( ${PROJECT_NAME} ${SRC_FILES} ${INC_FILES} ${UI_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX ".d")
 
 ## install application
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION Lib)
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
 

@@ -7,6 +7,11 @@
 #include "Core/Global.h"
 #include "ToolsManager.h"
 #include "RectangleTool.h"
+#include "SelectionTool.h"
+#include "MoveTool.h"
+
+
+inline void initResources() { Q_INIT_RESOURCE(resources); }
 
 namespace Tools
 {
@@ -17,32 +22,31 @@ ToolsManager * ToolsManager::_instance = 0;
 
 ToolsManager::ToolsManager()
 {
-    Q_INIT_RESOURCE(resources);
+
+    initResources();
 
     // Insert default tools :
-    NavigationTool * tool = new NavigationTool(this);
-    _tools.insert(tool->getName(), tool);
-    _list << tool;
-
-
-    Tools::RectangleTool * rTool = new Tools::RectangleTool(this);
-    _tools.insert(rTool->getName(), rTool);
-    _list << rTool;
-
-
+    insertTool(new NavigationTool(this));
+    insertTool(new MoveTool(this));
+    insertTool(new RectangleShapeTool(this));
+//    insertTool(new SelectionTool(this));
 }
 
 //******************************************************************************
 
 ToolsManager::~ToolsManager()
 {
-//    foreach (QString key, _tools.keys())
-//    {
-//        AbstractTool * tool = _tools.value(key);
-//        if (tool)
-//            delete tool;
-//    }
 }
+
+//******************************************************************************
+
+void ToolsManager::insertTool(AbstractTool *tool)
+{
+    tool->setParent(this);
+    _tools.insert(tool->objectName(), tool);
+    _list << tool;
+}
+
 
 //******************************************************************************
 
@@ -69,24 +73,12 @@ bool ToolsManager::loadPlugin(QObject *plugin)
     if (!tool)
         return false;
 
-    _tools.insert(tool->getName(), tool);
+    _tools.insert(tool->objectName(), tool);
     _list << tool;
 
     SD_TRACE("Tool loaded : " + tool->getName());
     return true;
 }
-
-//******************************************************************************
-
-//QList<ToolInfo> ToolsManager::getTools() const
-//{
-//    QList<ToolInfo> out;
-//    foreach (AbstractTool * atool, _list)
-//    {
-//        out << *(ToolInfo*)atool;
-//    }
-//    return out;
-//}
 
 //******************************************************************************
 

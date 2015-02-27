@@ -51,7 +51,10 @@ foreach(component ${QT_COMPONENT_LIST})
 endforeach()
 
 # Setting -fPIC globally even when building executables may also work sufficiently, but shouldn’t be the first option.
-#set(CMAKE_CXX_FLAGS "-fPIC")
+# For linux sustems
+if(NOT WIN32)
+set(CMAKE_CXX_FLAGS "-fPIC")
+endif()
 
 if(WIN32)
     list(REMOVE_DUPLICATES DLL_LIST)

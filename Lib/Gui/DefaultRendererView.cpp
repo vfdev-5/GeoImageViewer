@@ -1,7 +1,7 @@
 
 // Project
 #include "DefaultRendererView.h"
-#include "Core/ImageLayer.h"
+#include "Core/ImageDataProvider.h"
 
 namespace Gui
 {
@@ -10,7 +10,8 @@ namespace Gui
 
 DefaultRendererView::DefaultRendererView(QWidget *parent) :
     AbstractRendererView(parent),
-    _renderer(0),
+//    _renderer(0),
+    _dataProvider(0),
     ui(new Ui_DefaultRendererView)
 {
     ui->setupUi(this);
@@ -37,17 +38,17 @@ void DefaultRendererView::clear()
 
 //******************************************************************************
 
-void DefaultRendererView::setup(Core::LayerRenderer * renderer, const Core::ImageLayer * layer)
+void DefaultRendererView::setup(Core::ImageRenderer * renderer, const Core::ImageDataProvider * provider)
 {
-    _renderer = renderer;
-    _currentLayer=layer;
+    setupRenderer(renderer);
+    _dataProvider=provider;
 
     clear();
 
-    ui->_band->addItems(_currentLayer->getBandNames());
-    ui->_red->addItems(_currentLayer->getBandNames());
-    ui->_green->addItems(_currentLayer->getBandNames());
-    ui->_blue->addItems(_currentLayer->getBandNames());
+    ui->_band->addItems(_dataProvider->getBandNames());
+    ui->_red->addItems(_dataProvider->getBandNames());
+    ui->_green->addItems(_dataProvider->getBandNames());
+    ui->_blue->addItems(_dataProvider->getBandNames());
 
     // get rgb mapping:
     _conf = _renderer->getConfiguration();
@@ -75,10 +76,10 @@ void DefaultRendererView::applyNewRendererConfiguration()
 void DefaultRendererView::setupBandConfiguration(int index)
 {
     ui->_band->setCurrentIndex(index);
-    ui->_min->setMinimum(_currentLayer->getMinValues()[index]);
-    ui->_min->setMaximum(_currentLayer->getMaxValues()[index]);
-    ui->_max->setMinimum(_currentLayer->getMinValues()[index]);
-    ui->_max->setMaximum(_currentLayer->getMaxValues()[index]);
+    ui->_min->setMinimum(_dataProvider->getMinValues()[index]);
+    ui->_min->setMaximum(_dataProvider->getMaxValues()[index]);
+    ui->_max->setMinimum(_dataProvider->getMinValues()[index]);
+    ui->_max->setMaximum(_dataProvider->getMaxValues()[index]);
 
     ui->_min->setValue(_conf.minValues[index]);
     ui->_max->setValue(_conf.maxValues[index]);

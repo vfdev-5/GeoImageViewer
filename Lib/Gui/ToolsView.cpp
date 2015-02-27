@@ -61,11 +61,11 @@ void ToolsView::addTool(Tools::AbstractTool *tool)
     button->setAutoRaise(true);
     button->setIconSize(QSize(20, 20));
     button->setIcon(tool->getIcon());
-    button->setObjectName(tool->getName());
+    button->setObjectName(tool->objectName());
     ui->_toolsFrameLayout->addWidget(button, _row, _col);
     advance(&_col, &_row);
 
-    _toolButtonMap.insert(tool->getName(), button);
+    _toolButtonMap.insert(tool->objectName(), button);
 
     connect(button, SIGNAL(clicked()), this, SLOT(onToolButtonClicked()));
 

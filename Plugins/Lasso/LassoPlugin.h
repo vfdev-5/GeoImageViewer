@@ -19,6 +19,7 @@ class GIV_PLUGIN_EXPORT LassoPlugin : public Tools::RectangleTool
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID "AbstractTool")
+
 public:
 
     LassoPlugin(QObject * parent = 0) :
@@ -28,6 +29,10 @@ public:
         _description=tr("Lasso tool to select a region");
         _icon = QIcon(":/icons/selection");
         _cursor = QCursor(Qt::CrossCursor);
+
+        _pen = QPen(QColor(Qt::gray), 0, Qt::DashLine);
+        _brush = QBrush(QColor(Qt::transparent));
+
     }
 
     virtual bool dispatch(QEvent * e, QGraphicsScene * scene);

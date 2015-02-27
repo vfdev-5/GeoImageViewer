@@ -1,21 +1,17 @@
 
 // Project
-#include "Image.h"
+#include "GeoImageLayer.h"
 
 namespace Core
 {
 
 //******************************************************************************
-/*!
- * \class Image
- * \brief This class is used to store image information
- *
- */
 
-//******************************************************************************
-
-Image::Image()
+GeoImageLayer::GeoImageLayer(QObject *parent) :
+    GeoShapeLayer(parent)
 {
+    _type = "Geo Image";
+
 }
 
 //******************************************************************************

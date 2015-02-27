@@ -6,16 +6,19 @@
 #include <QMainWindow>
 
 // Project
-#include "Gui/GIViewer.h"
+#include "Gui/GeoImageViewer.h"
 #include "Gui/HistogramRendererView.h"
 #include "Gui/DefaultRendererView.h"
 #include "Gui/ToolsView.h"
+#include "Gui/LayersView.h"
 
 #define USE_HISTOGRAM
 
 namespace Ui {
 class MainWindow;
 }
+
+class QDockWidget;
 
 //******************************************************************************
 
@@ -29,17 +32,17 @@ public:
 
 private:
 
-    void createDockWidget(QWidget * w, Qt::DockWidgetArea where);
+    QDockWidget * createDockWidget(QWidget * w, Qt::DockWidgetArea where);
 
     Ui::MainWindow *ui;
-    Gui::GIViewer _viewer;
+    Gui::GeoImageViewer _viewer;
 #ifdef USE_HISTOGRAM
     Gui::HistogramRendererView _histogram;
 #else
     Gui::DefaultRendererView _contrast;
 #endif
     Gui::ToolsView _tools;
-
+    Gui::LayersView _layers;
 
 
 

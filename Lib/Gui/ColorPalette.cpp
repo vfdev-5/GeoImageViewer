@@ -395,6 +395,8 @@ bool ColorPalette::removeSliderAtIndex(int index)
     }
 
     scene()->removeItem(_sliders[index]);
+    // -> The ownership of item is passed on to the caller
+    delete _sliders[index];
     _sliders.removeAt(index);
 
     // update gradient:
@@ -503,6 +505,7 @@ void ColorPalette::setIsDiscrete(bool v)
     _isDiscrete = v;
     updateAllStops();
 }
+
 //*************************************************************************
 
 /*!

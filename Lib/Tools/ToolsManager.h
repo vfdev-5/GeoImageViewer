@@ -7,6 +7,7 @@
 #include <QObject>
 
 // Project
+#include "Core/LibExport.h"
 #include "AbstractTool.h"
 
 namespace Tools
@@ -15,7 +16,7 @@ namespace Tools
 //******************************************************************************
 
 
-class ToolsManager : public QObject
+class GIV_DLL_EXPORT ToolsManager : public QObject
 {
     Q_OBJECT
 public:
@@ -39,9 +40,10 @@ public:
     AbstractTool* getTool(const QString & name)
     { return _tools.value(name, 0); }
 
-//    QList<ToolInfo> getTools() const;
     QList<AbstractTool*> getTools()
     { return _list; }
+
+    void insertTool(AbstractTool * tool);
 
 private:
     ToolsManager();
@@ -60,11 +62,12 @@ class NavigationTool : public AbstractTool
 {
     Q_OBJECT
 public:
-    NavigationTool(QObject * parent) :
+    NavigationTool(QObject * parent=0) :
         AbstractTool(parent)
     {
-        _name=QObject::tr("Navigation");
-        _description=QObject::tr("Tool to pan, zoom on image");
+        setObjectName("navigation");
+        _name=tr("Navigation");
+        _description=tr("Tool to pan, zoom on image");
         _icon = QIcon(":/icons/hand");
         _cursor = QCursor(Qt::ArrowCursor);
     }

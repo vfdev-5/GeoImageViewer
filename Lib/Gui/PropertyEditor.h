@@ -17,6 +17,8 @@ class QFormLayout;
 class QToolButton;
 class QComboBox;
 class QSpinBox;
+class QScrollArea;
+class QMetaObject;
 
 namespace Gui
 {
@@ -38,12 +40,16 @@ public:
 protected:
 
     QWidget * readableWidget(const QVariant & value);
-    QWidget * editableWidget(const QVariant & value);
+    QWidget * editableWidget(const QVariant & value, const QHash<QString, QString> &options);
+
+    QHash<QString, QHash<QString, QString> > getPropertyInfos(const QMetaObject *metaObject);
 
     QStringList _filter;
 
 protected slots:
     void onStringPropertyChanged();
+    void onBoolPropertyChanged();
+    void onDoublePropertyChanged();
     void onPenPropertyChanged();
     void onBrushPropertyChanged();
 
@@ -53,6 +59,7 @@ private:
     QHash<QWidget*, int> _widgetPropertyMap;
 
     QWidget * _frame;
+    QScrollArea * _scrollArea;
 
 };
 

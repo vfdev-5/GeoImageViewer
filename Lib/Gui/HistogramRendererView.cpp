@@ -11,8 +11,8 @@
 // Project
 #include "HistogramRendererView.h"
 #include "Core/Global.h"
-#include "Core/LayerRenderer.h"
-#include "Core/ImageLayer.h"
+#include "Core/ImageRenderer.h"
+#include "Core/ImageDataProvider.h"
 
 namespace Gui
 {
@@ -101,7 +101,7 @@ void configureAChannel(QSpinBox * spinbox, int currentValue, int minValue, int m
 HistogramRendererView::HistogramRendererView(QWidget *parent) :
     AbstractRendererView(parent),
     _ui(new Ui_HistogramRendererView),
-    _renderer(0),
+//    _hRenderer(0),
     _colorPalette(0),
     _removeSliderAction(tr("Remove slider"), this),
     _addSliderAction(tr("Add slider"), this),
@@ -322,31 +322,33 @@ void HistogramRendererView::setupMenu()
  * \param renderer
  * \param layer
  */
-void HistogramRendererView::setup(Core::LayerRenderer * renderer, const Core::ImageLayer * layer)
+void HistogramRendererView::setup(Core::ImageRenderer * renderer, const Core::ImageDataProvider * provider)
 {
-    _renderer = static_cast<Core::HistogramLayerRenderer*>(renderer);
-    if (!_renderer)
+
+    setupRenderer(renderer);
+
+    Core::HistogramImageRenderer* hRenderer = qobject_cast<Core::HistogramImageRenderer*>(_renderer);
+    if (!hRenderer)
     {
         SD_TRACE("HistogramRendererView::setup : Failed to cast renderer into HistogramLayerRenderer");
         return;
     }
-    _currentLayer = layer;
 
-    Core::LayerRendererConfiguration conf = _renderer->getConfiguration();
-    Core::HistogramRendererConfiguration histConf = _renderer->getHistConfiguration();
+    Core::ImageRendererConfiguration conf = _renderer->getConfiguration();
+    Core::HistogramRendererConfiguration histConf = hRenderer->getHistConfiguration();
 
 
     // configure toRGBMapping frame:
-    int nbBands = layer->getNbBands();
-    bool isComplex = layer->isComplex();
+    int nbBands = provider->getNbBands();
+    bool isComplex = provider->isComplex();
     if (nbBands > 1 && !isComplex)
     {
         _ui->_toRGBMapping->setVisible(true);
-
         configureAChannel(_ui->_redChannel, conf.toRGBMapping[0]+1, 1, nbBands);
         configureAChannel(_ui->_greenChannel, conf.toRGBMapping[1]+1, 1, nbBands);
         configureAChannel(_ui->_blueChannel, conf.toRGBMapping[2]+1, 1, nbBands);
         configureAChannel(_ui->_grayChannel, conf.toRGBMapping[0]+1, 1, nbBands);
+//        _ui->_isRgbModes
     }
     else if (nbBands == 1 && !isComplex)
     {
@@ -362,8 +364,8 @@ void HistogramRendererView::setup(Core::LayerRenderer * renderer, const Core::Im
     for (int i=0; i<nbBands;i++)
     {
         int index = conf.toRGBMapping[i];
-        addHistogram(index, layer->getBandNames()[index],
-                     layer->getBandHistograms()[index],
+        addHistogram(index, provider->getBandNames()[index],
+                     provider->getBandHistograms()[index],
                      conf, histConf);
     }
 
@@ -376,19 +378,26 @@ void HistogramRendererView::setup(Core::LayerRenderer * renderer, const Core::Im
  */
 void HistogramRendererView::applyNewRendererConfiguration()
 {
+    Core::HistogramImageRenderer* hRenderer = qobject_cast<Core::HistogramImageRenderer*>(_renderer);
+    if (!hRenderer)
+    {
+        SD_TRACE("HistogramRendererView::setup : Failed to cast renderer into HistogramLayerRenderer");
+        return;
+    }
+
     // RGB mapping configuration
     if (_mode == RGB)
     {
-        Core::LayerRendererConfiguration conf = _renderer->getConfiguration();
+        Core::ImageRendererConfiguration conf = hRenderer->getConfiguration();
         conf.toRGBMapping[0] = _ui->_redChannel->value()-1;
         conf.toRGBMapping[1] = _ui->_greenChannel->value()-1;
         conf.toRGBMapping[2] = _ui->_blueChannel->value()-1;
-        _renderer->setConfiguration(conf);
+        hRenderer->setConfiguration(conf);
     }
 
     // Histogram configuration
     int index = _currentHistogram->bandId;
-    Core::HistogramRendererConfiguration histConf = _renderer->getHistConfiguration();
+    Core::HistogramRendererConfiguration histConf = hRenderer->getHistConfiguration();
     if (index > -1)
     {
         histConf.isDiscreteValues[index] = _currentHistogram->isDiscrete;
@@ -405,7 +414,7 @@ void HistogramRendererView::applyNewRendererConfiguration()
             histConf.transferFunctions[i]=Core::HistogramRendererConfiguration::getTransferFunctionByName(_histograms[i].transferFunctionName);
         }
     }
-    _renderer->setHistConfiguration(histConf);
+    hRenderer->setHistConfiguration(histConf);
 }
 
 //*************************************************************************
@@ -414,7 +423,7 @@ void HistogramRendererView::applyNewRendererConfiguration()
     Method to add histogram data. For single band display, add only one histogram. For RGB display, add exactly 3 histograms.
 */
 void HistogramRendererView::addHistogram(int id, const QString &name, const QVector<double> & data,
-                                         const Core::LayerRendererConfiguration & conf, const Core::HistogramRendererConfiguration & histConf)
+                                         const Core::ImageRendererConfiguration &conf, const Core::HistogramRendererConfiguration & histConf)
 {
     _ui->_histList->addItem(name, id);
 
@@ -1186,6 +1195,24 @@ bool HistogramRendererView::eventFilter(QObject * object, QEvent * event)
         }
     }
     return QWidget::eventFilter(object, event);
+}
+
+//*************************************************************************
+
+void HistogramRendererView::on__isGrayMode_toggled()
+{
+    SD_TRACE("on__isGrayMode_toggled");
+
+
+}
+
+//*************************************************************************
+
+void HistogramRendererView::on__isRgbMode_toggled()
+{
+    SD_TRACE("on__isRgbMode_toggled");
+
+
 }
 
 //*************************************************************************

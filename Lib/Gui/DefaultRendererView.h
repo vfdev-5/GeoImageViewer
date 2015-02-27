@@ -6,14 +6,13 @@
 #include <QWidget>
 
 // Project
-#include "Core/LibExport.h"
-#include "Core/LayerRenderer.h"
 #include "ui_DefaultRendererView.h"
 #include "AbstractRendererView.h"
-
+#include "Core/ImageRenderer.h"
+#include "Core/LibExport.h"
 
 namespace Core {
-class ImageLayer;
+class ImageDataProvider;
 }
 
 namespace Gui
@@ -27,9 +26,11 @@ class GIV_DLL_EXPORT DefaultRendererView : public AbstractRendererView
 public:
     explicit DefaultRendererView(QWidget *parent = 0);
     virtual ~DefaultRendererView();
-    virtual void clear();
-    virtual void setup(Core::LayerRenderer * renderer, const Core::ImageLayer * layer);
+    virtual void setup(Core::ImageRenderer * renderer, const Core::ImageDataProvider * provider);
     virtual void applyNewRendererConfiguration();
+
+public slots:
+    virtual void clear();
 
 protected slots:
     void on__band_activated(int);
@@ -45,10 +46,10 @@ private:
 
     void setupBandConfiguration(int index);
 
-    Core::LayerRendererConfiguration _conf;
+//    Core::ImageRenderer * _renderer;
 
-private:
-    Core::LayerRenderer * _renderer;
+    Core::ImageRendererConfiguration _conf;
+    const Core::ImageDataProvider * _dataProvider;
 
 };
 

@@ -1,5 +1,5 @@
-#ifndef HISTOGRAMLAYERRENDERER_H
-#define HISTOGRAMLAYERRENDERER_H
+#ifndef HISTOGRAMIMAGERENDERER_H
+#define HISTOGRAMIMAGERENDERER_H
 
 
 // Qt
@@ -7,15 +7,17 @@
 
 // Project
 #include "LibExport.h"
-#include "LayerRenderer.h"
+#include "ImageRenderer.h"
 #include "TransferFunctions.h"
 
 namespace Core
 {
 
+class ImageDataProvider;
+
 //******************************************************************************
 
-struct HistogramRendererConfiguration
+struct GIV_DLL_EXPORT HistogramRendererConfiguration
 {
 
     QVector<double> qMinValues; //!< quantile min values at 2.5% of total histogram sum
@@ -24,10 +26,15 @@ struct HistogramRendererConfiguration
     // Below parameters are used in rendering phase
     QVector<bool> isDiscreteValues;
     QVector<TransferFunction*> transferFunctions;
+
     QVector<QGradientStops> normHistStops; //!< gradient stops are normalized due to transferFunctions
+    enum Mode {GRAY, RGB};
+    Mode mode;
+    QVector<QGradientStops> normRGBHistStops; //!< gradient stops are normalized due to transferFunctions
 
 
-    HistogramRendererConfiguration()
+    HistogramRendererConfiguration() :
+        mode(GRAY)
     {}
 
     static QStringList getAvailableTransferFunctionNames();
@@ -35,9 +42,9 @@ struct HistogramRendererConfiguration
     static QVector<TransferFunction*> availableTransferFunctions;
 };
 
-class HistogramLayerRenderer : public LayerRenderer
+class GIV_DLL_EXPORT HistogramImageRenderer : public ImageRenderer
 {
-
+    Q_OBJECT
 public:
 
     struct Settings
@@ -53,17 +60,17 @@ public:
     };
 
 public:
-    HistogramLayerRenderer();
-    virtual cv::Mat render(const cv::Mat & rawData);
-    virtual bool setupConfiguration(ImageLayer * layer);
+    HistogramImageRenderer(QObject * parent = 0);
+    virtual cv::Mat render(const cv::Mat & rawData, bool isBGRA=false);
+    virtual bool setupConfiguration(ImageDataProvider * provider);
 
     HistogramRendererConfiguration getHistConfiguration() const
     { return _histConf; }
     void setHistConfiguration(const HistogramRendererConfiguration &conf);
 
-
-
 protected:
+
+    inline bool chechHistConf();
 
     HistogramRendererConfiguration _histConf;
     Settings _settings;
@@ -77,4 +84,4 @@ QGradientStops resetStops(int rgbBand=-1, double a=1.0, double b=0.0);
 
 }
 
-#endif // HISTOGRAMLAYERRENDERER_H
+#endif // HISTOGRAMIMAGERENDERER_H

@@ -9,13 +9,48 @@
 #include <QToolButton>
 #include <QComboBox>
 #include <QSpinBox>
+#include <QDoubleSpinBox>
+#include <QCheckBox>
 #include <QColorDialog>
+#include <QScrollArea>
+#include <QAction>
+#include <QPushButton>
 
 // Project
 #include "PropertyEditor.h"
 
 namespace Gui
 {
+
+#define CreateRectWidget() \
+    QWidget * w = new QWidget();    \
+    QFormLayout * layout = new QFormLayout(w); \
+    layout->addRow(QObject::tr("top-left :"), new QLabel(QString("%1, %2").arg(r.top()).arg(r.left()))); \
+    layout->addRow(QObject::tr("bottom-right :"), new QLabel(QString("%1, %2").arg(r.bottom()).arg(r.right()))); \
+    layout->addRow(new QLabel(QObject::tr("width=%1, height=%2").arg(r.width()).arg(r.height()))); \
+    return w;
+
+QWidget * createRectWidget(const QRectF & r )
+{
+    CreateRectWidget();
+}
+
+QWidget * createRectWidget(const QRect & r )
+{
+    CreateRectWidget();
+}
+
+QWidget * createPolygonWidget(const QPolygonF & p )
+{
+    QWidget * w = new QWidget();
+    QFormLayout * layout = new QFormLayout(w);
+    foreach (QPointF pt, p)
+    {
+        layout->addRow(new QLabel(QString("y=%1, x=%2").arg(pt.x()).arg(pt.y())));
+    }
+    return w;
+}
+
 
 //******************************************************************************
 
@@ -33,19 +68,29 @@ PropertyEditor::PropertyEditor(QWidget *parent) :
     _frame(0),
     _object(0)
 {
+    _scrollArea = new QScrollArea(this);
+    setLayout(new QHBoxLayout());
+    layout()->addWidget(_scrollArea);
+
 }
 
 //******************************************************************************
 
 void PropertyEditor::setup(QObject * object)
 {
+
     // remove the layout and construct new one:
     if (_frame)
     {
         delete _frame;
     }
-    _frame = new QWidget(this);
+    _frame = new QWidget();
     QFormLayout * layout = new QFormLayout(_frame);
+
+    if (!object)
+    {
+        return;
+    }
 
 
     _object = object;
@@ -54,31 +99,44 @@ void PropertyEditor::setup(QObject * object)
     // setup layout:
     const QMetaObject * metaObject = object->metaObject();
     int count = metaObject->propertyCount();
+
+    QHash<QString, QHash<QString, QString> > propertyOptionsMap =
+            getPropertyInfos(metaObject);
+
+
     for (int i=0; i<count; i++)
     {
         QMetaProperty property = metaObject->property(i);
         QString name = property.name();
         if (!_filter.contains(name))
         {
-            name[0] = name[0].toUpper();
-            name += " : ";
+
+            QHash<QString, QString> options = propertyOptionsMap.value(name);
+            QString label = name;
+            if (options.contains("label"))
+            {
+                label = options["label"];
+            }
+
+            label[0] = label[0].toUpper();
+            label += " : ";
             if (property.isWritable())
             {
-                QWidget * w = editableWidget(property.read(object));
+                QWidget * w = editableWidget(property.read(object), options);
                 _widgetPropertyMap.insert(w, i);
                 if (w)
                 {
-                    layout->addRow(name, w);
+                    layout->addRow(label, w);
                 }
-
             }
             else
             {
-
-                layout->addRow(name, readableWidget(property.read(object)));
+                layout->addRow(label, readableWidget(property.read(object)));
             }
         }
     }
+
+    _scrollArea->setWidget(_frame);
 
     if (!_frame->isVisible())
         _frame->show();
@@ -87,7 +145,31 @@ void PropertyEditor::setup(QObject * object)
 
 //******************************************************************************
 
-QWidget * PropertyEditor::editableWidget(const QVariant &value)
+QHash<QString, QHash<QString, QString> > PropertyEditor::getPropertyInfos(const QMetaObject *metaObject)
+{
+    QHash<QString, QHash<QString, QString> > propertyOptionsMap;
+    int classInfoCount = metaObject->classInfoCount();
+    for (int i=0;i<classInfoCount;i++)
+    {
+        QMetaClassInfo info = metaObject->classInfo(i);
+        QString optionString = info.value();
+        QHash<QString, QString> options;
+        QStringList list = optionString.split(";");
+
+        foreach (QString line, list)
+        {
+            QStringList pList = line.split(":");
+            options.insert(pList.first(), pList.last());
+        }
+        propertyOptionsMap.insert(info.name(), options);
+    }
+    return propertyOptionsMap;
+}
+
+
+//******************************************************************************
+
+QWidget * PropertyEditor::editableWidget(const QVariant &value, const QHash<QString, QString> & options)
 {
     QWidget * out = 0;
     if (value.type() == QVariant::Pen)
@@ -104,10 +186,43 @@ QWidget * PropertyEditor::editableWidget(const QVariant &value)
     }
     else if (value.type() == QVariant::String)
     {
-        QLineEdit * editor = new QLineEdit(value.toString());
-        connect(editor, SIGNAL(editingFinished()), this, SLOT(onStringPropertyChanged()));
+        if (options.contains("possibleValues"))
+        {
+            QComboBox * editor = new QComboBox();
+            // ....
+            out = editor;
+        }
+        else
+        {
+            QLineEdit * editor = new QLineEdit(value.toString());
+            connect(editor, SIGNAL(editingFinished()), this, SLOT(onStringPropertyChanged()));
+            out = editor;
+        }
+    }
+    else if (value.type() == QVariant::Bool)
+    {
+        QCheckBox * editor = new QCheckBox();
+        editor->setCheckState(value.toBool() ? Qt::Checked : Qt::Unchecked);
+        connect(editor, SIGNAL(stateChanged(int)), this, SLOT(onBoolPropertyChanged()));
         out = editor;
     }
+    else if (value.type() == QVariant::Double)
+    {
+        QDoubleSpinBox * editor = new QDoubleSpinBox();
+        editor->setValue(value.toDouble());
+        if (options.contains("minValue") && options.contains("maxValue"))
+        {
+            double minValue = options["minValue"].toDouble();
+            double maxValue = options["maxValue"].toDouble();
+            editor->setMinimum(minValue);
+            editor->setMaximum(maxValue);
+            editor->setSingleStep(qAbs(maxValue-minValue)*0.01);
+        }
+        connect(editor, SIGNAL(editingFinished()), this, SLOT(onDoublePropertyChanged()));
+        out = editor;
+    }
+
+
     return out;
 }
 
@@ -117,8 +232,30 @@ QWidget * PropertyEditor::readableWidget(const QVariant &value)
 {
     if (value.canConvert<QString>())
     {
-        return new QLabel(value.toString());
+        QLabel * l = new QLabel(value.toString());
+        l->setWordWrap(true);
+        return l;
     }
+    else if (value.type() == QVariant::Rect)
+    {
+        return createRectWidget(value.toRect());
+    }
+    else if (value.type() == QVariant::RectF)
+    {
+        return createRectWidget(value.toRectF());
+    }
+    else if (value.type() == QVariant::PolygonF)
+    {
+        return createPolygonWidget(value.value<QPolygonF>());
+    }
+//    else if (!value.value<QAction*>())
+//    {
+//        QAction * action = value.value<QAction*>();
+//        QPushButton * btn = new QPushButton(action->text());
+//        connect(btn, SIGNAL(clicked()), action, SIGNAL(triggered()));
+//        SD_TRACE("QAction is found");
+//        return btn;
+//    }
     return 0;
 }
 
@@ -137,6 +274,46 @@ void PropertyEditor::onStringPropertyChanged()
     QMetaProperty property = metaObject->property(propertyIndex);
 
     if (!property.write(_object, edit->text()))
+    {
+        SD_TRACE(QString("onStringPropertyChanged : failed to write new property value !"));
+    }
+}
+
+//******************************************************************************
+
+void PropertyEditor::onBoolPropertyChanged()
+{
+    QCheckBox * edit = qobject_cast<QCheckBox*>(sender());
+    if (!edit) return;
+
+    if (!_widgetPropertyMap.contains(edit)) return;
+
+    int propertyIndex = _widgetPropertyMap.value(edit, -1);
+
+    const QMetaObject * metaObject = _object->metaObject();
+    QMetaProperty property = metaObject->property(propertyIndex);
+
+    if (!property.write(_object, edit->checkState() == Qt::Checked))
+    {
+        SD_TRACE(QString("onStringPropertyChanged : failed to write new property value !"));
+    }
+}
+
+//******************************************************************************
+
+void PropertyEditor::onDoublePropertyChanged()
+{
+    QDoubleSpinBox * edit = qobject_cast<QDoubleSpinBox*>(sender());
+    if (!edit) return;
+
+    if (!_widgetPropertyMap.contains(edit)) return;
+
+    int propertyIndex = _widgetPropertyMap.value(edit, -1);
+
+    const QMetaObject * metaObject = _object->metaObject();
+    QMetaProperty property = metaObject->property(propertyIndex);
+
+    if (!property.write(_object, edit->value()))
     {
         SD_TRACE(QString("onStringPropertyChanged : failed to write new property value !"));
     }
@@ -176,10 +353,14 @@ void PropertyEditor::onBrushPropertyChanged()
     const QMetaObject * metaObject = _object->metaObject();
     QMetaProperty property = metaObject->property(propertyIndex);
 
+    QBrush b = edit->getBrush();
+    QColor c = b.color();
+
     if (!property.write(_object, edit->getBrush()))
     {
         SD_TRACE(QString("onBrushPropertyChanged : failed to write new property value !"));
     }
+
 }
 
 //******************************************************************************
@@ -284,6 +465,7 @@ BrushEditor::BrushEditor(const QBrush &brush, QWidget *parent) :
 QBrush BrushEditor::getBrush() const
 {
     QBrush brush(_colorValue);
+    // ...
     return brush;
 }
 

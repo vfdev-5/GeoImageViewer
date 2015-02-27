@@ -51,7 +51,7 @@ set CMAKE_PARAMETERS=^
 :: %CMAKE% %CMAKE_PARAMETERS% -G %CMAKE_GENERATOR% ../%SourceDir%
 
 
-:: Put this as arguments: -DCMAKE_INSTALL_PREFIX=..\Colormaps -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR=$ENV{OPENCV_DIR}
+:: Put this as arguments: -DCMAKE_INSTALL_PREFIX=..\ -DCMAKE_BUILD_TYPE=Release
 %QTCREATOR% ../%SourceDir%/CMakeLists.txt
 
 PAUSE

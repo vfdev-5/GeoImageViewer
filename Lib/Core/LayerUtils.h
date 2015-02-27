@@ -1,5 +1,5 @@
-#ifndef LAYERTOOLS_H
-#define LAYERTOOLS_H
+#ifndef LAYERUTILS_H
+#define LAYERUTILS_H
 
 // Qt
 #include <QPolygonF>
@@ -14,12 +14,11 @@
 
 // Project
 #include "Global.h"
+#include "LibExport.h"
 
 
 namespace Core
 {
-
-class ImageLayer;
 
 class ProgressReporter : public QObject
 {
@@ -52,7 +51,7 @@ signals:
  * \param waitKey
  * \param rescale
  */
-cv::Mat displayMat(const cv::Mat & inputImage, bool showMinMax=false, const QString &windowName=QString(), bool waitKey=true, bool rescale=true);
+cv::Mat GIV_DLL_EXPORT displayMat(const cv::Mat & inputImage, bool showMinMax=false, const QString &windowName=QString(), bool waitKey=true, bool rescale=true);
 
 //******************************************************************************
 // Geo Computation methods
@@ -62,14 +61,14 @@ cv::Mat displayMat(const cv::Mat & inputImage, bool showMinMax=false, const QStr
  * \param dataset
  * \return Geo Extent in LatLong computed from image corners using image projection info
  */
-QPolygonF computeGeoExtent(GDALDataset * dataset);
+QPolygonF GIV_DLL_EXPORT computeGeoExtent(GDALDataset * dataset);
 
 /*!
  * \brief createOverviewes method to create an overview .ovr file to optimize data extraction
  * \param dataset
  * \return true if successful, false otherwise
  */
-bool createOverviews(GDALDataset * dataset, ProgressReporter *reporter=0);
+bool GIV_DLL_EXPORT createOverviews(GDALDataset * dataset, ProgressReporter *reporter=0);
 
 
 /*!
@@ -77,17 +76,21 @@ bool createOverviews(GDALDataset * dataset, ProgressReporter *reporter=0);
  * \param dataset
  * \return true if file contains subsets
  */
-bool isSubsetFile(const QString & filename, QStringList &subsetNames, QStringList &subsetDescriptions);
+bool GIV_DLL_EXPORT isSubsetFile(const QString & filename, QStringList &subsetNames, QStringList &subsetDescriptions);
 
 //******************************************************************************
 // Image Computation methods
 //******************************************************************************
 /*!
  * \brief computeHistogram method to compute normalized histogram of an image layer which is used in rendering phase
- * \param ImageLayer
+ * \param
  * \return true if successful
  */
-bool computeNormalizedHistogram(ImageLayer * layer, int histSize=1000, bool isRough=true, ProgressReporter *reporter=0);
+//bool computeNormalizedHistogram(ImageLayer * layer, int histSize=1000, bool isRough=true, ProgressReporter *reporter=0);
+bool GIV_DLL_EXPORT computeNormalizedHistogram(const cv::Mat & data,
+                                QVector<double> & minValues, QVector<double> & maxValues,
+                                QVector< QVector<double> > & bandHistograms,
+                                int histSize=1000, ProgressReporter *reporter=0);
 
 /*!
  * \brief computeQuantileMinMaxValues method to compute min/max values using the histogram and quantile values (e.g. lowerCut=2.5, upperCut=97.5)
@@ -97,7 +100,16 @@ bool computeNormalizedHistogram(ImageLayer * layer, int histSize=1000, bool isRo
  * \param qMinValues - output quantile min values
  * \param qMaxValues - output quantile max values
  */
-void computeQuantileMinMaxValues(const ImageLayer * layer, double lowerCut, double upperCut, QVector<double> *qMinValues, QVector<double> *qMaxValues);
+void GIV_DLL_EXPORT computeQuantileMinMaxValues(const QVector<double> & minValues, const QVector<double> & maxValues,
+                                 const QVector< QVector<double> > & bandHistograms,
+                                 double lowerCut, double upperCut, QVector<double> *qMinValues, QVector<double> *qMaxValues);
+
+//******************************************************************************
+// File Read/Write methods
+//******************************************************************************
+
+bool GIV_DLL_EXPORT writeToFile(const QString & outputFilename, const cv::Mat & image,
+                 const QString & projectionStr = QString(), const QVector<double> & geoTransform = QVector<double>());
 
 //******************************************************************************
 // Type conversion methods
@@ -278,4 +290,4 @@ inline OGRFieldType getOGRFieldTypeFromQVariant(const QVariant & v)
 
 int progressCallback( double dfComplete, const char * pszMessage, void * pProgressArg );
 
-#endif // LAYERTOOLS_H
+#endif // LAYERUTILS_H

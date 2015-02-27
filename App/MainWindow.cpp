@@ -1,6 +1,5 @@
 
 // Qt
-#include <QApplication>
 #include <QDockWidget>
 
 // Project
@@ -20,14 +19,19 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
-    // Setup plugins
-    _viewer.setupPlugins(qApp->applicationDirPath() + "/Plugins");
-
-
 
     // Setup UI :
     ui->setupUi(this);
+
     setCentralWidget(&_viewer);
+
+    createDockWidget(&_tools, Qt::LeftDockWidgetArea)->setFloating(true);
+    _viewer.setToolsView(&_tools);
+
+    createDockWidget(&_layers, Qt::LeftDockWidgetArea);
+    _viewer.setLayersView(&_layers);
+
+
 #ifdef USE_HISTOGRAM
     createDockWidget(&_histogram, Qt::RightDockWidgetArea);
     _viewer.setRendererView(&_histogram);
@@ -36,8 +40,6 @@ MainWindow::MainWindow(QWidget *parent) :
     _viewer.setRendererView(&_contrast);
 #endif
 
-    createDockWidget(&_tools, Qt::LeftDockWidgetArea);
-    _viewer.setToolsView(&_tools);
 
 }
 
@@ -50,12 +52,13 @@ MainWindow::~MainWindow()
 
 //******************************************************************************
 
-void MainWindow::createDockWidget(QWidget *w, Qt::DockWidgetArea where)
+QDockWidget * MainWindow::createDockWidget(QWidget *w, Qt::DockWidgetArea where)
 {
     QDockWidget * dock = new QDockWidget(w->windowTitle(), this);
     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dock->setWidget(w);
     addDockWidget(where, dock);
+    return dock;
 }
 
 //******************************************************************************

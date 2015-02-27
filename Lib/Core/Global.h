@@ -28,12 +28,20 @@
 // SOME VERBOSE PARAMETERS
 //******************************************************************************
 
+#ifdef _DEBUG
 //#define LAYERLOADER_CACHE_VERBOSE
 //#define LAYERLOADER_SHOW_CACHE_INFO
 //#define LAYERLOADER_DISPLAY_TILES
 //#define LAYERLOADER_DISPLAY_VIEWPORT
+#define GEOIMAGEITEM_CACHE_VERBOSE
+#define GEOIMAGEITEM_SHOW_CACHE_INFO
+#define GEOIMAGEITEM_DISPLAY_TILES
+//#define GEOIMAGEITEM_DISPLAY_VIEWPORT
+#endif
+
 #define TIME_PROFILER_ON
 #define LAYERLOADER_TIMER_ON
+#define GEOIMAGEITEM_TIMER_ON
 #define RENDERER_TIMER_ON
 
 
@@ -41,6 +49,7 @@
 void StartTimer(const QString & message);
 double StopTimer();
 #endif
+
 
 
 //******************************************************************************

@@ -10,8 +10,7 @@
 #include <opencv2/highgui/highgui.hpp>
 
 // Project
-#include "LayerTools.h"
-#include "ImageLayer.h"
+#include "LayerUtils.h"
 
 namespace Core
 {
@@ -114,6 +113,7 @@ bool isSubsetFile(const QString & filepath, QStringList & subsetNames, QStringLi
     int nSubdatasets = CSLCount( papszSubdatasets );
     if (nSubdatasets == 0)
     {
+        GDALClose( dataset );
         return false;
     }
     for (int i=0; i<nSubdatasets; i+=2)
@@ -201,7 +201,10 @@ cv::Mat displayMat(const cv::Mat & inputImage0, bool showMinMax, const QString &
     // show image size :
     if (showMinMax)
     {
-        SD_TRACE( QString( "Image \'" + windowNameS + "\' has size : %1, %2" ).arg( inputImage0.cols ).arg( inputImage0.rows ) );
+        SD_TRACE( QString( "Image \'" + windowNameS + "\' has size : %1, %2 and nbBands = %3" )
+                  .arg( inputImage0.cols )
+                  .arg( inputImage0.rows )
+                  .arg( inputImage0.channels()));
     }
 
     // compute min/max values & render:
@@ -259,21 +262,23 @@ if (reporter)   \
     r*(reporter->endValue - reporter->startValue) + reporter->startValue); \
 } \
 
-bool computeNormalizedHistogram(ImageLayer *layer, int histSize, bool isRough, ProgressReporter *reporter)
+bool computeNormalizedHistogram(const cv::Mat & data,
+                                QVector<double> & minValues, QVector<double> & maxValues,
+                                QVector< QVector<double> > & bandHistograms,
+                                int histSize, ProgressReporter *reporter)
 {
-    // Get full image into a matrix of size 512x(512*ratio)
-    cv::Mat data = layer->getImageData(QRect(), (isRough) ? 512 : 0);
-    if (data.empty())
-        return false;
-
 
     // Compute histogram:
     int nbBands = data.channels();
     std::vector<cv::Mat> ic(nbBands);
     cv::split(data, &ic[0]);
 
-    QVector<double> minValues(nbBands);
-    QVector<double> maxValues(nbBands);
+    minValues.clear();
+    minValues.resize(nbBands);
+    maxValues.clear();
+    maxValues.resize(nbBands);
+
+    bandHistograms.clear();
 
     int taskProgressSize = nbBands * 3;
     int taskProgressCount = 0;
@@ -294,6 +299,12 @@ bool computeNormalizedHistogram(ImageLayer *layer, int histSize, bool isRough, P
         REPORT();
 
         // 2) compute histogram:
+        if (mm == MM)
+        {
+            mm = MM - histSize*0.5;
+            MM = MM + histSize*0.5;
+        }
+
         int histSizeArray[] = {histSize};
         int channels[] = {0};
         float histRangeArray[] = {(float) mm, (float) MM};
@@ -308,30 +319,24 @@ bool computeNormalizedHistogram(ImageLayer *layer, int histSize, bool isRough, P
         {
             bandHistogramVector[k] = (bandHistogram.at<float>(k,0) - mm)/(MM - mm);
         }
-        layer->setBandHistogram(i, bandHistogramVector);
-
-
+        bandHistograms << bandHistogramVector;
         REPORT();
 
     }
 
-    layer->setMinValues(minValues);
-    layer->setMaxValues(maxValues);
-
     return true;
 }
+
 
 //******************************************************************************
 
 void computeQuantileMinMaxValue(const QVector<double> & bandHistogram, double lowerCut, double upperCut,
                                 double minValue, double maxValue, double *qMinValue, double *qMaxValue);
 
-void computeQuantileMinMaxValues(const ImageLayer * layer, double lowerCut, double upperCut, QVector<double> * qMinValues, QVector<double> * qMaxValues)
+void computeQuantileMinMaxValues(const QVector<double> & minValues, const QVector<double> & maxValues,
+                                 const QVector< QVector<double> > & bandHistograms,
+                                 double lowerCut, double upperCut, QVector<double> * qMinValues, QVector<double> * qMaxValues)
 {
-
-    const QVector<QVector<double> > & bandHistograms = layer->getBandHistograms();
-    const QVector<double> & minValues = layer->getMinValues();
-    const QVector<double> & maxValues = layer->getMaxValues();
     qMinValues->clear();
     qMaxValues->clear();
     double qMinValue(0), qMaxValue(0);
@@ -341,7 +346,6 @@ void computeQuantileMinMaxValues(const ImageLayer * layer, double lowerCut, doub
                                    minValues[i], maxValues[i], &qMinValue, &qMaxValue);
         qMinValues->append(qMinValue);
         qMaxValues->append(qMaxValue);
-//        SD_TRACE(QString("Quantile min/max : %1, %2").arg(qMinValue).arg(qMaxValue));
     }
 }
 
@@ -394,6 +398,79 @@ void computeQuantileMinMaxValue(const QVector<double> & bandHistogram, double lo
 
 }
 
+//******************************************************************************
+
+bool writeToFile(const QString &outputFilename, const cv::Mat &image,
+                 const QString & projectionStr, const QVector<double> &geoTransform)
+{
+    int count = GetGDALDriverManager()->GetDriverCount();
+    if (count == 0)
+    {
+        SD_TRACE("writeToFile : Error : GDAL drivers are not registered");
+        return false;
+    }
+
+    // initialize gtiff driver to write output :
+    GDALDriver * driver = GetGDALDriverManager()->GetDriverByName("GTiff");
+    if (!driver)
+    {
+        SD_TRACE( "GDAL failed to get geotiff driver to write output image " );
+        return false;
+    }
+
+    int width = image.cols;
+    int height = image.rows;
+    int outputNbBands = image.channels();
+    GDALDataType dataType = convertDataTypeOpenCVToGDAL(image.type());
+
+    char **papszCreateOptions = 0;
+    papszCreateOptions=CSLAddString(papszCreateOptions, "COMPRESS=LZW");
+
+    GDALDataset * outputDataset = driver->Create(outputFilename.toStdString().c_str(), width, height, outputNbBands, dataType, papszCreateOptions);
+    if (!outputDataset)
+    {
+        SD_TRACE( QString( "GDAL failed to create output image : %1" ).arg( outputFilename ) )
+        return false;
+    }
+
+    // copy geo info:
+    if (!projectionStr.isEmpty())
+    {
+        outputDataset->SetProjection( projectionStr.toStdString().c_str() );
+    }
+    // set geotransform:
+    if (!geoTransform.isEmpty())
+    {
+        outputDataset->SetGeoTransform( (double*)geoTransform.data() );
+    }
+
+    // copy data:
+    std::vector<cv::Mat> iChannels(outputNbBands);
+    cv::split(image, &iChannels[0]);
+    int w = image.cols;
+    int h = image.rows;
+    for (int i=0; i<outputNbBands; i++)
+    {
+        GDALRasterBand * dstBand =  outputDataset->GetRasterBand(i+1);
+        if (!dstBand)
+        {
+            SD_TRACE( "Failed to write data" );
+            return false;
+        }
+        CPLErr err = dstBand->RasterIO( GF_Write, 0, 0, w, h, iChannels[i].data, w, h, dataType, 0, 0 );
+        if (err != CE_None)
+        {
+            SD_TRACE( "Failed to write data" );
+            return false;
+        }
+    }
+
+    // close datasets:
+    GDALClose(outputDataset);
+
+    return true;
+
+}
 
 //******************************************************************************
 

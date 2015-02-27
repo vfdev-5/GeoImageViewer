@@ -37,7 +37,7 @@ QT5_ADD_RESOURCES (ResourceSources ${QRC_FILES})
 # add ui_<source>.h
 INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR}/Lib)
 
-## create dll :
+## create library :
 add_definitions("-DLIB_EXPORT")
 add_library( ${PROJECT_NAME} SHARED ${SRC_FILES} ${INC_FILES} ${UI_FILES} ${ResourceSources})
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX ".d")

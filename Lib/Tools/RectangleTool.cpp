@@ -14,16 +14,15 @@ namespace Tools
 
 
 RectangleTool::RectangleTool(QObject *parent) :
-    AbstractTool(parent),
+    ItemCreationTool(parent),
     _pressed(false),
-    _pen(QColor(Qt::gray), 0, Qt::DashLine),
-    _brush(QColor(Qt::transparent)),
-    _singleItem(true),
-    _rect(0),
-    _testString("Test value")
+    _pen(QColor(Qt::black), 0, Qt::SolidLine),
+    _brush(QColor(Qt::white)),
+    _rect(0)
 {
-    _name = "Rectangle";
-    _description = "Draws a rectangle shape";
+    setObjectName("rectangle");
+    _name = tr("Rectangle");
+    _description = tr("Draws a rectangle shape");
     _icon = QIcon(":/icons/rectangle");
 }
 
@@ -42,8 +41,7 @@ bool RectangleTool::dispatch(QEvent * e, QGraphicsScene * scene)
     }
     else if (e->type() == QEvent::GraphicsSceneMouseRelease)
     {
-        mouseReleaseEvent(static_cast<QGraphicsSceneMouseEvent*>(e), scene);
-        return true;
+        return mouseReleaseEvent(static_cast<QGraphicsSceneMouseEvent*>(e), scene);
     }
 
     return false;
@@ -55,20 +53,20 @@ bool RectangleTool::dispatch(QEvent * e, QGraphicsScene * scene)
 bool RectangleTool::mousePressEvent(QGraphicsSceneMouseEvent *event, QGraphicsScene *scene)
 {
 
-    if (event->button() == Qt::LeftButton)
+    if (event->button() == Qt::LeftButton && !_pressed)
     {
 //        SD_TRACE("RectangleTool : mouse press" );
+//        if (_singleItem)
+//        {
+//            clear(scene);
+//        }
+
         _pressed = true;
-        if (_singleItem && _rect)
-        {
-            scene->removeItem(_rect);
-            delete _rect;
-            _rect=0;
-        }
         _anchor = event->scenePos();
         QRectF r(_anchor, QSizeF(0.5,0.5));
         _rect = scene->addRect(r, _pen, _brush);
         _rect->setZValue(1000);
+        _rect->setData(QGraphicsItem::ItemIsMovable, true);
 
         return true;
     }
@@ -120,12 +118,15 @@ bool RectangleTool::mouseMoveEvent(QGraphicsSceneMouseEvent *event, QGraphicsSce
 
 bool RectangleTool::mouseReleaseEvent(QGraphicsSceneMouseEvent * event, QGraphicsScene *)
 {
-    if (event->button() == Qt::LeftButton)
+    if (event->button() == Qt::LeftButton && _pressed)
     {
 //        SD_TRACE("RectangleTool : mouse release" );
         _pressed=false;
         _anchor = QPointF();
 
+        emit itemCreated(_rect);
+
+        _rect = 0;
 //        if (!_singleItem) {
 //            _rect = 0;
 //        }
@@ -137,11 +138,11 @@ bool RectangleTool::mouseReleaseEvent(QGraphicsSceneMouseEvent * event, QGraphic
 
 //******************************************************************************
 
-void RectangleTool::clear(QGraphicsScene * scene)
+void RectangleTool::clear()
 {
-    if (_rect)
+    if (_rect && !_pressed)
     {
-        scene->removeItem(_rect);
+        _rect->scene()->removeItem(_rect);
         delete _rect;
         _rect=0;
     }

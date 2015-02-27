@@ -18,8 +18,6 @@ class QToolButton;
 namespace Gui
 {
 
-class PropertyEditor;
-
 //******************************************************************************
 
 class GIV_DLL_EXPORT ToolsView : public AbstractToolsView

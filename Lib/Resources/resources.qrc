@@ -4,5 +4,6 @@
         <file alias="selection">Icons/selection.png</file>
         <file alias="hand">Icons/dragger.png</file>
         <file alias="rectangle">Icons/rectangle.png</file>
+        <file alias="move">Icons/move.png</file>
     </qresource>
 </RCC>

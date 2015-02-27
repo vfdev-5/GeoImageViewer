@@ -1,30 +1,33 @@
 
-// Qt
+// OpenCV
+#include <opencv2/imgproc/imgproc.hpp>
 
 // Project
-#include "LayerRenderer.h"
-#include "ImageLayer.h"
+#include "LayerUtils.h"
+#include "ImageRenderer.h"
+#include "ImageDataProvider.h"
 
 namespace Core
 {
 
 //******************************************************************************
 
-LayerRenderer::LayerRenderer()
+ImageRenderer::ImageRenderer(QObject *parent) :
+    QObject(parent)
 {
 }
 
 //******************************************************************************
 /*!
- * \brief LayerRenderer::setToRGBMapping method to setup default 'Bands-to-RGB' mapping
+ * \brief ImageRenderer::setToRGBMapping method to setup default 'Bands-to-RGB' mapping
  * \param layer
  * \return
  */
 
-bool LayerRenderer::setToRGBMapping(ImageLayer *layer)
+bool ImageRenderer::setToRGBMapping(ImageDataProvider *provider)
 {
-    int nbBands=layer->getNbBands();
-    bool isComplex=layer->isComplex();
+    int nbBands=provider->getNbBands();
+    bool isComplex=provider->isComplex();
     _conf.toRGBMapping.clear();
     if (nbBands == 1 && !isComplex)
     {
@@ -37,13 +40,13 @@ bool LayerRenderer::setToRGBMapping(ImageLayer *layer)
         // TODO !!! NEED TO CREATE VIRTUAL BANDS
         SD_ERR(QObject::tr("Complex images are not yet supported"));
     }
-    else if (layer->getNbBands() > 2 && !isComplex)
+    else if (provider->getNbBands() > 2 && !isComplex)
     { // Image with more the 2 not complex bands is interpreted as RGB image
         _conf.toRGBMapping.insert(0, 0);
         _conf.toRGBMapping.insert(1, 1);
         _conf.toRGBMapping.insert(2, 2);
     }
-    else if (layer->getNbBands() == 2 && !isComplex)
+    else if (provider->getNbBands() == 2 && !isComplex)
     { // Image with 2 bands is not interpreted as complex image and displayed as gray level image
         _conf.toRGBMapping.insert(0, 0);
         _conf.toRGBMapping.insert(1, 0);
@@ -51,7 +54,7 @@ bool LayerRenderer::setToRGBMapping(ImageLayer *layer)
     }
     else
     {
-        SD_TRACE("LayerRenderer::setToRGBMapping : Failed to create toRGB mapping");
+        SD_TRACE("ImageRenderer::setToRGBMapping : Failed to create toRGB mapping");
         return false;
     }
     return true;
@@ -59,13 +62,13 @@ bool LayerRenderer::setToRGBMapping(ImageLayer *layer)
 
 //******************************************************************************
 
-bool LayerRenderer::setupConfiguration(ImageLayer *layer)
+bool ImageRenderer::setupConfiguration(ImageDataProvider *dataProvider)
 {
 
-    _conf.minValues = layer->getMinValues();
-    _conf.maxValues = layer->getMaxValues();
+    _conf.minValues = dataProvider->getMinValues();
+    _conf.maxValues = dataProvider->getMaxValues();
 
-    if (!setToRGBMapping(layer))
+    if (!setToRGBMapping(dataProvider))
     {
         return false;
     }
@@ -75,14 +78,14 @@ bool LayerRenderer::setupConfiguration(ImageLayer *layer)
 
 //******************************************************************************
 
-void LayerRenderer::setConfiguration(const LayerRendererConfiguration & conf)
+void ImageRenderer::setConfiguration(const ImageRendererConfiguration & conf)
 {
     _conf = conf;
 }
 
 //******************************************************************************
 
-bool LayerRenderer::checkBeforeRender(const cv::Mat & rawData)
+inline bool ImageRenderer::checkBeforeRender(const cv::Mat & rawData)
 {
     int nbBands = rawData.channels();
     if (nbBands != _conf.minValues.size() ||
@@ -95,21 +98,35 @@ bool LayerRenderer::checkBeforeRender(const cv::Mat & rawData)
 }
 
 //******************************************************************************
-
-cv::Mat LayerRenderer::render(const cv::Mat &rawData)
+/*!
+ * \brief ImageRenderer::render transforms raw data using min/max values into RGBA (32 bits) format
+ * \param rawData
+ * \return Matrix in RGBA 32-bits format, 4 channels
+ */
+cv::Mat ImageRenderer::render(const cv::Mat &oRawData, bool isBGRA)
 {
     cv::Mat outputImage8U;
-    if (!checkBeforeRender(rawData))
+    if (!checkBeforeRender(oRawData))
         return outputImage8U;
+
+    // Get alpha channel and rewrite noDataValues to zero
+    cv::Mat mask, alpha8U = oRawData > ImageDataProvider::NoDataValue;
+    alpha8U.convertTo(mask, oRawData.depth());
+    cv::Mat rawData = oRawData.mul(mask);
 
     int nbBands = rawData.channels();
     const QVector<int> & mapping = _conf.toRGBMapping;
 
+    std::vector<cv::Mat> iAlpha8U(nbBands);
     std::vector<cv::Mat> iChannels(nbBands);
-    std::vector<cv::Mat> oChannels(mapping.size());
+    // Include alpha channel as the last band <-> RGBA
+    std::vector<cv::Mat> oChannels(mapping.size() + 1);
     cv::split(rawData, &iChannels[0]);
+    cv::split(alpha8U, &iAlpha8U[0]);
 
     // render:
+    // set alpha channel:
+    oChannels[3] = iAlpha8U[0];
     for (int i=0; i < mapping.size(); i ++)
     {
        int index = mapping[i];
@@ -120,7 +137,10 @@ cv::Mat LayerRenderer::render(const cv::Mat &rawData)
        b = - 255.0 * _conf.minValues[index] / ( _conf.maxValues[index] - _conf.minValues[index] );
        iChannels[index].convertTo(oChannels[i], CV_8U, a, b);
     }
+
     cv::merge(oChannels, outputImage8U);
+    if (isBGRA)
+        cv::cvtColor(outputImage8U, outputImage8U, CV_RGBA2BGRA);
     return outputImage8U;
 }
 

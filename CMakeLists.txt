@@ -18,7 +18,7 @@ set(CMAKE_AUTOUIC ON)
 # Find OpenCV, GDAL, Qt:
 find_package( OpenCV REQUIRED )
 find_package( GDAL REQUIRED )
-set( QT_COMPONENT_LIST Widgets OpenGL)
+set( QT_COMPONENT_LIST Widgets OpenGL Test)
 find_package( Qt REQUIRED )
 
 
@@ -26,10 +26,10 @@ find_package( Qt REQUIRED )
 add_subdirectory("Lib")
 add_subdirectory("Plugins")
 add_subdirectory("App")
-
+add_subdirectory("App2")
+add_subdirectory("Tests")
 
 if(WIN32)
-
     ## install opencv library dlls :
     get_filename_component(OpenCV_BIN_DIR "${OpenCV_LIB_PATH}/../bin" ABSOLUTE)
 #    message("OpenCV_BIN_DIR : ${OpenCV_BIN_DIR}")
