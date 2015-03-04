@@ -84,16 +84,19 @@ inline double normalize(double value, double vmin, double vmax)
         a) mode is GRAY only
         b) normHistStops is one array of default 'stops'. The number 'stops' and possible colors are not limited.
         c) normRGBHistStops is empty
+        d) Transfer functions and isDiscreteColours options are available
 
     2) M bands, complex imagery then the HistogramRendererConfiguration is
         a) mode is GRAY only
         b) normHistStops is M arrays of default 'stops'. The number 'stops' and possible colors are not limited.
         c) normRGBHistStops is empty
+        d) Transfer functions and isDiscreteColours options are available
 
     3) N Bands, not complex imagery then the HistogramRendererConfiguration is
         a) mode is GRAY or RGB
         b) normHistStops is N arrays of default 'stops'. The number 'stops' and possible colors are not limited.
         c) normRGBHistStops is 3 arrays of default 'stops'
+        d) Transfer functions and isDiscreteColours options are available in GRAY mode
 
 
 
@@ -134,6 +137,9 @@ bool HistogramImageRenderer::setupConfiguration(ImageDataProvider * provider)
                                 &_histConf.qMinValues, &_histConf.qMaxValues);
 
     int nbBands = provider->getNbBands();
+    bool isComplex = provider->inputIsComplex();
+
+    // Setup Gray mode options:
     _histConf.transferFunctions.clear();
     _histConf.isDiscreteValues.clear();
     _histConf.normHistStops.clear();
@@ -143,21 +149,51 @@ bool HistogramImageRenderer::setupConfiguration(ImageDataProvider * provider)
         _histConf.isDiscreteValues << false;
         double a=(_histConf.qMaxValues[i] - _histConf.qMinValues[i]) / (_conf.maxValues[i] - _conf.minValues[i]);
         double b=(_histConf.qMinValues[i] - _conf.minValues[i]) / (_conf.maxValues[i] - _conf.minValues[i]);
-        _histConf.normHistStops << resetStops(nbBands == 1 ? -1 : i, a, b);
+//        _histConf.normHistStops << resetStops(nbBands == 1 ? -1 : i, a, b);
+        _histConf.normHistStops << resetStops(-1, a, b);
     }
+    _histConf.mode = HistogramRendererConfiguration::GRAY;
+
+    // Setup RGB mode options:
+    if (nbBands > 1 && !isComplex)
+    {
+        _histConf.rgbTransferFunction = HistogramRendererConfiguration::availableTransferFunctions[0];
+        _histConf.isRGBDiscreteValue = false;
+        _histConf.normRGBHistStops.clear();
+        for (int i=0;i<nbBands;i++)
+        {
+            double a=(_histConf.qMaxValues[i] - _histConf.qMinValues[i]) / (_conf.maxValues[i] - _conf.minValues[i]);
+            double b=(_histConf.qMinValues[i] - _conf.minValues[i]) / (_conf.maxValues[i] - _conf.minValues[i]);
+            _histConf.normRGBHistStops << resetStops(i, a, b);
+        }
+        _histConf.mode = HistogramRendererConfiguration::RGB;
+    }
+
     return true;
 
 }
 
 //******************************************************************************
 
-bool HistogramImageRenderer::chechHistConf()
+bool HistogramImageRenderer::checkHistConf()
 {
-    return !_histConf.normHistStops.isEmpty() &&
-            !_histConf.qMinValues.isEmpty() &&
-            _histConf.qMinValues.size() == _histConf.qMaxValues.size() &&
-            !_histConf.isDiscreteValues.isEmpty() &&
-            !_histConf.transferFunctions.isEmpty();
+    if (_histConf.mode == HistogramRendererConfiguration::GRAY)
+    {
+        return !_histConf.normHistStops.isEmpty() &&
+                !_histConf.isDiscreteValues.isEmpty() &&
+                !_histConf.transferFunctions.isEmpty();
+    }
+    else
+    if (_histConf.mode == HistogramRendererConfiguration::RGB)
+    {
+        return !_histConf.normRGBHistStops.isEmpty() &&
+                _histConf.rgbTransferFunction;
+    }
+    else
+    {
+        return false;
+    }
+
 }
 
 //******************************************************************************
@@ -183,7 +219,7 @@ cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, bool isBGRA)
 {
 
     cv::Mat outputImage8U;
-    if (!checkBeforeRender(rawData) || !chechHistConf())
+    if (!checkBeforeRender(rawData) || !checkHistConf())
         return outputImage8U;
 
     int w=rawData.cols;
@@ -192,12 +228,6 @@ cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, bool isBGRA)
     outputImage8U=cv::Mat::zeros(h,w,CV_8UC4);
 
     // Get alpha channel and rewrite noDataValues to zero
-    //    cv::Mat mask, alpha8U = oRawData > ImageDataProvider::NoDataValue;
-    //    alpha.convertTo(mask, oRawData.depth());
-    //    cv::Mat rawData = oRawData.mul(mask);
-    //    std::vector<cv::Mat> iAlpha8U(nbBands);
-    //    cv::split(alpha8U, &iAlpha8U[0]);
-
     // convert to 32F:
     cv::Mat rawData32F = rawData;
     if (rawData32F.depth() != CV_32F)
@@ -210,11 +240,34 @@ cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, bool isBGRA)
     uchar * dstPtr = outputImage8U.data;
 
 
-    const QVector<double> &minValues = _conf.minValues;
-    const QVector<double> &maxValues = _conf.maxValues;
-    const QVector<TransferFunction*> & transferFunctions = _histConf.transferFunctions;
-    const QVector<bool> & isDiscreteValues = _histConf.isDiscreteValues;
-    const QVector<QGradientStops> & normHistStops = _histConf.normHistStops;
+//    const QVector<double> &minValues = _conf.minValues;
+//    const QVector<double> &maxValues = _conf.maxValues;
+
+    QVector<TransferFunction*> transferFunctions;
+    QVector<bool> isDiscreteValues;
+    QVector<QGradientStops> normHistStops;
+
+    //    const QVector<TransferFunction*> & transferFunctions = _histConf.transferFunctions;
+    //    const QVector<bool> & isDiscreteValues = _histConf.isDiscreteValues;
+    //    const QVector<QGradientStops> & normHistStops = _histConf.normHistStops;
+    if (_histConf.mode == HistogramRendererConfiguration::GRAY)
+    {
+        transferFunctions = _histConf.transferFunctions;
+        isDiscreteValues  = _histConf.isDiscreteValues;
+        normHistStops     = _histConf.normHistStops;
+    }
+    else
+    if (_histConf.mode == HistogramRendererConfiguration::RGB)
+    {
+        transferFunctions << _histConf.rgbTransferFunction
+                          << _histConf.rgbTransferFunction
+                          << _histConf.rgbTransferFunction;
+        isDiscreteValues  << _histConf.isRGBDiscreteValue
+                          << _histConf.isRGBDiscreteValue
+                          << _histConf.isRGBDiscreteValue;
+        normHistStops      = _histConf.normRGBHistStops;
+    }
+
 
     float a32 = 0.0;
     uchar alpha = 255;
@@ -238,7 +291,7 @@ cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, bool isBGRA)
         renderPixel(srcPtr, dstPtr, mapping,
                     _conf.minValues, _conf.maxValues,
                     _histConf.transferFunctions, _histConf.isDiscreteValues,
-                    _histConf.normHistStops);
+                    normHistStops);
 
         if (isBGRA)
             std::swap(dstPtr[0], dstPtr[2]);
@@ -296,7 +349,7 @@ cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, bool isBGRA)
     nvalue*=alpha; /*dstPtr[i]*=alpha;*/    \
     nvalue+=(1.0-alpha)*lStop.second.band(); /*dstPtr[i]+=(1.0-alpha)*lStop.second.band();*/ \
 }   \
-    dstPtr[i] = (uchar) nvalue; \
+    dstPtr[i] = (uchar) qRound(nvalue-0.05); \
     break;  \
 }   \
 }   \
@@ -325,6 +378,7 @@ inline void renderPixel(float * srcPtr, uchar * dstPtr, const QVector<int> & map
 
 
 #ifdef _DEBUG
+    // red
     index = mapping[0];
     value = srcPtr[index];
     a=minValues[index];
@@ -367,17 +421,116 @@ inline void renderPixel(float * srcPtr, uchar * dstPtr, const QVector<int> & map
                         nvalue*=alpha;
                         nvalue+=(1.0-alpha)*lStop.second.red();
                     }
-                    dstPtr[0] = (uchar) (nvalue);
+                    dstPtr[0] = (uchar) qRound(nvalue-0.05);
                     break;
                 }
             }
         }
     }
+
+    // green
+    index = mapping[1];
+    value = srcPtr[index];
+    a=minValues[index];
+    b=maxValues[index];
+    tf = transferFunctions[index];
+    if (tf)
+    {
+        isDiscreteColors=isDiscreteValues[index];
+
+        /* Clamp value between band min/max and normalize between [0,1]*/
+        value = normalize(clamp(value, a, b),a, b);
+        /* Apply transfer function and normalize value in [0,1] */
+        value = tf->evaluate(value);
+        value = normalize(value, tf->evaluate(0.0), tf->evaluate(1.0));
+
+        l = normHistStops[index].size();
+        fStop = normHistStops[index][0];
+        lStop = normHistStops[index][l-1];
+        if (value < fStop.first)
+        {
+            dstPtr[1]=fStop.second.green();
+        }
+        else if (value >= lStop.first)
+        {
+            dstPtr[1]=lStop.second.green();
+        }
+        else
+        {
+            for (int j=0;j<l-1;j++)
+            {
+                fStop = normHistStops[index][j];
+                lStop = normHistStops[index][j+1];
+                if (value >= fStop.first && value < lStop.first)
+                {
+                    double nvalue = fStop.second.green();
+                    if (!isDiscreteColors)
+                    {
+                        alpha = (lStop.first - value)/(lStop.first - fStop.first);
+                        nvalue*=alpha;
+                        nvalue+=(1.0-alpha)*lStop.second.green();
+                    }
+                    dstPtr[1] = (uchar) qRound(nvalue-0.05);
+                    break;
+                }
+            }
+        }
+    }
+
+    // blue
+    index = mapping[2];
+    value = srcPtr[index];
+    a=minValues[index];
+    b=maxValues[index];
+    tf = transferFunctions[index];
+    if (tf)
+    {
+        isDiscreteColors=isDiscreteValues[index];
+
+        /* Clamp value between band min/max and normalize between [0,1]*/
+        value = normalize(clamp(value, a, b),a, b);
+        /* Apply transfer function and normalize value in [0,1] */
+        value = tf->evaluate(value);
+        value = normalize(value, tf->evaluate(0.0), tf->evaluate(1.0));
+
+        l = normHistStops[index].size();
+        fStop = normHistStops[index][0];
+        lStop = normHistStops[index][l-1];
+        if (value < fStop.first)
+        {
+            dstPtr[2]=fStop.second.blue();
+        }
+        else if (value >= lStop.first)
+        {
+            dstPtr[2]=lStop.second.blue();
+        }
+        else
+        {
+            for (int j=0;j<l-1;j++)
+            {
+                fStop = normHistStops[index][j];
+                lStop = normHistStops[index][j+1];
+                if (value >= fStop.first && value < lStop.first)
+                {
+                    double nvalue = fStop.second.blue();
+                    if (!isDiscreteColors)
+                    {
+                        alpha = (lStop.first - value)/(lStop.first - fStop.first);
+                        nvalue*=alpha;
+                        nvalue+=(1.0-alpha)*lStop.second.blue();
+                    }
+                    dstPtr[2] = (uchar) qRound(nvalue-0.05);
+                    break;
+                }
+            }
+        }
+    }
+
 #else
     ComputePixelValue(0, red);
-#endif
     ComputePixelValue(1, green);
     ComputePixelValue(2, blue);
+#endif
 
 #ifdef _DEBUG
     int rr = dstPtr[0];

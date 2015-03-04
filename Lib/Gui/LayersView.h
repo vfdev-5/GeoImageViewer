@@ -40,16 +40,20 @@ public:
 
     void addLayer(Core::BaseLayer * layer);
     void setLayers(const QList<Core::BaseLayer*> & layers);
+
     Core::BaseLayer * getCurrentLayer();
 
 signals:
-    void layerSelected(Core::BaseLayer *);
+    void layerSelected(Core::BaseLayer*);
+    void saveLayer(Core::BaseLayer*);
+
 
 protected slots:
     void onItemClicked(QListWidgetItem*);
     void onItemChanged(QListWidgetItem*);
     void onItemOrderChanged();
     void onRemoveLayer();
+    void onSaveLayer();
     void onContextMenuRequested(QPoint);
 
 protected:
@@ -67,6 +71,7 @@ private:
 
     QMenu _menu;
     QAction _removeLayer;
+    QAction _saveLayer;
 
 };
 

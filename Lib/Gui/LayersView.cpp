@@ -18,7 +18,8 @@ namespace Gui
 LayersView::LayersView(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::LayersView),
-    _removeLayer(tr("Remove"), this)
+    _removeLayer(tr("Remove"), this),
+    _saveLayer(tr("Save"), this)
 {
     ui->setupUi(this);
 
@@ -50,8 +51,12 @@ LayersView::~LayersView()
 void LayersView::setupMenu()
 {
     _removeLayer.setVisible(true);
+    _saveLayer.setEnabled(false);
+    _menu.addAction(&_saveLayer);
+    _menu.addSeparator();
     _menu.addAction(&_removeLayer);
     connect(&_removeLayer, SIGNAL(triggered()), this, SLOT(onRemoveLayer()));
+    connect(&_saveLayer, SIGNAL(triggered()), this, SLOT(onSaveLayer()));
 }
 
 //******************************************************************************
@@ -60,12 +65,30 @@ void LayersView::onRemoveLayer()
 {
     QListWidgetItem * item = ui->_layers->currentItem();
     Core::BaseLayer * layer = _itemLayerMap.value(item, 0);
+
+    // reset editor info if removed layer is current
+    QListWidgetItem * sItem = ui->_layers->selectedItems().first();
+    if (sItem == item)
+        ui->_editor->setup(0);
+
     if (layer)
     {
         _itemLayerMap.remove(item);
         delete item;
         delete layer;
     }
+
+}
+
+//******************************************************************************
+
+void LayersView::onSaveLayer()
+{
+
+    QListWidgetItem * item = ui->_layers->currentItem();
+    Core::BaseLayer * layer = _itemLayerMap.value(item, 0);
+    if (layer)
+        emit saveLayer(layer);
 
 }
 
@@ -94,6 +117,9 @@ void LayersView::addLayer(Core::BaseLayer *layer)
     ui->_layers->setCurrentItem(item);
 
     updateZValues();
+
+    // show properties:
+    ui->_editor->setup(layer);
 
 }
 
@@ -187,8 +213,17 @@ void LayersView::updateZValues()
 
 void LayersView::onContextMenuRequested(QPoint p)
 {
-    if (ui->_layers->itemAt(p))
+    QListWidgetItem * item = ui->_layers->itemAt(p);
+    if (item)
     {
+        _saveLayer.setEnabled(false);
+        // test if layer can be saved
+        Core::BaseLayer * layer = _itemLayerMap.value(item, 0);
+        if (layer && layer->canSave())
+        {
+            _saveLayer.setEnabled(true);
+        }
+
         _menu.popup(ui->_layers->mapToGlobal(p));
     }
 }

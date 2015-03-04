@@ -17,13 +17,22 @@ namespace Core
 
 //******************************************************************************
 
-QPolygonF computeGeoExtent(GDALDataset * inputDataset)
+QPolygonF computeGeoExtent(GDALDataset * inputDataset, const QRect & pixelExtent)
 {
     QPolygonF gPts;
     QVector<QPoint> pts; // topLeft, topRight, bottomRight, bottomLeft
-    int width = inputDataset->GetRasterXSize();
-    int height = inputDataset->GetRasterYSize();
-    pts << QPoint(0, 0) << QPoint(width, 0) << QPoint(width, height) << QPoint(0, height);
+
+    if (pixelExtent.isEmpty())
+    {
+        int width = inputDataset->GetRasterXSize();
+        int height = inputDataset->GetRasterYSize();
+        pts << QPoint(0, 0) << QPoint(width, 0) << QPoint(width, height) << QPoint(0, height);
+    }
+    else
+    {
+        pts << pixelExtent.topLeft() << pixelExtent.topRight()
+            << pixelExtent.bottomRight() << pixelExtent.bottomLeft();
+    }
 
     // Compute Spatial extent as 4 corners transformation into WGS84:
     void * transformArg = 0;

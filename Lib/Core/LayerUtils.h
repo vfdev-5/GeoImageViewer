@@ -61,7 +61,7 @@ cv::Mat GIV_DLL_EXPORT displayMat(const cv::Mat & inputImage, bool showMinMax=fa
  * \param dataset
  * \return Geo Extent in LatLong computed from image corners using image projection info
  */
-QPolygonF GIV_DLL_EXPORT computeGeoExtent(GDALDataset * dataset);
+QPolygonF GIV_DLL_EXPORT computeGeoExtent(GDALDataset *dataset, const QRect & pixelExtent = QRect());
 
 /*!
  * \brief createOverviewes method to create an overview .ovr file to optimize data extraction

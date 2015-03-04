@@ -84,6 +84,9 @@ BaseViewer::BaseViewer(const QString &initialText, QWidget *parent) :
     // setup progress dialog:
     _progressDialog = new QProgressDialog(this);
     _progressDialog->setWindowModality(Qt::WindowModal);
+    _progressDialog->setAutoClose(true);
+    _progressDialog->setAutoReset(true);
+    connect(_progressDialog, SIGNAL(canceled()), this, SLOT(onProgressCanceled()));
 
 }
 
@@ -141,6 +144,13 @@ void BaseViewer::resizeEvent(QResizeEvent *e)
     viewportInfo();
 #endif
     centerOnAtZoom(_zoomLevel, getVisibleSceneRect().center());
+}
+
+//******************************************************************************
+
+void BaseViewer::onProgressValueChanged(int value)
+{
+    _progressDialog->setValue(value);
 }
 
 //******************************************************************************

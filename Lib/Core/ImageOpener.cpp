@@ -21,15 +21,14 @@ namespace Core
   Image is opened in a separate thread. The result of the operation is provided with the signal
   imageOpened(ImageDataProvider*).
 
-
-
-  */
+ */
 //******************************************************************************
 
 ImageOpener::ImageOpener(QObject *parent) :
     QObject(parent),
     _task(0),
-    _isAsyncTask(false)
+    _isAsyncTask(false),
+    _isWorking(false)
 {
     int count = GetGDALDriverManager()->GetDriverCount();
     if (count == 0)
@@ -59,7 +58,9 @@ ImageDataProvider * ImageOpener::openImage(const QUrl & url)
 
         _task->setImage(fileToOpen);
         // provider will be parented to the recepient of the signal imageOpened
-        _task->setDataProvider(new GDALDataProvider());
+        GDALDataProvider * provider = new GDALDataProvider();
+        provider->setImageName(QFileInfo(filepath).baseName());
+        _task->setDataProvider(provider);
         _isAsyncTask = false;
         _task->run();
 
@@ -131,7 +132,9 @@ bool ImageOpener::openImageInBackground(const QUrl &url)
             _task = new OpenImageFileTask(this);
         _task->setImage(fileToOpen);
         // provider will be parented to the recepient of the signal imageOpened
-        _task->setDataProvider(new GDALDataProvider());
+        GDALDataProvider * provider = new GDALDataProvider();
+        provider->setImageName(QFileInfo(filepath).baseName());
+        _task->setDataProvider(provider);
         _isAsyncTask = true;
     }
     else
@@ -147,6 +150,7 @@ bool ImageOpener::openImageInBackground(const QUrl &url)
 #endif
     pool->waitForDone();
     // Only one thread is possible due to GDAL reader (e.g. TIFF)
+    _isWorking=true;
     pool->start(_task);
     return true;
 
@@ -162,12 +166,14 @@ void ImageOpener::cancel()
     pool->clear();
 #endif
     pool->waitForDone();
+    _isWorking=false;
 }
 
 //******************************************************************************
 
 void ImageOpener::taskFinished(ImageDataProvider * provider)
 {
+    _isWorking=false;
     if (_isAsyncTask)
         emit imageOpened(provider);
 }
@@ -183,13 +189,17 @@ OpenImageFileTask::OpenImageFileTask(ImageOpener *parent) :
 //******************************************************************************
 
 #define ClearData() \
-    if (provider) delete provider;
+    if (provider) { \
+        delete provider; \
+        provider = 0;   \
+    }
+
 
 #define Cancel() \
     if (_canceled) { \
-    ClearData() \
-    return; \
-}
+        ClearData() \
+        return; \
+    }
 
 void OpenImageFileTask::run()
 {

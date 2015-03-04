@@ -341,16 +341,17 @@ void HistogramRendererView::setup(Core::ImageRenderer * renderer, const Core::Im
     // configure toRGBMapping frame:
     int nbBands = provider->getNbBands();
     bool isComplex = provider->isComplex();
-    if (nbBands > 1 && !isComplex)
+//    if (nbBands > 1 && !isComplex)
+    if (histConf.mode == Core::HistogramRendererConfiguration::RGB)
     {
         _ui->_toRGBMapping->setVisible(true);
         configureAChannel(_ui->_redChannel, conf.toRGBMapping[0]+1, 1, nbBands);
         configureAChannel(_ui->_greenChannel, conf.toRGBMapping[1]+1, 1, nbBands);
         configureAChannel(_ui->_blueChannel, conf.toRGBMapping[2]+1, 1, nbBands);
         configureAChannel(_ui->_grayChannel, conf.toRGBMapping[0]+1, 1, nbBands);
-//        _ui->_isRgbModes
     }
-    else if (nbBands == 1 && !isComplex)
+    else
+//    if (nbBands == 1 && !isComplex)
     {
         _ui->_toRGBMapping->setVisible(false);
     }

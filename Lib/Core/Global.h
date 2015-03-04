@@ -22,6 +22,9 @@
                         QMessageBox::warning(0, QObject::tr("Warning"), msg);
 #   define SD_ERR(msg) std::cerr << QString(msg).toStdString() << std::endl; \
                        QMessageBox::critical(0, QObject::tr("Error"), msg);
+#   define SD_INFO(msg) std::cout << QString(msg).toStdString() << std::endl; \
+                       QMessageBox::information(0, QObject::tr("Information"), msg);
+
 #endif
 
 //******************************************************************************
@@ -33,16 +36,16 @@
 //#define LAYERLOADER_SHOW_CACHE_INFO
 //#define LAYERLOADER_DISPLAY_TILES
 //#define LAYERLOADER_DISPLAY_VIEWPORT
-#define GEOIMAGEITEM_CACHE_VERBOSE
-#define GEOIMAGEITEM_SHOW_CACHE_INFO
-#define GEOIMAGEITEM_DISPLAY_TILES
+//#define GEOIMAGEITEM_CACHE_VERBOSE
+//#define GEOIMAGEITEM_SHOW_CACHE_INFO
+//#define GEOIMAGEITEM_DISPLAY_TILES
 //#define GEOIMAGEITEM_DISPLAY_VIEWPORT
 #endif
 
 #define TIME_PROFILER_ON
-#define LAYERLOADER_TIMER_ON
-#define GEOIMAGEITEM_TIMER_ON
-#define RENDERER_TIMER_ON
+//#define LAYERLOADER_TIMER_ON
+//#define GEOIMAGEITEM_TIMER_ON
+//#define RENDERER_TIMER_ON
 
 
 #ifdef TIME_PROFILER_ON

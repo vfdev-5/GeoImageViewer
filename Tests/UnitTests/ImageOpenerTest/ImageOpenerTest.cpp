@@ -92,6 +92,35 @@ void ImageOpenerTest::test2()
 
 //*************************************************************************
 
+void ImageOpenerTest::test3()
+{
+    connect(_imageOpener, &Core::ImageOpener::imageOpened,
+            this, &Tests::ImageOpenerTest::onImageOpenCanceled);
+    imageOpened = false;
+    _imageOpener->openImageInBackground(_url);
+
+    int i = 0;
+    while (!imageOpened && i++ < 50)
+    {
+        _imageOpener->cancel();
+        QTest::qWait(500);
+    }
+
+}
+
+//*************************************************************************
+
+void ImageOpenerTest::onImageOpenCanceled(Core::ImageDataProvider * provider)
+{
+    imageOpened=true;
+    QVERIFY(provider == 0);
+
+    disconnect(_imageOpener, &Core::ImageOpener::imageOpened,
+            this, &Tests::ImageOpenerTest::onImageOpenCanceled);
+}
+
+//*************************************************************************
+
 void ImageOpenerTest::onImageOpened(Core::ImageDataProvider * provider)
 {
     imageOpened=true;
@@ -104,6 +133,9 @@ void ImageOpenerTest::onImageOpened(Core::ImageDataProvider * provider)
     QVERIFY(cv::countNonZero(res) == 0);
 
     delete provider;
+
+    disconnect(_imageOpener, &Core::ImageOpener::imageOpened,
+            this, &Tests::ImageOpenerTest::onImageOpened);
 }
 
 //*************************************************************************

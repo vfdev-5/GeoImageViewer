@@ -166,6 +166,9 @@ void GeoImageItem::setDataProvider(ImageDataProvider * provider)
 
 void GeoImageItem::updateItem(int nZoomLevel, const QRectF &nVisiblePixelExtent)
 {
+    if (!isVisible())
+        return;
+
     int zoomLevel = (nZoomLevel > 0) ? 0 : nZoomLevel;
     zoomLevel = (zoomLevel < _zoomMinLevel) ? _zoomMinLevel : zoomLevel;
     int nbXTilesAtZ=qCeil(_nbXTiles*qPow(2.0,zoomLevel));

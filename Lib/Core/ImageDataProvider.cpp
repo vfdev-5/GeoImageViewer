@@ -267,4 +267,25 @@ cv::Mat GDALDataProvider::getImageData(const QRect & srcPixelExtent, int dstPixe
 
 //******************************************************************************
 
+QString GDALDataProvider::fetchProjectionRef() const
+{
+    return _dataset->GetProjectionRef();
+}
+
+//******************************************************************************
+
+QPolygonF GDALDataProvider::fetchGeoExtent(const QRect &pixelExtent) const
+{
+    return computeGeoExtent(_dataset, pixelExtent);
+}
+
+//******************************************************************************
+
+//QRectF GDALDataProvider::fetchGeoBBox() const
+//{
+//    return computeGeoExtent(_dataset).boundingRect();
+//}
+
+//******************************************************************************
+
 }

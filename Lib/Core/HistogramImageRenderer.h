@@ -24,17 +24,23 @@ struct GIV_DLL_EXPORT HistogramRendererConfiguration
     QVector<double> qMaxValues; //!< quantile max values at 97.5% of total histogram sum
 
     // Below parameters are used in rendering phase
-    QVector<bool> isDiscreteValues;
-    QVector<TransferFunction*> transferFunctions;
-
-    QVector<QGradientStops> normHistStops; //!< gradient stops are normalized due to transferFunctions
     enum Mode {GRAY, RGB};
     Mode mode;
+    // GRAY mode parameters:
+    QVector<bool> isDiscreteValues;
+    QVector<TransferFunction*> transferFunctions;
+    QVector<QGradientStops> normHistStops; //!< gradient stops are normalized due to transferFunctions
+
+    // RGB mode parameters:
     QVector<QGradientStops> normRGBHistStops; //!< gradient stops are normalized due to transferFunctions
+    TransferFunction * rgbTransferFunction;
+    bool isRGBDiscreteValue;
 
 
     HistogramRendererConfiguration() :
-        mode(GRAY)
+        mode(GRAY),
+        rgbTransferFunction(0),
+        isRGBDiscreteValue(false)
     {}
 
     static QStringList getAvailableTransferFunctionNames();
@@ -70,7 +76,7 @@ public:
 
 protected:
 
-    inline bool chechHistConf();
+    inline bool checkHistConf();
 
     HistogramRendererConfiguration _histConf;
     Settings _settings;

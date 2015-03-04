@@ -1,10 +1,14 @@
 
 // Qt
 #include <QDockWidget>
+#include <QMessageBox>
+#include <QFileDialog>
 
 // Project
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
+#include "Filters/FiltersManager.h"
+
 
 //******************************************************************************
 
@@ -40,6 +44,16 @@ MainWindow::MainWindow(QWidget *parent) :
     _viewer.setRendererView(&_contrast);
 #endif
 
+    // insert filter actions :
+    foreach (Filters::AbstractFilter * f, Filters::FiltersManager::get()->getFilters())
+    {
+        QAction * a = ui->menuFilters->addAction(f->getName(), &_viewer, SLOT(onFilterTriggered()));
+        a->setData( QVariant::fromValue( static_cast<QObject*>(f) ) );
+    }
+
+    // connect actions:
+    connect(ui->actionExit, SIGNAL(triggered()), this, SLOT(onExitActionTriggered()));
+    connect(ui->actionOpen_Image, SIGNAL(triggered()), this, SLOT(onOpenImageActionTriggered()));
 
 }
 
@@ -48,6 +62,24 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+//******************************************************************************
+
+void MainWindow::onExitActionTriggered()
+{
+    close();
+}
+
+//******************************************************************************
+
+void MainWindow::onOpenImageActionTriggered()
+{
+    QUrl url = QFileDialog::getOpenFileUrl(this,
+                                           tr("Open Image"),
+                                           QString(),
+                                           tr("Images (*.*)"));
+    _viewer.loadImage(url);
 }
 
 //******************************************************************************

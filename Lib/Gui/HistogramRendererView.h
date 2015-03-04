@@ -85,7 +85,7 @@ public:
         Settings() :
             margin(0.025),
             axisPen(Qt::black, 0.0),
-            dataPen(Qt::blue, 0.0),
+            dataPen(Qt::gray, 0.0),
             histOverPaletteRatio(0.75),
             updateDelayMaxTime(250)
         {

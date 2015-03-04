@@ -64,6 +64,10 @@ public:
     explicit ImageDataProvider(QObject *parent = 0);
     virtual cv::Mat getImageData(const QRect & srcPixelExtent=QRect(), int dstPixelWidth=0, int dstPixelHeight=0) const = 0 ;
 
+    virtual QString fetchProjectionRef() const { return "Unknown"; }
+    virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const
+    { Q_UNUSED(pixelExtent); return QPolygonF(); }
+
 protected:
     static void setupDataInfo(const cv::Mat & src, ImageDataProvider * dst);
 
@@ -85,6 +89,8 @@ public:
     virtual cv::Mat getImageData(const QRect & srcPixelExtent=QRect(), int dstPixelWidth=0, int dstPixelHeight=0) const;
     bool setup(const QString & filepath);
 
+    virtual QString fetchProjectionRef() const;
+    virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const;
 
 };
 

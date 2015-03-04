@@ -7,7 +7,7 @@
 #include "AbstractToolsView.h"
 #include "LayersView.h"
 #include "Core/Global.h"
-#include "Core/BaseLayer.h"
+#include "Core/GeoShapeLayer.h"
 #include "Tools/ToolsManager.h"
 #include "Tools/AbstractTool.h"
 
@@ -202,6 +202,14 @@ void ShapeViewer::onBaseLayerSelected(Core::BaseLayer * layer)
 }
 
 //******************************************************************************
+
+void ShapeViewer::onSaveBaseLayer(Core::BaseLayer * layer)
+{
+    Q_UNUSED(layer);
+    SD_TRACE("ShapeViewer::onSaveBaseLayer");
+}
+
+//******************************************************************************
 /*
  * Event filter :
  * 1) Use tools
@@ -232,6 +240,10 @@ void ShapeViewer::addLayer(Core::BaseLayer * layer, QGraphicsItem * item)
     connect(layer, SIGNAL(destroyed(QObject*)), this, SLOT(onBaseLayerDestroyed(QObject*)));
 
     _layerItemMap.insert(layer, item);
+
+//    QStandardItem* i = new QStandardItem();
+//    _layers.appendRow(QList<QStandardItem*>() << i);
+
     if (_layersView)
         _layersView->addLayer(layer);
 }
@@ -256,11 +268,23 @@ void ShapeViewer::setToolsView(AbstractToolsView *toolsView)
 
 void ShapeViewer::setLayersView(LayersView *view)
 {
+    if (_layersView)
+    {
+        disconnect(_layersView, SIGNAL(layerSelected(Core::BaseLayer*)),
+                this, SLOT(onBaseLayerSelected(Core::BaseLayer*)));
+        disconnect(_layersView, SIGNAL(saveLayer(Core::BaseLayer*)),
+                this, SLOT(onSaveBaseLayer(Core::BaseLayer*)));
+    }
+
     _layersView = view;
     if (!_layersView)
         return;
+
+    // connect :
     connect(_layersView, SIGNAL(layerSelected(Core::BaseLayer*)),
             this, SLOT(onBaseLayerSelected(Core::BaseLayer*)));
+    connect(_layersView, SIGNAL(saveLayer(Core::BaseLayer*)),
+            this, SLOT(onSaveBaseLayer(Core::BaseLayer*)));
 
 }
 

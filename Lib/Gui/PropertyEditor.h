@@ -49,6 +49,7 @@ protected:
 protected slots:
     void onStringPropertyChanged();
     void onBoolPropertyChanged();
+    void onIntPropertyChanged();
     void onDoublePropertyChanged();
     void onPenPropertyChanged();
     void onBrushPropertyChanged();

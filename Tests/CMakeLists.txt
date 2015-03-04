@@ -4,3 +4,4 @@
 add_subdirectory("UnitTests/ColorTest")
 add_subdirectory("UnitTests/ImageRendererTest")
 add_subdirectory("UnitTests/ImageOpenerTest")
+add_subdirectory("UnitTests/ImageWriterTest")

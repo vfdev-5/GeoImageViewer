@@ -35,6 +35,9 @@ public:
     void setOpacity(double opacity);
     void setZValue(int zValue);
 
+    virtual bool canSave()
+    { return false; }
+
 signals:
     void layerStateChanged();
 

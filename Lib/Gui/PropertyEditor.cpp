@@ -206,6 +206,21 @@ QWidget * PropertyEditor::editableWidget(const QVariant &value, const QHash<QStr
         connect(editor, SIGNAL(stateChanged(int)), this, SLOT(onBoolPropertyChanged()));
         out = editor;
     }
+    else if (value.type() == QVariant::Int)
+    {
+        QSpinBox * editor = new QSpinBox();
+        editor->setValue(value.toInt());
+        if (options.contains("minValue") && options.contains("maxValue"))
+        {
+            int minValue = options["minValue"].toInt();
+            int maxValue = options["maxValue"].toInt();
+            editor->setMinimum(minValue);
+            editor->setMaximum(maxValue);
+            editor->setSingleStep(1);
+        }
+        connect(editor, SIGNAL(editingFinished()), this, SLOT(onIntPropertyChanged()));
+        out = editor;
+    }
     else if (value.type() == QVariant::Double)
     {
         QDoubleSpinBox * editor = new QDoubleSpinBox();
@@ -261,105 +276,125 @@ QWidget * PropertyEditor::readableWidget(const QVariant &value)
 
 //******************************************************************************
 
-void PropertyEditor::onStringPropertyChanged()
-{
-    QLineEdit * edit = qobject_cast<QLineEdit*>(sender());
-    if (!edit) return;
+#define onPropertyChanged(Type, newValue) \
+    Type * edit = qobject_cast<Type *>(sender()); \
+    if (!edit) return; \
+    if (!_widgetPropertyMap.contains(edit)) return; \
+    int propertyIndex = _widgetPropertyMap.value(edit, -1); \
+    const QMetaObject * metaObject = _object->metaObject(); \
+    QMetaProperty property = metaObject->property(propertyIndex); \
+    if (!property.write(_object, newValue)) \
+    { \
+        SD_TRACE(QString("onPropertyChanged : failed to write new property value !")); \
+    }
 
-    if (!_widgetPropertyMap.contains(edit)) return;
-
+#define foo(Type) \
+    Type * edit = new Type(); \
     int propertyIndex = _widgetPropertyMap.value(edit, -1);
 
-    const QMetaObject * metaObject = _object->metaObject();
-    QMetaProperty property = metaObject->property(propertyIndex);
-
-    if (!property.write(_object, edit->text()))
-    {
-        SD_TRACE(QString("onStringPropertyChanged : failed to write new property value !"));
-    }
+void PropertyEditor::onStringPropertyChanged()
+{
+    onPropertyChanged(QLineEdit, edit->text());
+//    QLineEdit * edit = qobject_cast<QLineEdit*>(sender());
+//    if (!edit) return;
+//    if (!_widgetPropertyMap.contains(edit)) return;
+//    int propertyIndex = _widgetPropertyMap.value(edit, -1);
+//    const QMetaObject * metaObject = _object->metaObject();
+//    QMetaProperty property = metaObject->property(propertyIndex);
+//    if (!property.write(_object, edit->text()))
+//    {
+//        SD_TRACE(QString("onStringPropertyChanged : failed to write new property value !"));
+//    }
 }
 
 //******************************************************************************
 
 void PropertyEditor::onBoolPropertyChanged()
 {
-    QCheckBox * edit = qobject_cast<QCheckBox*>(sender());
-    if (!edit) return;
+    onPropertyChanged(QCheckBox, edit->checkState() == Qt::Checked);
 
-    if (!_widgetPropertyMap.contains(edit)) return;
+//    QCheckBox * edit = qobject_cast<QCheckBox*>(sender());
+//    if (!edit) return;
+//    if (!_widgetPropertyMap.contains(edit)) return;
+//    int propertyIndex = _widgetPropertyMap.value(edit, -1);
+//    const QMetaObject * metaObject = _object->metaObject();
+//    QMetaProperty property = metaObject->property(propertyIndex);
+//    if (!property.write(_object, edit->checkState() == Qt::Checked))
+//    {
+//        SD_TRACE(QString("onBoolPropertyChanged : failed to write new property value !"));
+//    }
+}
 
-    int propertyIndex = _widgetPropertyMap.value(edit, -1);
+//******************************************************************************
 
-    const QMetaObject * metaObject = _object->metaObject();
-    QMetaProperty property = metaObject->property(propertyIndex);
+void PropertyEditor::onIntPropertyChanged()
+{
+    onPropertyChanged(QSpinBox, edit->value())
 
-    if (!property.write(_object, edit->checkState() == Qt::Checked))
-    {
-        SD_TRACE(QString("onStringPropertyChanged : failed to write new property value !"));
-    }
+//    QSpinBox * edit = qobject_cast<QSpinBox*>(sender());
+//    if (!edit) return;
+//    if (!_widgetPropertyMap.contains(edit)) return;
+//    int propertyIndex = _widgetPropertyMap.value(edit, -1);
+//    const QMetaObject * metaObject = _object->metaObject();
+//    QMetaProperty property = metaObject->property(propertyIndex);
+//    if (!property.write(_object, edit->value()))
+//    {
+//        SD_TRACE(QString("onIntPropertyChanged : failed to write new property value !"));
+//    }
 }
 
 //******************************************************************************
 
 void PropertyEditor::onDoublePropertyChanged()
 {
-    QDoubleSpinBox * edit = qobject_cast<QDoubleSpinBox*>(sender());
-    if (!edit) return;
+    onPropertyChanged(QDoubleSpinBox, edit->value());
 
-    if (!_widgetPropertyMap.contains(edit)) return;
-
-    int propertyIndex = _widgetPropertyMap.value(edit, -1);
-
-    const QMetaObject * metaObject = _object->metaObject();
-    QMetaProperty property = metaObject->property(propertyIndex);
-
-    if (!property.write(_object, edit->value()))
-    {
-        SD_TRACE(QString("onStringPropertyChanged : failed to write new property value !"));
-    }
+//    QDoubleSpinBox * edit = qobject_cast<QDoubleSpinBox*>(sender());
+//    if (!edit) return;
+//    if (!_widgetPropertyMap.contains(edit)) return;
+//    int propertyIndex = _widgetPropertyMap.value(edit, -1);
+//    const QMetaObject * metaObject = _object->metaObject();
+//    QMetaProperty property = metaObject->property(propertyIndex);
+//    if (!property.write(_object, edit->value()))
+//    {
+//        SD_TRACE(QString("onDoublePropertyChanged : failed to write new property value !"));
+//    }
 }
 
 //******************************************************************************
 
 void PropertyEditor::onPenPropertyChanged()
 {
-    PenEditor * edit = qobject_cast<PenEditor*>(sender());
-    if (!edit) return;
+    onPropertyChanged(PenEditor, edit->getPen());
 
-    if (!_widgetPropertyMap.contains(edit)) return;
-
-    int propertyIndex = _widgetPropertyMap.value(edit, -1);
-
-    const QMetaObject * metaObject = _object->metaObject();
-    QMetaProperty property = metaObject->property(propertyIndex);
-
-    if (!property.write(_object, edit->getPen()))
-    {
-        SD_TRACE(QString("onPenPropertyChanged : failed to write new property value !"));
-    }
+//    PenEditor * edit = qobject_cast<PenEditor*>(sender());
+//    if (!edit) return;
+//    if (!_widgetPropertyMap.contains(edit)) return;
+//    int propertyIndex = _widgetPropertyMap.value(edit, -1);
+//    const QMetaObject * metaObject = _object->metaObject();
+//    QMetaProperty property = metaObject->property(propertyIndex);
+//    if (!property.write(_object, edit->getPen()))
+//    {
+//        SD_TRACE(QString("onPenPropertyChanged : failed to write new property value !"));
+//    }
 }
 
 //******************************************************************************
 
 void PropertyEditor::onBrushPropertyChanged()
 {
-    BrushEditor * edit = qobject_cast<BrushEditor*>(sender());
-    if (!edit) return;
+    onPropertyChanged(BrushEditor, edit->getBrush());
 
-    if (!_widgetPropertyMap.contains(edit)) return;
-
-    int propertyIndex = _widgetPropertyMap.value(edit, -1);
-
-    const QMetaObject * metaObject = _object->metaObject();
-    QMetaProperty property = metaObject->property(propertyIndex);
-
-    QBrush b = edit->getBrush();
-    QColor c = b.color();
-
-    if (!property.write(_object, edit->getBrush()))
-    {
-        SD_TRACE(QString("onBrushPropertyChanged : failed to write new property value !"));
-    }
+//    BrushEditor * edit = qobject_cast<BrushEditor*>(sender());
+//    if (!edit) return;
+//    if (!_widgetPropertyMap.contains(edit)) return;
+//    int propertyIndex = _widgetPropertyMap.value(edit, -1);
+//    const QMetaObject * metaObject = _object->metaObject();
+//    QMetaProperty property = metaObject->property(propertyIndex);
+//    if (!property.write(_object, edit->getBrush()))
+//    {
+//        SD_TRACE(QString("onBrushPropertyChanged : failed to write new property value !"));
+//    }
 
 }
 

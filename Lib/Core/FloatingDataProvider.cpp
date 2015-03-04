@@ -15,7 +15,8 @@ namespace Core
 //******************************************************************************
 
 FloatingDataProvider::FloatingDataProvider(QObject *parent) :
-    ImageDataProvider(parent)
+    ImageDataProvider(parent),
+    _source(0)
 {
 }
 
@@ -98,23 +99,72 @@ cv::Mat FloatingDataProvider::getImageData(const QRect & srcPixelExtent, int dst
 
 //******************************************************************************
 
-FloatingDataProvider* FloatingDataProvider::createDataProvider(const ImageDataProvider * src, const QRect & pixelExtent)
+FloatingDataProvider* FloatingDataProvider::createDataProvider(const QString & name, const cv::Mat & src, const QRect & iIntersection)
 {
-
     FloatingDataProvider * dst = 0;
-    QRect srcPixelExtent = src->getPixelExtent();
-    QRect intersection = srcPixelExtent.intersected(pixelExtent);
-    if (intersection.isEmpty())
-        return dst;
-
-
-    SD_TRACE(QString("Intersection : %1, %2 | %3, %4")
-             .arg(pixelExtent.x())
-             .arg(pixelExtent.y())
-             .arg(pixelExtent.width())
-             .arg(pixelExtent.height()));
+    QRect intersection;
+    if (iIntersection.isEmpty())
+    {
+        intersection = QRect(0,0,src.cols,src.rows);
+    }
+    else
+    {
+        if (!QRect(0,0,src.cols,src.rows).intersects(intersection))
+            return dst;
+    }
 
     dst = new FloatingDataProvider();
+    dst->_source = 0;
+    dst->_intersection = intersection;
+
+    dst->setImageName("Region of " + name);
+    // Copy input info :
+    dst->_inputWidth     = src.cols;
+    dst->_inputHeight    = src.rows;
+    dst->_inputDepth     = src.elemSize1();
+    dst->_inputNbBands   = src.channels();
+    dst->_inputIsComplex = false;
+
+    dst->_bandNames.clear();
+    for (int i = 0; i<src.channels();i++)
+    {
+        dst->_bandNames << QString("band %1").arg(i+1);
+    }
+
+    cv::Rect r(intersection.x(), intersection.y(),
+               intersection.width(), intersection.height());
+    src(r).copyTo(dst->_data);
+
+    setupDataInfo(dst->_data, dst);
+
+    dst->_pixelExtent = QRect(0,0,intersection.width(),intersection.height());
+
+    // compute data stats:
+    if (!computeNormalizedHistogram(dst->_data,
+                                    dst->_minValues,
+                                    dst->_maxValues,
+                                    dst->_bandHistograms,
+                                    1000))
+    {
+        SD_TRACE("createDataProvider : Failed to compute image stats");
+        delete dst;
+        return 0;
+    }
+
+    return dst;
+}
+
+//******************************************************************************
+
+FloatingDataProvider* FloatingDataProvider::createDataProvider(const ImageDataProvider * src, const QRect & intersection)
+{
+    FloatingDataProvider * dst = 0;
+    if (!src->getPixelExtent().intersects(intersection))
+        return dst;
+
+    dst = new FloatingDataProvider();
+    dst->_source = src;
+    dst->_intersection = intersection;
 
     dst->setImageName("Region of " + src->getImageName());
     // Copy input info :
@@ -132,8 +182,6 @@ FloatingDataProvider* FloatingDataProvider::createDataProvider(const ImageDataPr
 
     dst->_pixelExtent = QRect(0,0,intersection.width(),intersection.height());
 
-//    displayMat(dst->_data, true, "dst->_data");
-
     // compute data stats:
     if (!computeNormalizedHistogram(dst->_data,
                                     dst->_minValues,
@@ -148,6 +196,13 @@ FloatingDataProvider* FloatingDataProvider::createDataProvider(const ImageDataPr
 
 
     return dst;
+}
+
+//******************************************************************************
+
+QPolygonF FloatingDataProvider::fetchGeoExtent(const QRect &pixelExtent) const
+{
+    return _source ? _source->fetchGeoExtent(pixelExtent) : ImageDataProvider::fetchGeoExtent();
 }
 
 //******************************************************************************

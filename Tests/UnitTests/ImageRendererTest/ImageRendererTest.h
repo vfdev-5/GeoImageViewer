@@ -17,7 +17,8 @@ class ImageRendererTest : public QObject
     Q_OBJECT
 private slots:
     void test();
-//    void test2();
+    void test2();
+    void test3();
 
 private:
 

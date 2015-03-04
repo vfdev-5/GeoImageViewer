@@ -4,6 +4,7 @@
 
 // Qt
 #include <QHash>
+#include <QStandardItemModel>
 
 // Project
 #include "Core/LibExport.h"
@@ -49,6 +50,7 @@ protected slots:
     virtual void onBaseLayerStateChanged();
     virtual void onBaseLayerDestroyed(QObject *);
     virtual void onBaseLayerSelected(Core::BaseLayer*);
+    virtual void onSaveBaseLayer(Core::BaseLayer*);
 
 protected:
     virtual bool eventFilter(QObject *, QEvent *);
@@ -63,6 +65,8 @@ protected:
     bool _enableTools;
 
     QHash<Core::BaseLayer*, QGraphicsItem*> _layerItemMap;
+    QStandardItemModel _layers;
+
     LayersView * _layersView;
 
 

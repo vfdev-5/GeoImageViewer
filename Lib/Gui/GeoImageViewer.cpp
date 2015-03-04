@@ -4,14 +4,18 @@
 #include <qmath.h>
 #include <QProgressDialog>
 #include <QFileInfo>
+#include <QGraphicsItem>
+#include <QFileDialog>
 
 // Project
 #include "GeoImageViewer.h"
 #include "AbstractRendererView.h"
 #include "SubdatasetDialog.h"
 #include "LayersView.h"
+#include "DefaultFilterDialog.h"
 #include "Core/Global.h"
 #include "Core/ImageOpener.h"
+#include "Core/ImageWriter.h"
 #include "Core/GeoImageItem.h"
 #include "Core/GeoImageLayer.h"
 #include "Core/ImageDataProvider.h"
@@ -20,6 +24,7 @@
 #include "Core/LayerUtils.h"
 #include "Tools/SelectionTool.h"
 #include "Tools/ToolsManager.h"
+#include "Filters/FiltersManager.h"
 
 
 namespace Gui
@@ -40,15 +45,18 @@ namespace Gui
 GeoImageViewer::GeoImageViewer(QWidget *parent) :
     ShapeViewer(tr("Drag and drop an image"), parent),
     _rendererView(0),
-    _imageOpener(new Core::ImageOpener(this))
+    _imageOpener(new Core::ImageOpener(this)),
+    _imageWriter(new Core::ImageWriter(this))
 {
 
     // Init scene and loader
     clear();
-
-    connect(_progressDialog, SIGNAL(canceled()), this, SLOT(onImageOpenCanceled()));
     connect(_imageOpener, SIGNAL(imageOpened(Core::ImageDataProvider*)), this, SLOT(onImageOpened(Core::ImageDataProvider *)));
-    connect(_imageOpener, SIGNAL(openProgressValueChanged(int)), this, SLOT(onImageOpenProgressValueChanged(int)));
+    connect(_imageOpener, SIGNAL(openProgressValueChanged(int)), this, SLOT(onProgressValueChanged(int)));
+    connect(_imageWriter, SIGNAL(imageWriteFinished(bool)), this, SLOT(onImageWriteFinished(bool)));
+    connect(_imageWriter, SIGNAL(openProgressValueChanged(int)), this, SLOT(onProgressValueChanged(int)));
+
+
 
     setMinimumSize(QSize(450, 450));
 
@@ -117,7 +125,7 @@ void GeoImageViewer::onImageOpened(Core::ImageDataProvider *imageDataProvider)
 
     enableOptions(true);
 
-    _progressDialog->close();
+//    _progressDialog->close();
 
     if (!imageDataProvider)
     {
@@ -141,7 +149,6 @@ void GeoImageViewer::onImageOpened(Core::ImageDataProvider *imageDataProvider)
     delete _initialTextItem;
 
     // set visible whole image + boundaries:
-//    _scene.setSceneRect(QRectF(imageDataProvider->getPixelExtent()));
     int w =imageDataProvider->getWidth();
     int h =imageDataProvider->getHeight();
     _scene.setSceneRect(
@@ -153,20 +160,6 @@ void GeoImageViewer::onImageOpened(Core::ImageDataProvider *imageDataProvider)
 
     // create a GeoImageItem, GraphicsScene is responsible to delete it
     Core::GeoImageItem * item = new Core::GeoImageItem();
-
-    // TEST :
-//    _scene.addRect(
-//                imageDataProvider->getPixelExtent(),
-//                QPen(Qt::black, 0),
-//                QColor(250,250,250,50)
-//                );
-//    _scene.addRect(
-//                QRectF(0.0,0.0,50.0,30.0),
-//                QPen(Qt::black, 0),
-//                QColor(250,0,0,100)
-//                );
-//    item->setPos(50.0, 30.0);
-    // TEST :
 
     connect(this, SIGNAL(viewportChanged(int,QRectF)),
             item, SLOT(updateItem(int, QRectF)));
@@ -183,29 +176,48 @@ void GeoImageViewer::onImageOpened(Core::ImageDataProvider *imageDataProvider)
     // Add to layers storage
     Core::GeoImageLayer * layer = new Core::GeoImageLayer(this);
     layer->setType("Image");
-//    layer->setImageName(imageDataProvider->);
+    layer->setImageName(imageDataProvider->getImageName());
     layer->setNbBands(imageDataProvider->getInputNbBands());
     layer->setDepthInBytes(imageDataProvider->getInputDepthInBytes());
-//    layer->setGeoBBox();
-//    layer->setGeoExtent();
-//    layer->setPixelExtent(imageDataProvider->getPixelExtent());
-//    layer->setProjectionRef();
+    layer->setIsComplex(imageDataProvider->inputIsComplex());
+
+    layer->setGeoExtent(imageDataProvider->fetchGeoExtent());
+    layer->setGeoBBox(layer->getGeoExtent().boundingRect());
+    // pixel extent is (0,0,w,h) = imageDataProvider.pixelExent
+    layer->setPixelExtent(imageDataProvider->getPixelExtent());
+    layer->setProjectionRef(imageDataProvider->fetchProjectionRef());
 
     addLayer(layer, item);
 }
 
 //******************************************************************************
 
-void GeoImageViewer::onImageOpenProgressValueChanged(int value)
+void GeoImageViewer::onImageWriteFinished(bool ok)
 {
-    _progressDialog->setValue(value);
+    if (ok)
+    {
+        SD_INFO(tr("File is written successfully"));
+    }
+    else
+    {
+        SD_ERR(tr("Failed to write file"));
+    }
 }
 
 //******************************************************************************
 
-void GeoImageViewer::onImageOpenCanceled()
+void GeoImageViewer::onProgressCanceled()
 {
-    _imageOpener->cancel();
+    SD_TRACE("GeoImageViewer::onProgressCanceled");
+    if (_imageOpener->isWorking())
+    {
+        _imageOpener->cancel();
+    }
+    else
+    if (_imageWriter->isWorking())
+    {
+        _imageWriter->cancel();
+    }
 }
 
 //******************************************************************************
@@ -256,20 +268,109 @@ void GeoImageViewer::onBaseLayerSelected(Core::BaseLayer * layer)
         _rendererView->setup(imItem->getRenderer(),
                              imItem->getConstDataProvider());
     }
+}
+
+//******************************************************************************
+
+void GeoImageViewer::onSaveBaseLayer(Core::BaseLayer * layer)
+{
+    if (qobject_cast<Core::GeoImageLayer*>(layer))
+    {
+        Core::GeoImageLayer * iLayer = qobject_cast<Core::GeoImageLayer*>(layer);
+        Core::GeoImageItem * item = static_cast<Core::GeoImageItem*>(_layerItemMap.value(iLayer, 0));
+        if (!item)
+        {
+            SD_TRACE("GeoImageViewer::onSaveBaseLayer : item is null");
+            return;
+        }
+
+        const Core::ImageDataProvider * provider = item->getConstDataProvider();
+
+        QString filename = QFileDialog::getSaveFileName(this,
+                                                        tr("Save into a file"),
+                                                        QString(),
+                                                        tr("Images (*.tif)"));
+
+        if (filename.isEmpty())
+            return;
+
+        _progressDialog->setLabelText("Save image ...");
+        _progressDialog->setValue(0);
+        _progressDialog->show();
+
+        if (!_imageWriter->writeInBackground(filename, provider))
+        {
+            _progressDialog->close();
+        }
+
+    }
+
+
 
 
 }
 
 //******************************************************************************
 
-//void GeoImageViewer::onBaseLayerDestroyed(QObject *object)
+void GeoImageViewer::onFilterTriggered()
+{
+
+    Core::GeoImageLayer * iLayer = qobject_cast<Core::GeoImageLayer*>(_layersView->getCurrentLayer());
+    Core::GeoImageItem * item = static_cast<Core::GeoImageItem*>(_layerItemMap.value(iLayer, 0));
+    if (!iLayer || !item)
+    {
+        SD_ERR("Please, select an image layer before applying a filter");
+        return;
+    }
+
+    QAction * a = qobject_cast<QAction*>(sender());
+    if (!a)
+    {
+        SD_TRACE("GeoImageViewer::onFilterTriggered : failed to get qaction");
+        return;
+    }
+
+    Filters::AbstractFilter * f = qobject_cast<Filters::AbstractFilter*>(a->data().value<QObject*>());
+
+    if (!f)
+    {
+        SD_TRACE("GeoImageViewer::onFilterTriggered : failed to get filter");
+        return;
+    }
+
+    SD_TRACE("Filter \'" + f->getName() + "\' is triggered");
+
+
+    // Show Filter dialog
+    DefaultFilterDialog d(f->getName() + " dialog");
+    d.setFilter(f);
+    if (d.exec())
+    {
+        SD_TRACE("Apply filter \'" + f->getName() + "\'");
+
+
+
+    }
+}
+
+//******************************************************************************
+
+//void GeoImageViewer::onItemCreated(QGraphicsItem * item)
 //{
-//    ShapeViewer::onBaseLayerDestroyed(object);
+//    SD_TRACE("GeoImageViewer::onItemCreated");
+//    // create layer:
+//    Core::GeoShapeLayer * layer = new Core::GeoShapeLayer(this);
+//    // set geo info:
+//    layer->setPixelExtent(item->boundingRect().toRect());
+////    layer->setGeoExtent();
+////    layer->setGeoBBox(layer->getGeoExtent().boundingRect());
+//    layer->setType(_currentTool->getName());
+//    addLayer(layer, item);
 //}
 
 //******************************************************************************
 /*!
- * \brief GeoImageViewer::setRendererView method to setup a renderer view: LayerRendererView or HistogramRendererView ...
+ * \brief GeoImageViewer::setRendererView method to setup a renderer view: DefaultRendererView or HistogramRendererView ...
  * \param rendererView
  */
 void GeoImageViewer::setRendererView(AbstractRendererView *rendererView)
@@ -284,13 +385,19 @@ void GeoImageViewer::onCopyData(const QRectF &selection)
 {
     SD_TRACE("Copy data to new layer");
 
-    Core::GeoImageItem * item = getGeoImageItem(_layersView->getCurrentLayer());
+    Core::GeoImageLayer * iLayer = qobject_cast<Core::GeoImageLayer*>(_layersView->getCurrentLayer());
+    if (!iLayer)
+    {
+        SD_ERR("Please, select an image layer");
+        return;
+    }
+    // static cast is ensured with non null conversion of BaseLayer into GeoImageLayer
+    Core::GeoImageItem * item = static_cast<Core::GeoImageItem*>(_layerItemMap.value(iLayer, 0));
     if (!item)
     {
         SD_ERR("Please, select an image layer");
         return;
     }
-
 
     const Core::ImageDataProvider * provider = item->getConstDataProvider();
 
@@ -299,7 +406,15 @@ void GeoImageViewer::onCopyData(const QRectF &selection)
                                              ).toRect();
 
     // Create floating data provider :
-    Core::FloatingDataProvider * nProvider = Core::FloatingDataProvider::createDataProvider(provider, pixelExtent);
+    QRect srcPixelExtent = provider->getPixelExtent();
+    QRect intersection = srcPixelExtent.intersected(pixelExtent);
+    if (intersection.isEmpty())
+    {
+        SD_ERR("Layer does not contain data in the selection");
+        return;
+    }
+
+    Core::FloatingDataProvider * nProvider = Core::FloatingDataProvider::createDataProvider(provider, intersection);
 
     if (!nProvider)
     {
@@ -330,6 +445,18 @@ void GeoImageViewer::onCopyData(const QRectF &selection)
     // Create new layer :
     Core::GeoImageLayer * nLayer = new Core::GeoImageLayer(this);
     nLayer->setType("Floating Image");
+    nLayer->setImageName(nProvider->getImageName());
+
+    nLayer->setNbBands(iLayer->getNbBands());
+    nLayer->setDepthInBytes(iLayer->getDepthInBytes());
+    nLayer->setIsComplex(iLayer->isComplex());
+
+    nLayer->setGeoExtent(nProvider->fetchGeoExtent());
+    nLayer->setGeoBBox(nLayer->getGeoExtent().boundingRect());
+    // pixel extent is intersection
+    nLayer->setPixelExtent(intersection);
+    nLayer->setProjectionRef(iLayer->getProjectionRef());
+
 
     addLayer(nLayer, nItem);
 

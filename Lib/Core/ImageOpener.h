@@ -34,6 +34,9 @@ public:
     bool openImageInBackground(const QUrl & url);
     void cancel();
 
+    bool isWorking()
+    { return _isWorking; }
+
     ImageDataProvider * openImage(const QUrl & url);
 
 signals:
@@ -47,6 +50,7 @@ private:
     void taskFinished(Core::ImageDataProvider *);
     OpenImageTask * _task;
     bool _isAsyncTask;
+    bool _isWorking;
 
 };
 

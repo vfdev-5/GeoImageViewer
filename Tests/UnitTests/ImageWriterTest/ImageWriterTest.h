@@ -1,12 +1,12 @@
-#ifndef IMAGEOPENERTEST_H
-#define IMAGEOPENERTEST_H
+#ifndef IMAGEWRITERTEST_H
+#define IMAGEWRITERTEST_H
 
 // Qt
 #include <QObject>
 #include <QtTest>
 
 // Project
-#include "Core/ImageOpener.h"
+#include "Core/ImageWriter.h"
 #include "Core/ImageDataProvider.h"
 
 namespace Tests
@@ -14,26 +14,20 @@ namespace Tests
 
 //*************************************************************************
 
-class ImageOpenerTest : public QObject
+class ImageWriterTest : public QObject
 {
     Q_OBJECT
 private slots:
     void initTestCase();
     void test();
-    void test2();
-    void test3();
     void cleanupTestCase();
 
 protected:
-    void onImageOpened(Core::ImageDataProvider*);
-    void onImageOpenCanceled(Core::ImageDataProvider*);
+    void onImageWriteFinished(bool ok);
 
 private:
-    Core::ImageOpener * _imageOpener;
-    QUrl _url;
-    QUrl _url2;
-    bool imageOpened;
-
+    Core::ImageWriter * _imageWriter;
+    Core::ImageDataProvider * _provider;
 };
 
 

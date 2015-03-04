@@ -15,7 +15,7 @@ include(Qt)
 
 ## search files:
     # define subfolders
-SET(modules Core Gui Tools)
+SET(modules Core Gui Tools Filters)
 
 SET(SRC_FILES "")
 SET(INC_FILES "")

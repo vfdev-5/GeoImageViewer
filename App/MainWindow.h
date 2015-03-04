@@ -30,6 +30,10 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+protected slots:
+    void onOpenImageActionTriggered();
+    void onExitActionTriggered();
+
 private:
 
     QDockWidget * createDockWidget(QWidget * w, Qt::DockWidgetArea where);

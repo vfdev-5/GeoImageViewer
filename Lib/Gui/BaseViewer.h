@@ -57,6 +57,8 @@ signals:
 
 protected slots:
     void onZoomActionTriggered();
+    virtual void onProgressValueChanged(int);
+    virtual void onProgressCanceled() {}
 
 protected:
     virtual void showEvent(QShowEvent *);
