@@ -31,6 +31,9 @@ Makefile*
 *.qmlproject.user
 *.qmlproject.user.*
 
+# Python 
+*.pyc
+
 # Mac sheet
 .DS_Store
 

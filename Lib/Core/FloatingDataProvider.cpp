@@ -26,6 +26,11 @@ cv::Mat FloatingDataProvider::getImageData(const QRect & srcPixelExtent, int dst
 {
     cv::Mat out;
 
+    if (srcPixelExtent.isEmpty() && dstPixelWidth == 0 && dstPixelHeight == 0)
+    {
+        return _data;
+    }
+
     QRect srcRequestedExtent, srcExtent;
     // If source pixel extent is not specified -> take the whole image pixel extent
     if (srcPixelExtent.isEmpty())
@@ -99,9 +104,8 @@ cv::Mat FloatingDataProvider::getImageData(const QRect & srcPixelExtent, int dst
 
 //******************************************************************************
 
-FloatingDataProvider* FloatingDataProvider::createDataProvider(const QString & name, const cv::Mat & src, const QRect & iIntersection)
+bool FloatingDataProvider::create(const QString &name, const cv::Mat &src, const QRect &iIntersection)
 {
-    FloatingDataProvider * dst = 0;
     QRect intersection;
     if (iIntersection.isEmpty())
     {
@@ -110,47 +114,63 @@ FloatingDataProvider* FloatingDataProvider::createDataProvider(const QString & n
     else
     {
         if (!QRect(0,0,src.cols,src.rows).intersects(intersection))
-            return dst;
+            return false;
     }
 
-    dst = new FloatingDataProvider();
-    dst->_source = 0;
-    dst->_intersection = intersection;
+    _source = 0;
+    _intersection = intersection;
 
-    dst->setImageName("Region of " + name);
+    setImageName("Region of " + name);
     // Copy input info :
-    dst->_inputWidth     = src.cols;
-    dst->_inputHeight    = src.rows;
-    dst->_inputDepth     = src.elemSize1();
-    dst->_inputNbBands   = src.channels();
-    dst->_inputIsComplex = false;
+    _inputWidth     = src.cols;
+    _inputHeight    = src.rows;
+    _inputDepth     = src.elemSize1();
+    _inputNbBands   = src.channels();
+    _inputIsComplex = false;
 
-    dst->_bandNames.clear();
+    _bandNames.clear();
     for (int i = 0; i<src.channels();i++)
     {
-        dst->_bandNames << QString("band %1").arg(i+1);
+        _bandNames << QString("band %1").arg(i+1);
     }
 
     cv::Rect r(intersection.x(), intersection.y(),
                intersection.width(), intersection.height());
-    src(r).copyTo(dst->_data);
 
-    setupDataInfo(dst->_data, dst);
+    src(r).copyTo(_data);
+    if (_data.depth() != CV_32F)
+        _data.convertTo(_data, CV_32F);
 
-    dst->_pixelExtent = QRect(0,0,intersection.width(),intersection.height());
+//    displayMat(dst->_data, true, "dst->_data");
+
+    setupDataInfo(_data, this);
+
+    _pixelExtent = QRect(0,0,intersection.width(),intersection.height());
 
     // compute data stats:
-    if (!computeNormalizedHistogram(dst->_data,
-                                    dst->_minValues,
-                                    dst->_maxValues,
-                                    dst->_bandHistograms,
+    if (!computeNormalizedHistogram(_data,
+                                    _minValues,
+                                    _maxValues,
+                                    _bandHistograms,
                                     1000))
     {
         SD_TRACE("createDataProvider : Failed to compute image stats");
+        return false;
+    }
+    return true;
+
+}
+
+//******************************************************************************
+
+FloatingDataProvider* FloatingDataProvider::createDataProvider(const QString & name, const cv::Mat & src, const QRect & iIntersection)
+{
+    FloatingDataProvider * dst = new FloatingDataProvider();
+    if (!dst->create(name, src, iIntersection))
+    {
         delete dst;
         return 0;
     }
-
     return dst;
 }
 

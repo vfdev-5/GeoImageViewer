@@ -8,7 +8,7 @@ link_directories(${OpenCV_LIB_DIR})
 link_libraries(${OpenCV_LIBS})
 
 ## include & link to Qt :
-SET(INSTALL_DLLS OFF)
+SET(INSTALL_QT_DLLS OFF)
 include(Qt)
 
 ## include & link to project library

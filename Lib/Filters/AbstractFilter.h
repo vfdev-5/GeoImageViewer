@@ -4,6 +4,9 @@
 // Qt
 #include <QObject>
 
+// Opencv
+#include <opencv2/core/core.hpp>
+
 // Project
 #include "Core/LibExport.h"
 #include "Core/Global.h"
@@ -20,13 +23,20 @@ class GIV_DLL_EXPORT AbstractFilter : public QObject
     Q_PROPERTY_WITH_GETACCESSOR(QString, name, getName)
     Q_PROPERTY_WITH_GETACCESSOR(QString, description, getDescription)
 
+    PROPERTY_GETACCESSOR(QString, errorMessage, getErrorMessage)
+
 public:
     AbstractFilter(QObject * parent = 0);
     virtual ~AbstractFilter() {}
 
+    cv::Mat apply(const cv::Mat & src) const;
+
     enum {
         Type = 0,
     };
+
+protected:
+    virtual cv::Mat filter(const cv::Mat & src) const = 0;
 
 };
 

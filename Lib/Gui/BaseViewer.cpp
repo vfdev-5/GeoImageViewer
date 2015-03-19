@@ -105,7 +105,7 @@ void BaseViewer::clear()
     {
         _initialTextItem = _scene.addSimpleText(_initialText);
         _initialTextItem->setPen(QColor(167,167,167));
-        _initialTextItem->setScale(0.005 * qMax(_scene.sceneRect().width(), _scene.sceneRect().height()));
+        _initialTextItem->setScale(0.015 * qMax(_scene.sceneRect().width(), _scene.sceneRect().height()));
         double w = _initialTextItem->boundingRect().width() * _initialTextItem->scale();
         double h = _initialTextItem->boundingRect().height() * _initialTextItem->scale();
         double x = _scene.sceneRect().center().x() - w*0.5;
@@ -115,9 +115,12 @@ void BaseViewer::clear()
     }
 
     _view.setBackgroundBrush(QBrush(Qt::white));
-    _view.fitInView(_scene.sceneRect(), Qt::KeepAspectRatio);
+//    _view.fitInView(_scene.sceneRect(), Qt::KeepAspectRatio);
 
+    // reset zoom level
     _zoomLevel = 0;
+    double scale = qPow(2.0, _zoomLevel);
+    _view.setTransform(QTransform::fromScale(scale,scale));
 
 }
 

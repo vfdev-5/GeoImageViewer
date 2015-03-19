@@ -64,7 +64,7 @@ public:
     explicit ImageDataProvider(QObject *parent = 0);
     virtual cv::Mat getImageData(const QRect & srcPixelExtent=QRect(), int dstPixelWidth=0, int dstPixelHeight=0) const = 0 ;
 
-    virtual QString fetchProjectionRef() const { return "Unknown"; }
+    virtual QString fetchProjectionRef() const { return QString(); }
     virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const
     { Q_UNUSED(pixelExtent); return QPolygonF(); }
 
@@ -76,7 +76,7 @@ protected:
 
 //******************************************************************************
 
-class GDALDataProvider : public ImageDataProvider
+class GIV_DLL_EXPORT GDALDataProvider : public ImageDataProvider
 {
     Q_OBJECT
     PROPERTY_GETACCESSOR(QString, filePath, getFilePath)

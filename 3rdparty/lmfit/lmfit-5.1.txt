@@ -1,0 +1,4 @@
+Downloaded from 
+sourceforge.net/projects/lmfit/files/
+
+version : 5.1

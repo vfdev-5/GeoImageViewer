@@ -10,7 +10,7 @@ include_directories(${GDAL_INCLUDE_DIRS})
 link_libraries(${GDAL_LIBRARY})
 
 ## include & link to Qt :
-SET(INSTALL_DLLS ON)
+SET(INSTALL_QT_DLLS ON)
 include(Qt)
 
 ## include & link to project library

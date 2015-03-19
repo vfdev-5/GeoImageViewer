@@ -4,6 +4,7 @@
 
 // Qt
 #include <qmath.h>
+#include <QString>
 
 // OpenCV
 #include <opencv2/imgproc/imgproc.hpp>
@@ -262,6 +263,84 @@ cv::Mat displayMat(const cv::Mat & inputImage0, bool showMinMax, const QString &
 
 //******************************************************************************
 
+bool isEqual(const cv::Mat &src, const cv::Mat &dst)
+{
+    if (src.type() != dst.type())
+        return false;
+
+    int nbBands = src.channels();
+
+    std::vector<cv::Mat> sChannels(nbBands), dChannels(nbBands);
+    cv::split(src, &sChannels[0]);
+    cv::split(dst, &dChannels[0]);
+
+    for (int i=0; i<nbBands; i++)
+    {
+        cv::Scalar s = cv::sum(sChannels[i] - dChannels[i]);
+        if (s.val[0] > 1e-5 || s.val[0] < -1e-5)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+//******************************************************************************
+
+template<typename T>
+void printPixel(const cv::Mat & singleBand, int i, int j)
+{
+
+    std::cout << singleBand.at<T>(i,j);
+}
+
+void printMat(const cv::Mat & inputImage0, const QString &windowName)
+{
+
+    cv::Mat inputImage;
+    if (inputImage0.type() != CV_64F)
+    {
+        inputImage0.convertTo(inputImage, CV_32F);
+    }
+    else
+        inputImage = inputImage0;
+
+    SD_TRACE("------ Print matrix : " + windowName.isEmpty() ? "inputImage" : windowName);
+    int w = inputImage.cols;
+    int h = inputImage.rows;
+    SD_TRACE("Size : " + QString::number(w) + ", " + QString::number(h));
+
+
+
+    int limit = 7;
+    w = w > limit ? limit : w;
+    h = h > limit ? limit : h;
+
+    int nbBands = inputImage.channels();
+    std::vector<cv::Mat> iChannels(nbBands);
+    cv::split(inputImage, &iChannels[0]);
+
+    for (int i=0; i<h; i++)
+    {
+        for (int j=0; j<w; j++)
+        {
+            std::cout << "(";
+            for (int k=0; k<nbBands; k++)
+            {
+                printPixel<double>(iChannels[k], i, j);
+                std::cout << " ";
+            }
+            std::cout << ")";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "------"<< std::endl;
+
+
+}
+
+//******************************************************************************
+
 #define REPORT() \
 if (reporter)   \
 { \
@@ -338,11 +417,17 @@ bool computeNormalizedHistogram(const cv::Mat & data,
 
 
 //******************************************************************************
-
-void computeQuantileMinMaxValue(const QVector<double> & bandHistogram, double lowerCut, double upperCut,
-                                double minValue, double maxValue, double *qMinValue, double *qMaxValue);
-
-void computeQuantileMinMaxValues(const QVector<double> & minValues, const QVector<double> & maxValues,
+/*!
+ * \brief computeQuantileMinMaxValues
+ * \param minValues
+ * \param maxValues
+ * \param bandHistograms
+ * \param lowerCut is value between 0.0 and 100.0
+ * \param upperCut is value between 0.0 and 100.0 and larger than upperCut
+ * \param qMinValues
+ * \param qMaxValues
+ */
+bool computeQuantileMinMaxValues(const QVector<double> & minValues, const QVector<double> & maxValues,
                                  const QVector< QVector<double> > & bandHistograms,
                                  double lowerCut, double upperCut, QVector<double> * qMinValues, QVector<double> * qMaxValues)
 {
@@ -351,16 +436,53 @@ void computeQuantileMinMaxValues(const QVector<double> & minValues, const QVecto
     double qMinValue(0), qMaxValue(0);
     for (int i=0;i<bandHistograms.size();i++)
     {
-        computeQuantileMinMaxValue(bandHistograms[i], lowerCut, upperCut,
-                                   minValues[i], maxValues[i], &qMinValue, &qMaxValue);
+        if (!computeQuantileMinMaxValue(bandHistograms[i], lowerCut, upperCut,
+                                   minValues[i], maxValues[i], &qMinValue, &qMaxValue))
+        {
+            return false;
+        }
         qMinValues->append(qMinValue);
         qMaxValues->append(qMaxValue);
     }
+    return true;
 }
 
-void computeQuantileMinMaxValue(const QVector<double> & bandHistogram, double lowerCut, double upperCut,
+bool computeQuantileMinMaxValue(const QVector<double> & bandHistogram, double lowerCut, double upperCut,
                                 double minValue, double maxValue, double * qMinValue, double * qMaxValue)
 {
+    if (!qMinValue || !qMaxValue)
+        return false;
+
+    int minIndx, maxIndx;
+    if (!computeQuantileMinMaxValue(bandHistogram, lowerCut, upperCut,
+                               &minIndx, &maxIndx))
+        return false;
+
+    // compute values: xvalue(index) = xmin + (xmax - xmin)/size * index
+    double step = (maxValue - minValue)*1.0/bandHistogram.size();
+    *qMinValue = minValue + step*minIndx;
+    *qMaxValue = minValue + step*maxIndx;
+    return true;
+}
+
+bool computeQuantileMinMaxValue(const QVector<double> & bandHistogram, double lowerCut, double upperCut,
+                                int * qMinIndex, int * qMaxIndex)
+{
+
+    if (!qMinIndex || !qMaxIndex)
+        return false;
+
+    if (lowerCut < 0.0 || lowerCut > 100.0)
+    {
+        SD_TRACE("computeQuantileMinMaxValue : lowerCut should be between 0.0 and 1.0");
+        return false;
+    }
+
+    if (upperCut < 0.0 || upperCut > 100.0 || upperCut < lowerCut)
+    {
+        SD_TRACE("computeQuantileMinMaxValue : upperCut should be between 0.0 and 1.0 and larger than lowerCut");
+        return false;
+    }
 
     const double * srcPtr = &(bandHistogram.data())[0];
     int size = bandHistogram.size();
@@ -376,7 +498,6 @@ void computeQuantileMinMaxValue(const QVector<double> & bandHistogram, double lo
     double r2=0.0;
     bool lowerCutFound=false;
     bool upperCutFound=false;
-    int minIndx, maxIndx;
     for (int i=0; i<size; i++)
     {
         v1 += srcPtr[i];
@@ -386,24 +507,97 @@ void computeQuantileMinMaxValue(const QVector<double> & bandHistogram, double lo
         if (r1 >= lowerCut && !lowerCutFound)
         {
             lowerCutFound=true;
-            minIndx = i;
+            *qMinIndex = i;
         }
 
 
         if (r2 >= 100-upperCut && !upperCutFound)
         {
             upperCutFound=true;
-            maxIndx = size-1-i;
+            *qMaxIndex = size-1-i;
         }
 
         if (lowerCutFound && upperCutFound)
             break;
     }
+    return true;
+}
 
-    // compute values: xvalue(index) = xmin + (xmax - xmin)/size * index
-    double step = (maxValue - minValue)*1.0/size;
-    *qMinValue = minValue + step*minIndx;
-    *qMaxValue = minValue + step*maxIndx;
+//******************************************************************************
+
+void computeLocalMinMax(const QVector<double> & data,
+                        QVector<int> * minLocs, QVector<int> * maxLocs,
+                        QVector<double> * minVals, QVector<double> * maxVals,
+                        int windowSize, int blurKernelSize)
+{
+
+    if (!minLocs || !maxLocs)
+    {
+        SD_TRACE("computeLocalMinMax : minLocs, maxLocs, minVals and maxVals should be non null")
+        return;
+    }
+
+    minLocs->clear();
+    maxLocs->clear();
+    if (minVals)
+        minVals->clear();
+
+    if (maxVals)
+        maxVals->clear();
+
+
+    int size = windowSize;
+    if (windowSize < 0)
+    {
+        size = data.size() / 10;
+    }
+    int nbWindows = qCeil( data.size() * 1.0 / size );
+    int offset = 0;
+    int sz = size;
+    for (int i=0; i<nbWindows; i++)
+    {
+        offset = i*size;
+        if (offset + sz > data.size())
+        {
+            sz = data.size() - offset;
+        }
+
+        // get data
+        QVector<double> d = data.mid(offset, sz);
+        cv::Mat wdata(1,sz,CV_64F,reinterpret_cast<void*>(d.data()));
+//        SD_TRACE("orginal window size : " + QString::number(wdata.cols));
+
+        // smooth data. data remain of the same size as original
+        cv::Mat fwdata;
+        cv::blur(wdata,fwdata,cv::Size(blurKernelSize,1));
+
+//        SD_TRACE("new window size : " + QString::number(fwdata.cols));
+
+        // get local min/max and its values
+        double mm, MM;
+        cv::Point mmLoc, MMLoc;
+        cv::minMaxLoc(fwdata, &mm, &MM, &mmLoc, &MMLoc);
+
+        if ( qAbs(mm-MM) < 0.005)
+            continue;
+
+
+        if (mmLoc.x > 0 && mmLoc.x < sz - 1)
+        {
+            SD_TRACE( QString("Local min : %1 at %2").arg(mm).arg(offset + mmLoc.x) );
+            minLocs->append(offset + mmLoc.x);
+            if (minVals)
+                minVals->append(mm);
+        }
+
+        if (MMLoc.x > 0 && MMLoc.x < sz - 1)
+        {
+            SD_TRACE( QString("Local max : %1 at %2").arg(MM).arg(offset + MMLoc.x) );
+            maxLocs->append(offset + MMLoc.x);
+            if (maxVals)
+                maxVals->append(MM);
+        }
+    }
 
 }
 
@@ -429,8 +623,10 @@ bool writeToFile(const QString &outputFilename, const cv::Mat &image,
 
     int width = image.cols;
     int height = image.rows;
-    int outputNbBands = image.channels();
-    GDALDataType dataType = convertDataTypeOpenCVToGDAL(image.type());
+
+    // if image has two bands -> it is interpreted as complex
+    int outputNbBands = image.channels() == 2 ? 1 : image.channels();
+    GDALDataType dataType = convertDataTypeOpenCVToGDAL(image.depth(), outputNbBands);
 
     char **papszCreateOptions = 0;
     papszCreateOptions=CSLAddString(papszCreateOptions, "COMPRESS=LZW");

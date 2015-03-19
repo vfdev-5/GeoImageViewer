@@ -34,7 +34,7 @@ public:
 
 signals:
     void imageWriteFinished(bool ok);
-    void openProgressValueChanged(int);
+    void writeProgressValueChanged(int);
 
 private:
 

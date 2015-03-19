@@ -29,7 +29,6 @@ ToolsManager::ToolsManager()
     insertTool(new NavigationTool(this));
     insertTool(new MoveTool(this));
     insertTool(new RectangleShapeTool(this));
-//    insertTool(new SelectionTool(this));
 }
 
 //******************************************************************************
@@ -53,7 +52,13 @@ void ToolsManager::insertTool(AbstractTool *tool)
 void ToolsManager::loadPlugins(const QString &path)
 {
     QDir d(path);
-    foreach (QString fileName, d.entryList(QStringList() << "*.dll", QDir::Files))
+    QStringList filters;
+#ifdef _DEBUG
+    filters << "*Plugin.d.dll" << "*Plugin.d.so";
+#else
+    filters << "*Plugin.dll" << "*Plugin.so";
+#endif
+    foreach (QString fileName, d.entryList(filters, QDir::Files))
     {
         QPluginLoader loader(d.absoluteFilePath(fileName));
         QObject * plugin = loader.instance();

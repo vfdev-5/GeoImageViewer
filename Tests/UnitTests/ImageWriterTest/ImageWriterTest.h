@@ -20,6 +20,7 @@ class ImageWriterTest : public QObject
 private slots:
     void initTestCase();
     void test();
+    void test2();
     void cleanupTestCase();
 
 protected:
@@ -28,6 +29,7 @@ protected:
 private:
     Core::ImageWriter * _imageWriter;
     Core::ImageDataProvider * _provider;
+    bool writeFinished;
 };
 
 

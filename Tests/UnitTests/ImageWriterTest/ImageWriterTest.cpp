@@ -10,6 +10,7 @@
 // Tests
 #include "ImageWriterTest.h"
 #include "Core/LayerUtils.h"
+#include "Core/ImageDataProvider.h"
 #include "Core/FloatingDataProvider.h"
 
 namespace Tests
@@ -45,6 +46,8 @@ void ImageWriterTest::initTestCase()
         }
     }
 
+//    Core::displayMat(TEST_MATRIX, true, "TEST_MATRIX", false);
+
     // Create a Floating image data provider
     _provider = Core::FloatingDataProvider::createDataProvider("test", TEST_MATRIX);
     QVERIFY(_provider);
@@ -52,76 +55,79 @@ void ImageWriterTest::initTestCase()
 
     // check createDataProvider method
     cv::Mat m = _provider->getImageData();
-    cv::Mat res;
-    TEST_MATRIX.convertTo(res, m.depth());
-    res -= m;
-    QVERIFY(cv::countNonZero(res) == 0);
-
+//    Core::displayMat(m, true, "m");
+    cv::Mat m2;
+    TEST_MATRIX.convertTo(m2, m.depth());
+    QVERIFY(Core::isEqual(m,m2));
 }
 
 //*************************************************************************
 
 void ImageWriterTest::test()
 {
-
     QString out = QFileInfo("Input:").absoluteFilePath() + "/test_image.tif";
 
     QVERIFY(_imageWriter->write(out, _provider));
     QVERIFY(QFile(out).exists());
+
+    Core::GDALDataProvider * provider = new Core::GDALDataProvider();
+    QVERIFY(provider->setup(out));
+
+    cv::Mat m = _provider->getImageData();
+    cv::Mat m2 = provider->getImageData();
+//    Core::displayMat(m, true, "m");
+//    Core::displayMat(m2, true, "m2");
+    QVERIFY(Core::isEqual(m,m2));
+    delete provider;
     QVERIFY(QFile(out).remove());
-
 }
-
 
 //*************************************************************************
 
-//void ImageWriterTest::test2()
-//{
-//    connect(_imageOpener, &Core::ImageOpener::imageOpened,
-//            this, &Tests::ImageOpenerTest::onImageOpened);
-//    imageOpened = false;
-//    _imageOpener->openImageInBackground(_url);
+void ImageWriterTest::test2()
+{
+    QString out = QFileInfo("Input:").absoluteFilePath() + "/test_image_2.tif";
 
-//    int i = 0;
-//    while (!imageOpened && i++ < 50)
-//        QTest::qWait(500);
+    connect(_imageWriter, &Core::ImageWriter::imageWriteFinished,
+            this, &Tests::ImageWriterTest::onImageWriteFinished);
+    writeFinished = false;
+    _imageWriter->writeInBackground(out, _provider);
 
-//}
+    int i = 0;
+    while (!writeFinished && i++ < 50)
+        QTest::qWait(500);
+}
 
 //*************************************************************************
 
 void ImageWriterTest::onImageWriteFinished(bool ok)
 {
-//    imageOpened=true;
-//    QVERIFY(provider);
+    writeFinished = true;
+    QVERIFY(ok);
 
-//    cv::Mat m = provider->getImageData();
-//    cv::Mat res;
-//    TEST_MATRIX.convertTo(res, m.depth());
-//    res -= m;
-//    QVERIFY(cv::countNonZero(res) == 0);
+    QString out = QFileInfo("Input:").absoluteFilePath() + "/test_image_2.tif";
 
-//    delete provider;
+    Core::GDALDataProvider * provider = new Core::GDALDataProvider();
+    QVERIFY(provider->setup(out));
+
+    cv::Mat m = _provider->getImageData();
+    cv::Mat m2 = provider->getImageData();
+//    Core::displayMat(m, true, "m");
+//    Core::displayMat(m2, true, "m2");
+    QVERIFY(Core::isEqual(m,m2));
+    delete provider;
+
+    QVERIFY(QFile(out).remove());
+
+    disconnect(_imageWriter, &Core::ImageWriter::imageWriteFinished,
+            this, &Tests::ImageWriterTest::onImageWriteFinished);
+
 }
 
 //*************************************************************************
 
 void ImageWriterTest::cleanupTestCase()
 {
-
-    // Remove temp test image
-    QString path = QFileInfo("Input:").absoluteFilePath() + "/test_image.tif";
-    QVERIFY(QFile(path).exists());
-    QVERIFY(QFile(path).remove());
-
-    QString path2=path+".ovr";
-    if(QFile(path2).exists())
-        QVERIFY(QFile(path2).remove());
-
-    path2=path+".aux.xml";
-    if(QFile(path2).exists())
-        QVERIFY(QFile(path2).remove());
-
 
 }
 

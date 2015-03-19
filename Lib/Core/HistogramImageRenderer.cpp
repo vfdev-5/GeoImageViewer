@@ -149,6 +149,8 @@ bool HistogramImageRenderer::setupConfiguration(ImageDataProvider * provider)
         _histConf.isDiscreteValues << false;
         double a=(_histConf.qMaxValues[i] - _histConf.qMinValues[i]) / (_conf.maxValues[i] - _conf.minValues[i]);
         double b=(_histConf.qMinValues[i] - _conf.minValues[i]) / (_conf.maxValues[i] - _conf.minValues[i]);
+        if (a == 0)
+            a = 1;
 //        _histConf.normHistStops << resetStops(nbBands == 1 ? -1 : i, a, b);
         _histConf.normHistStops << resetStops(-1, a, b);
     }
@@ -164,6 +166,8 @@ bool HistogramImageRenderer::setupConfiguration(ImageDataProvider * provider)
         {
             double a=(_histConf.qMaxValues[i] - _histConf.qMinValues[i]) / (_conf.maxValues[i] - _conf.minValues[i]);
             double b=(_histConf.qMinValues[i] - _conf.minValues[i]) / (_conf.maxValues[i] - _conf.minValues[i]);
+            if (a == 0)
+                a = 1;
             _histConf.normRGBHistStops << resetStops(i, a, b);
         }
         _histConf.mode = HistogramRendererConfiguration::RGB;

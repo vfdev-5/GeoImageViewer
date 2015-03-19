@@ -10,8 +10,16 @@
 #include "Core/LibExport.h"
 #include "AbstractFilter.h"
 
+namespace Core
+{
+class ImageDataProvider;
+}
+
+
 namespace Filters
 {
+
+class FilterTask;
 
 //******************************************************************************
 
@@ -19,6 +27,7 @@ namespace Filters
 class GIV_DLL_EXPORT FiltersManager : public QObject
 {
     Q_OBJECT
+    friend class FilterTask;
 public:
 
     void loadPlugins(const QString & path);
@@ -45,6 +54,18 @@ public:
 
     void insertFilter(AbstractFilter * filter);
 
+
+    void applyFilterInBackground(const AbstractFilter * filter, const Core::ImageDataProvider *provider);
+    Core::ImageDataProvider * applyFilter(AbstractFilter * filter);
+    void cancel();
+    bool isWorking()
+    { return _isWorking; }
+
+signals:
+    void filteringFinished(Core::ImageDataProvider * provider);
+    void filterProgressValueChanged(int);
+
+
 private:
     FiltersManager();
     ~FiltersManager();
@@ -54,6 +75,11 @@ private:
 
     QHash<QString, AbstractFilter*> _filters;
     QList<AbstractFilter*> _list;
+
+    FilterTask * _task;
+    void taskFinished(Core::ImageDataProvider * provider);
+    bool _isAsyncTask;
+    bool _isWorking;
 
 };
 

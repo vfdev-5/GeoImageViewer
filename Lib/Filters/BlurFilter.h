@@ -16,13 +16,28 @@ class GIV_DLL_EXPORT BlurFilter : public AbstractFilter
 {
     Q_OBJECT
 
-    Q_PROPERTY_WITH_ACCESSORS(int, size, getSize, setSize)
+    Q_PROPERTY(int sizeX READ getSizeX WRITE setSizeX)
+    PROPERTY_GETACCESSOR(int, sizeX, getSizeX)
 
-    Q_CLASSINFO("size","minValue:1;maxValue:50")
+    Q_PROPERTY(int sizeY READ getSizeY WRITE setSizeY)
+    PROPERTY_GETACCESSOR(int, sizeY, getSizeY)
+
+    Q_CLASSINFO("sizeX","minValue:1;maxValue:50")
+    Q_CLASSINFO("sizeY","minValue:1;maxValue:50")
 
 public:
     BlurFilter(QObject * parent = 0);
     virtual ~BlurFilter() {}
+
+    void setSizeX(int v)
+    { _sizeX = v; }
+
+    void setSizeY(int v)
+    { _sizeY = v; }
+
+
+protected:
+    virtual cv::Mat filter(const cv::Mat & src) const;
 
 };
 

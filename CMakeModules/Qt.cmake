@@ -62,7 +62,7 @@ if(WIN32)
 endif()
 
 
-if(WIN32 AND INSTALL_DLLS)
+if(WIN32 AND INSTALL_QT_DLLS)
 #    foreach(it ${DLL_LIST})
 #        message("dll_name : ${it}")
     INSTALL(FILES ${DLL_LIST} DESTINATION bin)

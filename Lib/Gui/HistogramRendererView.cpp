@@ -245,6 +245,8 @@ void HistogramRendererView::resetToDefault()
         int index = _ui->_histList->currentIndex();
         double a=(_currentHistogram->xmax2 - _currentHistogram->xmin2);
         double b=_currentHistogram->xmin2;
+        if (a == 0)
+            a = 1;
         if (_mode == RGB)
             _currentHistogram->outputStops = Core::resetStops(index,a,b);
         else

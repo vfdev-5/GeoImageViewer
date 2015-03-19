@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     //     Setup plugins
 //    Tools::ToolsManager::get()->loadPlugins(qApp->applicationDirPath() + "/Plugins/Tools");
-//    Filters::FiltersManager::get()->loadPlugins(qApp->applicationDirPath() + "/Plugins/Filters");
+    Filters::FiltersManager::get()->loadPlugins(qApp->applicationDirPath() + "/Plugins/Filters");
     //     display main window
     MainWindow w;
     w.show();

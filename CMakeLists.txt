@@ -23,6 +23,7 @@ find_package( Qt REQUIRED )
 
 
 # add library :
+add_subdirectory("3rdparty")
 add_subdirectory("Lib")
 add_subdirectory("Plugins")
 add_subdirectory("App")

@@ -115,11 +115,10 @@ void LayersView::addLayer(Core::BaseLayer *layer)
     ui->_layers->insertItem(0, item);
 
     ui->_layers->setCurrentItem(item);
+    onItemClicked(item);
 
     updateZValues();
 
-    // show properties:
-    ui->_editor->setup(layer);
 
 }
 

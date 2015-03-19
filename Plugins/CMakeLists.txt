@@ -3,4 +3,5 @@ add_definitions("-DPLUGIN_EXPORT")
 
 
 # add subdirectories :
-#add_subdirectory("Lasso")
+add_subdirectory("LassoFilter")
+add_subdirectory("HistogramThresholdFilter")

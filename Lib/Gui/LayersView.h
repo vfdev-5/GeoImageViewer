@@ -57,7 +57,6 @@ protected slots:
     void onContextMenuRequested(QPoint);
 
 protected:
-//    bool eventFilter(QObject *, QEvent *);
 
     void updateZValues();
 

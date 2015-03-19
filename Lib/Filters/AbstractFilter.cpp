@@ -23,4 +23,22 @@ AbstractFilter::AbstractFilter(QObject *parent) :
 
 //******************************************************************************
 
+cv::Mat AbstractFilter::apply(const cv::Mat &src) const
+{
+    // Catch Opencv exceptions:
+    try
+    {
+        return filter(src);
+    }
+    catch (const cv::Exception & e)
+    {
+        SD_TRACE(QString("OpenCV Error in \'%1\' :\n %2")
+               .arg(getName())
+               .arg(e.msg.c_str()));
+        return cv::Mat();
+    }
+}
+
+//******************************************************************************
+
 }

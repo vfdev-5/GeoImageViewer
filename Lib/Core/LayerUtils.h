@@ -41,7 +41,7 @@ signals:
 
 
 //******************************************************************************
-// Test visualization methods
+// Test methods
 //******************************************************************************
 /*!
  * \brief displayMat method to visualize a cv::Mat
@@ -52,6 +52,10 @@ signals:
  * \param rescale
  */
 cv::Mat GIV_DLL_EXPORT displayMat(const cv::Mat & inputImage, bool showMinMax=false, const QString &windowName=QString(), bool waitKey=true, bool rescale=true);
+
+bool GIV_DLL_EXPORT isEqual(const cv::Mat & src, const cv::Mat & dst);
+
+void GIV_DLL_EXPORT printMat(const cv::Mat & inputImage, const QString &windowName=QString());
 
 //******************************************************************************
 // Geo Computation methods
@@ -100,9 +104,25 @@ bool GIV_DLL_EXPORT computeNormalizedHistogram(const cv::Mat & data,
  * \param qMinValues - output quantile min values
  * \param qMaxValues - output quantile max values
  */
-void GIV_DLL_EXPORT computeQuantileMinMaxValues(const QVector<double> & minValues, const QVector<double> & maxValues,
+bool GIV_DLL_EXPORT computeQuantileMinMaxValues(const QVector<double> & minValues, const QVector<double> & maxValues,
                                  const QVector< QVector<double> > & bandHistograms,
                                  double lowerCut, double upperCut, QVector<double> *qMinValues, QVector<double> *qMaxValues);
+
+bool GIV_DLL_EXPORT computeQuantileMinMaxValue(const QVector<double> & bandHistogram, double lowerCut, double upperCut,
+                                double minValue, double maxValue, double *qMinValue, double *qMaxValue);
+
+bool GIV_DLL_EXPORT computeQuantileMinMaxValue(const QVector<double> & bandHistogram, double lowerCut, double upperCut,
+                                int *qMinIndex, int *qMaxIndex);
+
+
+/*!
+  \brief computeLocalMinMax method to compute local minima and maxima on the data (e.g. histogram) in local windows
+  Input data is slightly smoothed in the procedure
+ */
+void GIV_DLL_EXPORT computeLocalMinMax(const QVector<double> & data,
+                                       QVector<int> * minLocs, QVector<int> * maxLocs,
+                                       QVector<double> * minVals=0, QVector<double> * maxVals=0,
+                                       int windowSize=-1, int blurKernelSize=5);
 
 //******************************************************************************
 // File Read/Write methods
@@ -115,49 +135,55 @@ bool GIV_DLL_EXPORT writeToFile(const QString & outputFilename, const cv::Mat & 
 // Type conversion methods
 //******************************************************************************
 /*!
-    Method to convert opencv data type to gdal type
+    Method to convert opencv data depth to gdal type
  */
-inline GDALDataType convertDataTypeOpenCVToGDAL(int ocvType)
+inline GDALDataType convertDataTypeOpenCVToGDAL(int ocvDepth, int nbBands)
 {
-    if (ocvType == CV_8U)
+    if (nbBands != 2)
     {
-        return GDT_Byte;
+        if (ocvDepth == CV_8U)
+        {
+            return GDT_Byte;
+        }
+        else if (ocvDepth == CV_8S)
+        {
+            return GDT_Byte;
+        }
+        else if (ocvDepth == CV_16U)
+        {
+            return GDT_UInt16;
+        }
+        else if (ocvDepth == CV_16S)
+        {
+            return GDT_Int16;
+        }
+        else if (ocvDepth == CV_32F)
+        {
+            return GDT_Float32;
+        }
+        else if (ocvDepth == CV_32S)
+        {
+            return GDT_Int32;
+        }
+        else if (ocvDepth == CV_64F)
+        {
+            return GDT_Float64;
+        }
     }
-    else if (ocvType == CV_8S)
+    else
     {
-        return GDT_Byte;
-    }
-    else if (ocvType == CV_16U)
-    {
-        return GDT_UInt16;
-    }
-    else if (ocvType == CV_16S)
-    {
-        return GDT_Int16;
-    }
-    else if (ocvType == CV_32F)
-    {
-        return GDT_Float32;
-    }
-    else if (ocvType == CV_32S)
-    {
-        return GDT_Int32;
-    }
-    else if (ocvType == CV_64F)
-    {
-        return GDT_Float64;
-    }
-    else if (ocvType == CV_16SC2)
-    {
-        return GDT_CInt16;
-    }
-    else if (ocvType == CV_32FC2)
-    {
-        return GDT_CFloat32;
-    }
-    else if (ocvType == CV_64FC2)
-    {
-        return GDT_CFloat64;
+        if (ocvDepth == CV_16S)
+        {
+            return GDT_CInt16;
+        }
+        else if (ocvDepth == CV_32F)
+        {
+            return GDT_CFloat32;
+        }
+        else if (ocvDepth == CV_64F)
+        {
+            return GDT_CFloat64;
+        }
     }
     return GDT_Unknown;
 }

@@ -133,7 +133,7 @@ void GeoImageItem::clearCache()
  */
 void GeoImageItem::computeZoomMinLevel()
 {
-    int zoomMinLevel= -qCeil(qLn( qMin(_nbXTiles,_nbYTiles) )/qLn(2.0));
+    int zoomMinLevel= -qCeil(qLn( qMax(_nbXTiles,_nbYTiles) )/qLn(2.0));
     _zoomMinLevel = (zoomMinLevel > 0) ? 0 : zoomMinLevel;
 }
 

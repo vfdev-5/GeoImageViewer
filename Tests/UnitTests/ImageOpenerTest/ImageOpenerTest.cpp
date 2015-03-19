@@ -69,9 +69,8 @@ void ImageOpenerTest::test()
     cv::Mat res;
     TEST_MATRIX.convertTo(res, m.depth());
     res -= m;
-    QVERIFY(cv::countNonZero(res) == 0);
-
     delete provider;
+    QVERIFY(cv::countNonZero(res) == 0);
 }
 
 

@@ -241,9 +241,6 @@ void ShapeViewer::addLayer(Core::BaseLayer * layer, QGraphicsItem * item)
 
     _layerItemMap.insert(layer, item);
 
-//    QStandardItem* i = new QStandardItem();
-//    _layers.appendRow(QList<QStandardItem*>() << i);
-
     if (_layersView)
         _layersView->addLayer(layer);
 }

@@ -1,18 +1,28 @@
-project( GIVLassoPlugin )
+project( GIVHistogramThresholdFilterPlugin )
 
 ## include & link to OpenCV :
 include_directories(${OpenCV_INCLUDE_DIRS})
 link_directories(${OpenCV_LIB_DIR})
 link_libraries(${OpenCV_LIBS})
 
+## include & link to GDAL :
+include_directories(${GDAL_INCLUDE_DIR})
+link_libraries(${GDAL_LIBRARY})
+
+## include & link to 3rd party : LMFIT
+include_directories(${CMAKE_SOURCE_DIR}/3rdparty/lmfit)
+#include_directories(${CMAKE_BINARY_DIR}/3rdparty)
+link_directories(${CMAKE_BINARY_DIR}/3rdparty/lmfit)
+link_libraries(optimized "lmfit" debug "lmfit.d")
+
 ## include & link to Qt :
-SET(INSTALL_DLLS OFF)
+SET(INSTALL_QT_DLLS OFF)
 include(Qt)
 
 ## include & link to project library
 include_directories(${CMAKE_SOURCE_DIR}/Lib)
 include_directories(${CMAKE_BINARY_DIR}/Lib)
-link_directories(${CMAKE_BINARY_DIR}/Lib)
+link_directories(${CMAKE_BINARY_DIR}/lib)
 link_libraries(optimized "GIVLib" debug "GIVLib.d")
 
 
@@ -26,4 +36,4 @@ add_library( ${PROJECT_NAME} SHARED ${SRC_FILES} ${INC_FILES} ${UI_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX ".d")
 
 ## installation :
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin/Plugins ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin/Plugins/Filters ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)

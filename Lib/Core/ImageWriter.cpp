@@ -20,7 +20,9 @@ namespace Core
 
 ImageWriter::ImageWriter(QObject *parent) :
     QObject(parent),
-    _isWorking(false)
+    _isWorking(false),
+    _isAsyncTask(true),
+    _task(0)
 {
     int count = GetGDALDriverManager()->GetDriverCount();
     if (count == 0)
@@ -141,7 +143,7 @@ void WriteImageTask::run()
     cv::Mat data = _dataProvider->getImageData();
 
     Cancel();
-    _imageWriter->openProgressValueChanged(50);
+    _imageWriter->writeProgressValueChanged(50);
 
     // Projection
     QString projStr = _dataProvider->fetchProjectionRef();
@@ -150,7 +152,7 @@ void WriteImageTask::run()
     bool res = Core::writeToFile(_filename, data,
                                  projStr, geoTransform);
 
-    _imageWriter->openProgressValueChanged(100);
+    _imageWriter->writeProgressValueChanged(100);
     _imageWriter->taskFinished(res);
 
 }
