@@ -1,7 +1,29 @@
 # Basic Scripts for image IO and display
 
+"""
+Loader methods:
+    loadImage() : loads image file and return an numpy array
+
+Display methods:
+    displayImage() : displays image array in a window
+    displayHist()
+    displayCumHist()
+    displayFFT()
+
+Computation methods:
+    computeQuantiles()
+    computeFFT()
+    fftShift()
+    computeNormHist()
+    norm()
+    downsample()
+
+"""
+
+
 # Python
 import os
+import time
 
 # Numpy
 import numpy as np
@@ -11,46 +33,62 @@ import matplotlib.pyplot as plt
 
 # GDAL
 import gdal
-from gdalconst import *
+import ogr
+import gdalconst
 
 # Opencv
 import cv2
 
 # Project
 import Global
+import ImageCommon
 
-def assertIsNPArray(image):
-    assert isinstance(image, np.ndarray), Global.logPrint("Input should a Numpy array",'error')
 
-def assert1D(x):
-    assertIsNPArray(x)
-    assert len(x.shape) == 1, Global.logPrint("Input should have 1-D array",'error')
-
-def assertOneBand(image):
-    assertIsNPArray(image)
-    assert len(image.shape) == 2, Global.logPrint("Image should have 1 channel",'error')
+# Loader methods
+# ###############################################################################
 
 def loadImage(filename):
+    """
+    Method to load image from filename
+    Return imageArray
+    - imageArray is a numpy array of shape (height,width,nbBands)
+
+    """
     if not os.path.exists(filename):
         Global.logPrint("Filename is not found",'error')
         return None
 
-    ds = gdal.Open(filename, GA_ReadOnly)
+    ds = gdal.Open(filename, gdalconst.GA_ReadOnly)
     if ds is None:
         Global.logPrint("Failed to open the file:" + filename, 'error')
         return None
 
     image = ds.ReadAsArray()
-    if image is None:
-        Global.logPrint("Failed to read the file: " + filename,'error')
-        return None
+    assert image is not None, Global.logPrint("Failed to read data of the file : " + filename,'error')
 
+    # gdal output array is of shape (nbBands, height, width) or (height, width)
+    # reshape to (height, width, nbBands)
+    if (len(image.shape) == 2):
+        image = image.reshape((image.shape[0],image.shape[1],1))
+    else:
+        image = convertShape2(image)
     return image
 
+# Display methods
+# ###############################################################################
 
 def displayImage(image0, showMinMax=True, name="image", waitKey=True, rescale=True):
+    """
+    Method to display image
+    Input image should be of shape (height, width) or (height, width, nbBands)
+    """
+    ImageCommon.assertImage(image0)
 
     nbBands = 1 if len(image0.shape) == 2 else image0.shape[2]
+
+    if showMinMax:
+        Global.logPrint("Image \'" + name + "\' has size: " + str(image0.shape[0]) + ", " + str(image0.shape[1]) + " and nbBands= " + str(nbBands))
+
 
     # define mapping
     if nbBands == 1:
@@ -59,8 +97,9 @@ def displayImage(image0, showMinMax=True, name="image", waitKey=True, rescale=Tr
     elif nbBands == 2:
         mapping = [1,1,1]
         # create abs band from Re and Im
-        image = np.zeros((image.shape[0], image.shape[1]))
-        image[:,:] = np.sqrt(image0[:,:,0]*image0[:,:,0] + image0[:,:,1]*image0[:,:,1])
+        image = np.zeros((image0.shape[0], image0.shape[1]))
+        image = cv2.magnitude(image0[:,:,0], image0[:,:,1])
+        nbBands = 1
     elif nbBands >= 3:
         mapping = [3,2,1]
         image = image0
@@ -72,11 +111,7 @@ def displayImage(image0, showMinMax=True, name="image", waitKey=True, rescale=Tr
         if maxdim > displayLimit:
             Global.logPrint("displayImage : " + name + ", Image is rescaled")
             factor = maxdim * 1.0 / displayLimit
-            image = cv2.resize(image, None,fx=1.0/factor,fy=1.0/factor)
-
-
-    if showMinMax:
-        Global.logPrint("Image \'" + name + "\' has size: " + str(image.shape[0]) + ", " + str(image.shape[1]) + " and nbBands= " + str(nbBands))
+            image = cv2.resize(image, None, fx=1.0/factor,fy=1.0/factor)
 
     minValues=np.zeros((nbBands))
     maxValues=np.zeros((nbBands))
@@ -106,13 +141,91 @@ def displayImage(image0, showMinMax=True, name="image", waitKey=True, rescale=Tr
 
         bandData[bandData > nmax] = nmax
         bandData[bandData < nmin] = nmin
-        outputImage[:,:,i] = (255.0 * (bandData - nmin) / (nmax - nmin))
+        outputImage[:,:,i] = (255.0 * (bandData - nmin) / (nmax - nmin)) if nmax > nmin else 0.0
 
     cv2.imshow(name, outputImage)
 
     if (waitKey):
         cv2.waitKey(0)
 
+
+def displayHist(image, show=True, colors=['r','g','b','m','y'], uMinValues=None, uMaxValues=None):
+    """
+    Method to compute and display image histogram
+    """
+
+    [bandHists, minValues, maxValues] = computeNormHist(image, uMinValues=uMinValues, uMaxValues=uMaxValues)
+    displayHist2(bandHists, minValues, maxValues, show, colors)
+
+def displayCumHist(image, show=True, colors=['r','g','b','m','y']):
+    """
+    Method to compute and display image cumulative histogram
+    """
+    [bandHists, minValues, maxValues] = computeNormHist(image)
+    cumBandHist = norm(np.cumsum(bandHists,1))
+    displayHist2(cumBandHist, minValues, maxValues, show, colors)
+
+
+def displayHist2(bandHists, minValues=None, maxValues=None, show=True, colors=['r','g','b','m','y']):
+    """
+    Method to display the histogram
+    """
+
+    ImageCommon.assertIsNPArray(bandHists)
+
+    for bandIndex in range(bandHists.shape[0]):
+        if minValues is None and maxValues is None:
+            x = computeColorValues(0, bandHists.shape[1], bandHists.shape[1])
+        else:
+            x = computeColorValues(minValues[bandIndex], maxValues[bandIndex], bandHists.shape[1])
+##            print "step", step, "len(x)", len(x)
+##            print "maxValues[bandIndex]", maxValues[bandIndex], "minValues[bandIndex]", minValues[bandIndex]
+##            print "x[0]", x[0], "x[-1]", x[-1]
+        # display original histogram
+        plt.plot(x, bandHists[bandIndex,:], colors[bandIndex] if bandIndex < len(colors) else 'b')
+
+    if show:
+        plt.show()
+
+
+def displayFFT(image, name="image", waitKey=True):
+    """
+    Method to display fft magnitude of the input image
+    Resulting fft image is fft shifted, e.g. zero frequencies are in the center
+
+    Return fftImage 2-band numpy array
+
+    """
+    dftImage = computeFFT(image)
+    displayImage(dftImage, True, "Abs FFT " + name, waitKey)
+
+
+# Computation methods
+# ###############################################################################
+
+def convertShape(image):
+    """
+    Method to convert image shape from (h,w,nbBands) -> (nbBands,h,w)
+    """
+    ImageCommon.assertImage(image)
+    if (len(image.shape) > 2):
+        out = np.zeros((image.shape[2], image.shape[0],image.shape[1]))
+        for i in range(image.shape[2]):
+            out[i,:,:] = image[:,:,i]
+        image = out
+    return image
+
+def convertShape2(image):
+    """
+    Method to convert image shape from (nbBands,h,w) -> (h,w,nbBands)
+    """
+    ImageCommon.assertImage(image)
+    if (len(image.shape) > 2):
+        out = np.zeros((image.shape[1], image.shape[2],image.shape[0]))
+        for i in range(image.shape[0]):
+            out[:,:,i] = image[i,:,:]
+        image = out
+    return image
 
 def computeQuantiles(nparray, lower=0.025, upper=0.975):
     """
@@ -125,7 +238,7 @@ def computeQuantiles(nparray, lower=0.025, upper=0.975):
     return qmin, qmax
 
     """
-    assert1D(nparray)
+    ImageCommon.assert1D(nparray)
     qmin = 0
     qmax = nparray.shape[0]-1
 
@@ -146,7 +259,9 @@ def computeQuantiles(nparray, lower=0.025, upper=0.975):
     return [qmin, qmax]
 
 
-def computeNormHist(image, size=500):
+def computeNormHist(image, size=1000, uMinValues=None, uMaxValues=None):
+
+    ImageCommon.assertIsNPArray(image)
 
     nbBands = 1 if len(image.shape) == 2 else image.shape[2]
 
@@ -156,21 +271,43 @@ def computeNormHist(image, size=500):
 
     for i in range(nbBands):
 
-        bandData = image if nbBands == 1 else image[:,:,bandIndex]
-        bandData32f = bandData.astype(np.float32)
-        mm = bandData32f.min()
-        MM = bandData32f.max()
+        bandData = image if nbBands == 1 else image[:,:,i]
+
+        if bandData.dtype is not np.float32:
+            bandData32f = bandData.astype(np.float32)
+        else:
+            bandData32f = bandData
+
+        if uMinValues is not None:
+            mm = uMinValues[i]
+        else:
+            mm = bandData32f.min()
+
+        if uMaxValues is not None:
+            MM = uMaxValues[i]
+        else:
+            MM = bandData32f.max()
+
         minValues[i] = mm
         maxValues[i] = MM
 
-        r = np.array([mm, MM], dtype=np.int) if mm != MM else np.array([MM - 0.5*size, MM + 0.5*size], dtype=np.int)
+        if int(mm) == int(MM):
+            if int(mm) == 0:
+                MM = 1
+            elif int(mm) == 1:
+                mm = 0
+            else:
+                mm = int(MM - 0.5*size)
+                MM = int(MM + 0.5*size)
+
+        r = np.array([mm, MM], dtype=np.int)
 
         hist = cv2.calcHist([bandData32f], channels=[0], mask=None, histSize=[size], ranges=r)
 
         mm = hist.min()
         MM = hist.max()
 
-        bandHistograms[i,:] = ( hist[:,0] - mm ) / (MM - mm)
+        bandHistograms[i,:] = ( hist[:,0] - mm ) / (MM - mm) if MM > mm else 0.0
 
     return [bandHistograms, minValues, maxValues]
 
@@ -220,13 +357,12 @@ def computeLocalMinMax(nparray0, windowSize=None):
     return outMin, outMax
 
 
-
 def equalizeHist(image):
     """
     Method to equalize histogram of the image
     return image with equalized histogram
     """
-    assertOneBand(image)
+    ImageCommon.assertOneBand(image)
 
     [bandHist, minValues, maxValues] = computeNormHist(image)
 
@@ -238,25 +374,6 @@ def equalizeHist(image):
     output = f((image - minValues[0]) * 1.0 / step)
     return output
 
-
-
-def displayHist(image, show=True, colors=['r','g','b','m','y']):
-    """
-    Method to compute and display image histogram
-    """
-
-    [bandHists, minValues, maxValues] = computeNormHist(image)
-    displayHist2(bandHists, minValues, maxValues, show, colors)
-
-def displayCumHist(image, show=True, colors=['r','g','b','m','y']):
-    """
-    Method to compute and display image cumulative histogram
-    """
-    [bandHists, minValues, maxValues] = computeNormHist(image)
-    cumBandHist = norm(np.cumsum(bandHists,1))
-    displayHist2(cumBandHist, minValues, maxValues, show, colors)
-
-
 def computeColorValues(minValue, maxValue, length):
     step = (maxValue-minValue)*1.0/length
     x = np.arange(minValue, maxValue, step)
@@ -265,32 +382,10 @@ def computeColorValues(minValue, maxValue, length):
     return x
 
 
-def displayHist2(bandHists, minValues=None, maxValues=None, show=True, colors=['r','g','b','m','y']):
-    """
-    Method to display the histogram
-    """
-
-    assertIsNPArray(bandHists)
-
-    for bandIndex in range(bandHists.shape[0]):
-        if minValues is None and maxValues is None:
-            x = computeColorValues(0, bandHists.shape[1], bandHists.shape[1])
-        else:
-            x = computeColorValues(minValues[bandIndex], maxValues[bandIndex], bandHists.shape[1])
-##            print "step", step, "len(x)", len(x)
-##            print "maxValues[bandIndex]", maxValues[bandIndex], "minValues[bandIndex]", minValues[bandIndex]
-##            print "x[0]", x[0], "x[-1]", x[-1]
-        # display original histogram
-        plt.plot(x, bandHists[bandIndex,:], colors[bandIndex] if bandIndex < len(colors) else 'b')
-
-    if show:
-        plt.show()
-
-
 
 def downsample(image, wsize=(10,10), func=lambda array : 1.0/len(array.ravel()) * sum(array.ravel()) ):
 
-    assert len(image.shape) == 2, Global.logPrint("Image should have 1 channel",'error')
+    ImageCommon.assertOneBand(image)
 
     width = int(np.ceil(image.shape[0] * 1.0/wsize[0]))
     height = int(np.ceil(image.shape[1] * 1.0/wsize[1]))
@@ -309,38 +404,70 @@ def downsample(image, wsize=(10,10), func=lambda array : 1.0/len(array.ravel()) 
     return out;
 
 
+def fftShift(fftImage):
 
-##def displayGaussian(mean=10.0, cov=64.0, color='b', show=True):
+    ImageCommon.assertTwoBands(fftImage)
+
+    nbBands = fftImage.shape[2]
+    w = fftImage.shape[1]
+    h = fftImage.shape[0]
+
+    r1 = fftImage[0:h/2,0:w/2].copy()
+    r2 = fftImage[0:h/2,w/2:].copy()
+    r3 = fftImage[h/2:,:w/2].copy()
+    r4 = fftImage[h/2:,w/2:].copy()
+
+    fftImage[:r4.shape[0],:r4.shape[1]] = r4[:,:]
+    fftImage[:r3.shape[0],r4.shape[1]:] = r3[:,:]
+    fftImage[r4.shape[0]:,:r2.shape[1]] = r2[:,:]
+    fftImage[r4.shape[0]:,r2.shape[1]:] = r1[:,:]
+
+    return fftImage
+
+def computeFFT(image):
+    """
+    Method to compute fft output of the image
+    Resulting fft image is fft shifted, e.g. zero frequencies are in the center
+    """
+    ImageCommon.assertOneBand(image)
+    return fftShift(cv2.dft(image, flags=cv2.DFT_COMPLEX_OUTPUT))
 
 
 
 if __name__ == "__main__":
 
-
-    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\filtered\\img5.tif"
-    image = loadImage(filename)
-    if image is None:
-        Global.logPrint("Failed to load image", 'error')
-        exit()
-    nbBands = 1 if len(image.shape) == 2 else image.shape[2]
-    Global.logPrint("Image info: " + str(image.shape[0]) + ", " + str(image.shape[1]) + ", nbBands=" + str(nbBands))
+    filenames = []
+    filenames.append("C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\filtered\\img5.tif")
+    filenames.append("C:\\VFomin_folder\\PISE_project\\Images\\DigiatalGlobe30cm\\CHN_Shanghai_Pudong_Dec18_2014_WV3_30cm_2.jpg")
 
     # # # TESTS # # #
-    # # - Downsample image
-    image = downsample(image)
+    for filename in filenames:
 
-    # # - Display image
-    displayImage(image, True, 'Original', False)
+        image = loadImage(filename)
+        if image is None:
+            Global.logPrint("Failed to load image", 'error')
+            exit()
+        nbBands = image.shape[2]
+        Global.logPrint("Image info: " + str(image.shape[0]) + ", " + str(image.shape[1]) + ", nbBands=" + str(nbBands))
 
-    # # - Display histogram
-    displayHist(image, False, 'r')
+        # # - Downsample image
+        if nbBands == 1:
+            image = downsample(image)
 
-    # # - Display cumulative histogram
-    displayCumHist(image)
+        # # - Display image
+        displayImage(image, True, 'Original', False)
 
-    # # - Equalize the histogram
-    image = equalizeHist(image)
-    displayImage(image, True, 'equalizeHist')
+        # # - Display histogram
+        displayHist(image, False)
+
+        # # - Display cumulative histogram
+        displayCumHist(image)
+
+        # # - Equalize the histogram
+        if nbBands == 1:
+            image = equalizeHist(image)
+            displayImage(image, True, 'equalizeHist')
+
 
     cv2.destroyAllWindows()
     exit()

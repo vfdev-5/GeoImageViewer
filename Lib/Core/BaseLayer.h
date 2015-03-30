@@ -11,7 +11,19 @@ namespace Core
 {
 
 //******************************************************************************
+/*!
+  \class BaseLayer
+  \brief base structure used to represent graphics item of the ShapeViewer.
+  It has properties:
+    - if layer is visible
+    - opacity
+    - type of layer
+    - z value
+    - if can be saved
 
+ */
+
+//******************************************************************************
 
 class BaseLayer : public QObject
 {

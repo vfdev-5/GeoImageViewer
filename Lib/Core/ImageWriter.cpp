@@ -6,7 +6,8 @@
 
 // Project
 #include "ImageWriter.h"
-#include "ImageDataProvider.h";
+#include "ImageDataProvider.h"
+#include "GeoImageLayer.h"
 
 namespace Core
 {
@@ -40,9 +41,8 @@ ImageWriter::~ImageWriter()
 
 //******************************************************************************
 
-bool ImageWriter::write(const QString &outputfilename, const ImageDataProvider *data)
+bool ImageWriter::write(const QString &outputfilename, const ImageDataProvider *data, const GeoImageLayer * dataInfo)
 {
-
     if (QFileInfo(outputfilename).exists())
     {
         if (!QFile(outputfilename).remove())
@@ -58,6 +58,7 @@ bool ImageWriter::write(const QString &outputfilename, const ImageDataProvider *
 
     _task->setOutputFile(outputfilename);
     _task->setDataProvider(data);
+    _task->setDataInfo(dataInfo);
     _isAsyncTask = false;
     _task->run();
     return QFileInfo(outputfilename).exists();
@@ -65,7 +66,7 @@ bool ImageWriter::write(const QString &outputfilename, const ImageDataProvider *
 
 //******************************************************************************
 
-bool ImageWriter::writeInBackground(const QString &outputfilename, const ImageDataProvider *data)
+bool ImageWriter::writeInBackground(const QString &outputfilename, const ImageDataProvider *data, const GeoImageLayer *dataInfo)
 {
 
     if (QFileInfo(outputfilename).exists())
@@ -83,6 +84,7 @@ bool ImageWriter::writeInBackground(const QString &outputfilename, const ImageDa
 
     _task->setOutputFile(outputfilename);
     _task->setDataProvider(data);
+    _task->setDataInfo(dataInfo);
     _isAsyncTask = true;
 
     QThreadPool * pool = QThreadPool::globalInstance();
@@ -145,12 +147,15 @@ void WriteImageTask::run()
     Cancel();
     _imageWriter->writeProgressValueChanged(50);
 
-    // Projection
-    QString projStr = _dataProvider->fetchProjectionRef();
-    QVector<double> geoTransform;
+    // set Geo info
+    QString projStr = _dataInfo->getProjectionRef();
+    QVector<double> geoTransform = _dataInfo->getGeoTransform();
+    double nodatavalue = ImageDataProvider::NoDataValue;
+    QList< QPair<QString, QString> > metadata = _dataInfo->getMetadata();
 
     bool res = Core::writeToFile(_filename, data,
-                                 projStr, geoTransform);
+                                 projStr, geoTransform,
+                                 nodatavalue, metadata);
 
     _imageWriter->writeProgressValueChanged(100);
     _imageWriter->taskFinished(res);

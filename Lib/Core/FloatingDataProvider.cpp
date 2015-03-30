@@ -15,8 +15,7 @@ namespace Core
 //******************************************************************************
 
 FloatingDataProvider::FloatingDataProvider(QObject *parent) :
-    ImageDataProvider(parent),
-    _source(0)
+    ImageDataProvider(parent)
 {
 }
 
@@ -117,8 +116,7 @@ bool FloatingDataProvider::create(const QString &name, const cv::Mat &src, const
             return false;
     }
 
-    _source = 0;
-    _intersection = intersection;
+//    _intersection = intersection;
 
     setImageName("Region of " + name);
     // Copy input info :
@@ -183,8 +181,7 @@ FloatingDataProvider* FloatingDataProvider::createDataProvider(const ImageDataPr
         return dst;
 
     dst = new FloatingDataProvider();
-    dst->_source = src;
-    dst->_intersection = intersection;
+//    dst->_intersection = intersection;
 
     dst->setImageName("Region of " + src->getImageName());
     // Copy input info :
@@ -214,6 +211,10 @@ FloatingDataProvider* FloatingDataProvider::createDataProvider(const ImageDataPr
         return 0;
     }
 
+    // setup geo info
+    dst->_projectionRef = src->fetchProjectionRef();
+    dst->_geoExtent = src->fetchGeoExtent(intersection);
+    dst->_geoTransform = Core::computeGeoTransform(dst->_geoExtent, intersection);
 
     return dst;
 }
@@ -222,7 +223,15 @@ FloatingDataProvider* FloatingDataProvider::createDataProvider(const ImageDataPr
 
 QPolygonF FloatingDataProvider::fetchGeoExtent(const QRect &pixelExtent) const
 {
-    return _source ? _source->fetchGeoExtent(pixelExtent) : ImageDataProvider::fetchGeoExtent();
+    if (pixelExtent.isEmpty())
+    {
+        return _geoExtent;
+    }
+    else
+    {
+        // compute geo extent for given pixelExtent :
+        return QPolygonF();
+    }
 }
 
 //******************************************************************************

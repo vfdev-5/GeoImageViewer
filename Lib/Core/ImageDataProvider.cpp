@@ -281,10 +281,12 @@ QPolygonF GDALDataProvider::fetchGeoExtent(const QRect &pixelExtent) const
 
 //******************************************************************************
 
-//QRectF GDALDataProvider::fetchGeoBBox() const
-//{
-//    return computeGeoExtent(_dataset).boundingRect();
-//}
+QVector<double> GDALDataProvider::fetchGeoTransform() const
+{
+    QVector<double> out(6);
+    _dataset->GetGeoTransform(out.data());
+    return out;
+}
 
 //******************************************************************************
 

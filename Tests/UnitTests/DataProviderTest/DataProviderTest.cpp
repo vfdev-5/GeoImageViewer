@@ -19,6 +19,41 @@ int HEIGHT = 2000;
 int DEPTH  = CV_16UC4;
 cv::Mat TEST_MATRIX;
 
+QString PROJECTION_STR;
+QVector<double> GEO_TRANSFORM;
+double NO_DATA_VALUE=(1<<16) - 1;
+QList< QPair<QString,QString> > METADATA;
+QPolygonF GEO_EXTENT;
+
+
+bool compareVectors(const QVector<double> & v1, const QVector<double> & v2, double tol = 1e-8)
+{
+    if (v1.size() != v2.size())
+        return false;
+
+    for (int i=0;i<v1.size();i++)
+    {
+        if (qAbs(v1[i] - v2[i]) > tol)
+            return false;
+    }
+    return true;
+}
+
+bool comparePolygons(const QPolygonF & v1, const QPolygonF & v2, double tol = 1e-5)
+{
+    if (v1.size() != v2.size())
+        return false;
+
+    for (int i=0;i<v1.size();i++)
+    {
+        QPointF p = v1[i] - v2[i];
+        if (qSqrt(p.x()*p.x() + p.y()*p.y()) > tol)
+            return false;
+    }
+    return true;
+}
+
+
 //*************************************************************************
 
 void DataProviderTest::initTestCase()
@@ -61,7 +96,27 @@ void DataProviderTest::initTestCase()
                         "/../../GeoImageViewer_source/Tests/Data/");
     QString path = QFileInfo("Input:").absoluteFilePath() + "/test_image.tif";
 
-    QVERIFY(Core::writeToFile(path, TEST_MATRIX));
+    PROJECTION_STR = Core::getProjectionStrFromGeoCS();
+
+    GEO_TRANSFORM.resize(6);
+    GEO_TRANSFORM[0] = 1.358847; // Origin X
+    GEO_TRANSFORM[3] = 43.575298;  // Origin Y
+    GEO_TRANSFORM[2] = GEO_TRANSFORM[4] = 0.0;
+    GEO_TRANSFORM[1] = 0.0001; // Step X
+    GEO_TRANSFORM[5] = -0.0001;// Step Y
+    METADATA <<  QPair<QString,QString>("My_MD_1","THIS IS A TEST IMAGE");
+    METADATA <<  QPair<QString,QString>("My_MD_VERSION","0.0");
+    METADATA <<  QPair<QString,QString>("My_MD_GEO","Somewhere");
+    METADATA <<  QPair<QString,QString>("My_MD_Satellite","NA");
+    // (0,0) -> (w-1,0) -> (w-1,h-1) -> (0,h-1)
+    GEO_EXTENT << QPointF(GEO_TRANSFORM[0], GEO_TRANSFORM[3]);
+    GEO_EXTENT << QPointF(GEO_TRANSFORM[0]+GEO_TRANSFORM[1]*(WIDTH-1), GEO_TRANSFORM[3]);
+    GEO_EXTENT << QPointF(GEO_TRANSFORM[0]+GEO_TRANSFORM[1]*(WIDTH-1), GEO_TRANSFORM[3]+GEO_TRANSFORM[5]*(HEIGHT-1));
+    GEO_EXTENT << QPointF(GEO_TRANSFORM[0], GEO_TRANSFORM[3]+GEO_TRANSFORM[5]*(HEIGHT-1));
+
+    QVERIFY(Core::writeToFile(path, TEST_MATRIX,
+                              PROJECTION_STR, GEO_TRANSFORM,
+                              NO_DATA_VALUE, METADATA));
 
     QVERIFY(QFile(path).exists());
 
@@ -78,6 +133,13 @@ void DataProviderTest::test()
     cv::Mat m2;
     TEST_MATRIX.convertTo(m2, m.depth());
     QVERIFY(Core::isEqual(m,m2));
+
+    // Check geo info :
+    QVERIFY( Core::compareProjections(_provider->fetchProjectionRef(), PROJECTION_STR) );
+    QVERIFY( comparePolygons(_provider->fetchGeoExtent(), GEO_EXTENT) );
+    QVERIFY( compareVectors(_provider->fetchGeoTransform(), GEO_TRANSFORM) );
+    QVERIFY( _provider->getPixelExtent() == QRect(0,0,WIDTH,HEIGHT));
+
 }
 
 //*************************************************************************
@@ -92,11 +154,45 @@ void DataProviderTest::test2()
     QVERIFY(provider);
     cv::Mat mSrc = _provider->getImageData();
     cv::Mat mDst = provider->getImageData();
-    delete provider;
     QVERIFY(Core::isEqual(mSrc,mDst));
 
+
+    // Check geo info :
+    QVERIFY( Core::compareProjections(_provider->fetchProjectionRef(), provider->fetchProjectionRef()) );
+    QVERIFY( comparePolygons(_provider->fetchGeoExtent(), provider->fetchGeoExtent()) );
+    QVERIFY( compareVectors(_provider->fetchGeoTransform(), provider->fetchGeoTransform()) );
+    QVERIFY( _provider->getPixelExtent() == provider->getPixelExtent() );
+
+    delete provider;
 }
 
+//*************************************************************************
+
+void DataProviderTest::test2_1()
+{
+    QVERIFY(_provider);
+
+    // IS NOT FINISHED
+//    QRect pe = _provider->getPixelExtent().adjusted(-10, -20, -30, -40);
+
+//    Core::FloatingDataProvider * provider =
+//            Core::FloatingDataProvider::createDataProvider(_provider, pe);
+
+//    QVERIFY(provider);
+//    cv::Mat mSrc = _provider->getImageData();
+//    cv::Mat mDst = provider->getImageData();
+//    cv::Rect r(pe.x(),pe.y(),pe.width(),pe.height());
+//    QVERIFY(Core::isEqual(mSrc(r),mDst));
+
+
+//    // Check geo info :
+//    QVERIFY( Core::compareProjections(_provider->fetchProjectionRef(), provider->fetchProjectionRef()) );
+//    QVERIFY( _provider->fetchGeoExtent() == provider->fetchGeoExtent() );
+//    QVERIFY( _provider->fetchGeoTransform() == provider->fetchGeoTransform() );
+//    QVERIFY( _provider->getPixelExtent() == provider->getPixelExtent() );
+
+//    delete provider;
+}
 
 //*************************************************************************
 

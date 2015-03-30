@@ -4,6 +4,8 @@
 // Qt
 #include <QPolygonF>
 #include <QVariant>
+#include <QPair>
+#include <QList>
 
 // GDAL
 #include <gdal_priv.h>
@@ -53,7 +55,7 @@ signals:
  */
 cv::Mat GIV_DLL_EXPORT displayMat(const cv::Mat & inputImage, bool showMinMax=false, const QString &windowName=QString(), bool waitKey=true, bool rescale=true);
 
-bool GIV_DLL_EXPORT isEqual(const cv::Mat & src, const cv::Mat & dst);
+bool GIV_DLL_EXPORT isEqual(const cv::Mat & src, const cv::Mat & dst, double tol = 1e-5);
 
 void GIV_DLL_EXPORT printMat(const cv::Mat & inputImage, const QString &windowName=QString());
 
@@ -62,10 +64,17 @@ void GIV_DLL_EXPORT printMat(const cv::Mat & inputImage, const QString &windowNa
 //******************************************************************************
 /*!
  * \brief computeGeoExtent method
- * \param dataset
- * \return Geo Extent in LatLong computed from image corners using image projection info
+ * \param dataset, pixelExtent
+ * \return Geo Extent in LatLong computed for the pixelExtent using image projection info
  */
 QPolygonF GIV_DLL_EXPORT computeGeoExtent(GDALDataset *dataset, const QRect & pixelExtent = QRect());
+
+/*!
+ * \brief computeGeoTransform method
+ * \param dataset, geoExtent, pixelExtent
+ * \return geo transform vector computed for the geoExtent using image projection info
+ */
+QVector<double> GIV_DLL_EXPORT computeGeoTransform(const QPolygonF &geoExtent, const QRect &pixelExtent);
 
 /*!
  * \brief createOverviewes method to create an overview .ovr file to optimize data extraction
@@ -81,6 +90,23 @@ bool GIV_DLL_EXPORT createOverviews(GDALDataset * dataset, ProgressReporter *rep
  * \return true if file contains subsets
  */
 bool GIV_DLL_EXPORT isSubsetFile(const QString & filename, QStringList &subsetNames, QStringList &subsetDescriptions);
+
+/*!
+ \brief getProjectionStrFromGeoCS method to create projection string from geographic coordinate system name
+ */
+QString GIV_DLL_EXPORT getProjectionStrFromGeoCS(const QString & gcs = "WGS84");
+
+//QString GIV_DLL_EXPORT getProjectionStrFromEPSG(int epsgCode = 4326);
+
+/*!
+ \brief compareProjections method to compare projection strings
+ */
+bool GIV_DLL_EXPORT compareProjections(const QString & prStr1, const QString & prStr2);
+
+/*!
+ \brief isGeoProjection method to check if projection is geographic
+ */
+bool GIV_DLL_EXPORT isGeoProjection(const QString & prStr);
 
 //******************************************************************************
 // Image Computation methods
@@ -129,7 +155,9 @@ void GIV_DLL_EXPORT computeLocalMinMax(const QVector<double> & data,
 //******************************************************************************
 
 bool GIV_DLL_EXPORT writeToFile(const QString & outputFilename, const cv::Mat & image,
-                 const QString & projectionStr = QString(), const QVector<double> & geoTransform = QVector<double>());
+                                const QString & projectionStr = QString(), const QVector<double> & geoTransform = QVector<double>(),
+                                double nodatavalue = -123456789.0,
+                                const QList< QPair<QString,QString> > & metadata = QList< QPair<QString,QString> >());
 
 //******************************************************************************
 // Type conversion methods

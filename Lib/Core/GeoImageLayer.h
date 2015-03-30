@@ -10,14 +10,17 @@
 
 // Project
 #include "Global.h"
+#include "LibExport.h"
 #include "GeoShapeLayer.h"
 
 namespace Core
 {
 
+typedef QPair<QString, QString> MetadataItem;
+
 //******************************************************************************
 
-class GeoImageLayer : public GeoShapeLayer
+class GIV_DLL_EXPORT GeoImageLayer : public GeoShapeLayer
 {
     Q_OBJECT
 
@@ -41,16 +44,28 @@ class GeoImageLayer : public GeoShapeLayer
     Q_PROPERTY(QString projectionRef READ getProjectionRef)
     PROPERTY_ACCESSORS(QString, projectionRef, getProjectionRef, setProjectionRef)
 
+    Q_PROPERTY(QVector<double> geoTransform READ getGeoTransform)
+    PROPERTY_ACCESSORS(QVector<double>, geoTransform, getGeoTransform, setGeoTransform)
+
+//    Q_PROPERTY(QList<MetadataItem> metadata READ getMetadata)
+    PROPERTY_ACCESSORS(QList< MetadataItem >, metadata, getMetadata, setMetadata)
+
+
     Q_CLASSINFO("nbBands","label:Number of channels")
     Q_CLASSINFO("depth","label:Encoding (bytes)")
     Q_CLASSINFO("isComplex","label:Complex pixel")
     Q_CLASSINFO("projectionRef","label:Projection reference")
+    Q_CLASSINFO("geoTransform","label:Geo transform")
+    Q_CLASSINFO("metadata","label:Image metadata")
 
 public:
     explicit GeoImageLayer(QObject *parent = 0);
 
     virtual bool canSave()
     { return true; }
+
+    void addMetadataItem(const QString & name, const QString & data)
+    { _metadata.append(MetadataItem(name, data)); }
 
 
 };

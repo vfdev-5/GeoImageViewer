@@ -34,6 +34,10 @@ Makefile*
 # Python 
 *.pyc
 
+# ignore CMakeLists.txt.user
+CMakeLists.txt.user
+
 # Mac sheet
 .DS_Store
+
 

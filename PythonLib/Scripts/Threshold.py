@@ -1,6 +1,7 @@
 
 # Python
 import random as rnd
+import time
 
 # Numpy
 import numpy as np
@@ -17,10 +18,11 @@ import cv2
 # Project
 import Global
 import ImageTools
+import ImageCommon
 
 
-def _computeIterThreshold():
-    pass
+def assertSameSize(image, mask):
+    assert image.shape[0] == mask.shape[0] and image.shape[1] == mask.shape[1], Global.logPrint('Image and mask should have same size', level='error')
 
 
 def enhanceLow(nparray, center, delta=50.0):
@@ -31,8 +33,8 @@ def enhanceLow(nparray, center, delta=50.0):
     return out
 
 ##def meanStdVec3(x, nparray):
-##    ImageTools.assert1D(nparray)
-##    ImageTools.assert1D(x)
+##    ImageCommon.assert1D(nparray)
+##    ImageCommon.assert1D(x)
 ##    assert nparray.shape[0] == x.shape[0], Global.logPrint("Input arrays should have same length")
 ##
 ##    meanVec = np.zeros(x.shape)
@@ -57,8 +59,8 @@ def meanStdVec22(x, nparray):
     stdVec[i] = sqrt(sum(x[j]**2 * nparray[j], {j=0,i}) / sum(nparray) - meanVec[i]**2)
 
     """
-    ImageTools.assert1D(nparray)
-    ImageTools.assert1D(x)
+    ImageCommon.assert1D(nparray)
+    ImageCommon.assert1D(x)
     assert nparray.shape[0] == x.shape[0], Global.logPrint("Input arrays should have same length")
 
     meanVec = np.zeros(x.shape)
@@ -77,8 +79,8 @@ def meanStdVec22(x, nparray):
 
 
 def meanStdVec2(x, nparray):
-    ImageTools.assert1D(nparray)
-    ImageTools.assert1D(x)
+    ImageCommon.assert1D(nparray)
+    ImageCommon.assert1D(x)
     assert nparray.shape[0] == x.shape[0], Global.logPrint("Input arrays should have same length")
 
     meanVec = np.zeros(x.shape)
@@ -102,7 +104,7 @@ def meanStdVec2(x, nparray):
     return meanVec, stdVec
 
 def meanStdVec(image):
-    ImageTools.assertOneBand(image)
+    ImageCommon.assertOneBand(image)
     [bandHists, minValues, maxValues] = ImageTools.computeNormHist(image)
 
     step = (maxValues[0]-minValues[0])/(bandHists.shape[0])
@@ -128,7 +130,7 @@ def grayLevelHistogram(image):
     mean(t) = sum( v(i) * hist(i),{i,0,t-1} ) / sum(hist(i),{i,0,histSize-1})
 
     """
-    ImageTools.assertOneBand(image)
+    ImageCommon.assertOneBand(image)
 
     [bandHists, minValues, maxValues] = ImageTools.computeNormHist(image)
 
@@ -194,7 +196,7 @@ def iterativeSelection(image):
     t1(k) = sum( v(i) * hist(i),{i,threshold(k-1),histSize-1} ) / sum(hist(i),{i,threshold(k-1),histSize-1})
 
     """
-    ImageTools.assertOneBand(image)
+    ImageCommon.assertOneBand(image)
 
     [bandHists, minValues, maxValues] = ImageTools.computeNormHist(image)
 
@@ -238,7 +240,7 @@ def iterativeSelection(image):
 
 def kmeans(image):
 
-    ImageTools.assertOneBand(image)
+    ImageCommon.assertOneBand(image)
 
 ##    nparray = np.zeros((nparray0.shape[0], 2), dtype=np.float32)
 ##    nparray[:,0]=nparray0[:];
@@ -307,8 +309,8 @@ def invTransfSampling(x, nhist, n=1000):
 
     return n randomly distributed values in range of x
     """
-    ImageTools.assert1D(nhist)
-    ImageTools.assert1D(x)
+    ImageCommon.assert1D(nhist)
+    ImageCommon.assert1D(x)
     assert nhist.shape[0] == x.shape[0], Global.logPrint("Input arrays should have same length")
 
     cdf = ImageTools.norm(np.cumsum(nhist))
@@ -332,8 +334,8 @@ def invTransfSampling2(x, nhist, n=1000):
 
     return n randomly distributed values in range of x
     """
-    ImageTools.assert1D(nhist)
-    ImageTools.assert1D(x)
+    ImageCommon.assert1D(nhist)
+    ImageCommon.assert1D(x)
     assert nhist.shape[0] == x.shape[0], Global.logPrint("Input arrays should have same length")
 
     cdf = ImageTools.norm(np.cumsum(nhist))
@@ -358,8 +360,8 @@ def estimateGMM(x, nhist):
     2)
 
     """
-    ImageTools.assert1D(nhist)
-    ImageTools.assert1D(x)
+    ImageCommon.assert1D(nhist)
+    ImageCommon.assert1D(x)
     assert nhist.shape[0] == x.shape[0], Global.logPrint("Input arrays should have same length")
 
     # generate points from the histogram :
@@ -429,7 +431,7 @@ def separateTwoPeaks(image):
     Method to threshold image computing the histogram and choosing the threshold between two peaks
     return thresholded image if two peaks are identified and None otherwise
     """
-    ImageTools.assertOneBand(image)
+    ImageCommon.assertOneBand(image)
 
     # compute histogram :
     [bandHists, minValues, maxValues] = ImageTools.computeNormHist(image, 1000)
@@ -477,7 +479,7 @@ def separateTwoPeaks2(image):
     Method to threshold image computing the histogram and choosing the threshold between two peaks
     return thresholded image if two peaks are identified and None otherwise
     """
-    ImageTools.assertOneBand(image)
+    ImageCommon.assertOneBand(image)
 
     # compute histogram :
     [bandHists, minValues, maxValues] = ImageTools.computeNormHist(image, 1000)
@@ -495,8 +497,12 @@ def separateTwoPeaks2(image):
     # Found two peaks
     mu1, std1, a1, mu2, std2, a2 = params
     # assert that a1 and a2 are positive
-    if a1 < 0 or a2< 0:
+    if a1 < 0 or a2 < 0:
         return None
+    # assert that std1 and std2 are positive
+    if std1 < 0 or std2 < 0:
+        return None
+
 
     # Compute threshold value as middle between two peaks
     a = 0.6
@@ -509,8 +515,8 @@ def separateTwoPeaks2(image):
 
 
 def gaussFitData(x, nparray):
-    ImageTools.assert1D(nparray)
-    ImageTools.assert1D(x)
+    ImageCommon.assert1D(nparray)
+    ImageCommon.assert1D(x)
 
 
     # Initial guess :
@@ -538,10 +544,241 @@ def gaussFitData(x, nparray):
     print sol
     return sol[0]
 
+
+def freqFilter(image, mask):
+    """
+    Method to filter image using fft mask
+    return filtered image
+    """
+    ImageCommon.assertOneBand(image)
+    ImageCommon.assertOneBand(mask)
+    assert image.shape[0] == mask.shape[0] and image.shape[1] == mask.shape[1], Global.logPrint('Image and mask should have same size', level='error')
+
+    dftImage = ImageTools.computeFFT(image)
+
+    filteredDftImage = dftImage
+    for i in range(2):
+        filteredDftImage[:,:,i] = filteredDftImage[:,:,i] * mask
+
+    # inverse transform dft
+    invFilteredDftImage = cv2.idft(filteredDftImage, flags=cv2.DFT_COMPLEX_OUTPUT | cv2.DFT_SCALE)
+    filteredImage = cv2.magnitude(invFilteredDftImage[:,:,0],invFilteredDftImage[:,:,1])
+    return filteredImage
+
+
+def gaussianLowPassFreqFilter(image, sigmax=3.0, sigmay=3.0):
+    """
+    Method to filter image using its fft and low-pass gaussian filter on frequencies
+    parameters sigmax, sigmay define gaussian filter and low-pass band
+    return filtered image
+    """
+    ImageCommon.assertOneBand(image)
+
+    # Generate mask
+    mask = np.zeros((image.shape[0], image.shape[1]))
+    # Clear all frequencies except those in a box
+    h = mask.shape[0]
+    w = mask.shape[1]
+    # as a 2D gauss curve
+    szH = int(6*sigmax*2*np.pi*np.sqrt(sigmax))
+    szW = int(6*sigmay*2*np.pi*np.sqrt(sigmay))
+    for i in range(2*szW):
+        x = i - szW
+        indx = w/2-szW + i
+        indx = 0 if indx < 0 else w-1 if indx >= w else indx
+        for j in range(2*szH):
+            y = j - szH
+            indy = h/2-szH + j
+            indy = 0 if indy < 0 else h-1 if indy >= h else indy
+            mask[indy, indx] = np.exp(-(x**2 + y**2)/(4.0 * sigmax**2 * sigmay**2))
+
+    filteredImage = freqFilter(image, mask)
+    return filteredImage
+
+
+def thresholdModule(image):
+    ImageCommon.assertOneBand(image)
+
+    mm = image.min()
+    MM = image.max()
+
+    def update(dummy=None):
+        t = cv2.getTrackbarPos('threshold', name) * 0.01 * (MM - mm)
+        print t
+        tImage = image.copy()
+        tImage[tImage > t] = 1.0
+        tImage[tImage < t] = 0.0
+        ImageTools.displayImage(tImage, True, name, False)
+
+    name = "Threshold Module"
+    update()
+    cv2.createTrackbar('threshold', name, 50, 100, update)
+
+    while True:
+        ch = 0xFF & cv2.waitKey()
+        if ch == 27:
+            break
+
+
+
+def floodFillModule(image):
+
+    global seed_pt
+    displayLimit = 800
+    maxdim = max(image.shape[0], image.shape[1])
+    if maxdim > displayLimit:
+        factor = maxdim * 1.0 / displayLimit
+        image = cv2.resize(image, None,fx=1.0/factor,fy=1.0/factor)
+
+    mm = image.min()
+    MM = image.max()
+
+    h, w = image.shape[:2]
+    mask = np.zeros((h+2, w+2), np.uint8)
+    seed_pt = None
+    fixed_range = True
+    connectivity = 4
+
+    name = 'floodFill'
+
+    def update(dummy=None):
+        if seed_pt is None:
+            ImageTools.displayImage(image, False, name, False, False)
+            return
+        flooded = image.copy()
+        mask[:] = 0
+        lo = cv2.getTrackbarPos('lo', name) * 0.01 * (MM - mm)
+        hi = cv2.getTrackbarPos('hi', name) * 0.01 * (MM - mm)
+        flags = connectivity
+        if fixed_range:
+            flags |= cv2.FLOODFILL_FIXED_RANGE
+        cv2.floodFill(flooded, mask, seed_pt, (0, 0, 0), (lo,)*3, (hi,)*3, flags)
+        cv2.circle(flooded, seed_pt, 2, (0, 0, 255), -1)
+        ImageTools.displayImage(flooded, False, name, False, False)
+
+    def onmouse(event, x, y, flags, param):
+        global seed_pt
+        if flags & cv2.EVENT_FLAG_LBUTTON:
+            seed_pt = x, y
+            update()
+
+    update()
+    cv2.setMouseCallback(name, onmouse)
+    cv2.createTrackbar('lo', name, 5, 100, update)
+    cv2.createTrackbar('hi', name, 50, 100, update)
+
+    while True:
+        ch = 0xFF & cv2.waitKey()
+        if ch == 27:
+            break
+        if ch == ord('f'):
+            fixed_range = not fixed_range
+            print 'using %s range' % ('floating', 'fixed')[fixed_range]
+            update()
+        if ch == ord('c'):
+            connectivity = 12-connectivity
+            print 'connectivity =', connectivity
+            update()
+    cv2.destroyAllWindows()
+
+
+
+
+
+def floodFill(image, seedsMask, lowDiff=0.5, upDiff=0.5):
+    """
+    Image is normalized between 0.0 and 1.0
+    seedsMask should a mask image of same size as image
+    """
+    ImageCommon.assertOneBand(image)
+    ImageCommon.assertOneBand(seedsMask)
+    assertSameSize(image, seedsMask)
+
+    seeds = np.transpose(np.nonzero(seedsMask))
+
+    h, w = image.shape[:2]
+    mask = np.zeros((h+2, w+2), np.uint8)
+    flags = 8 | cv2.FLOODFILL_MASK_ONLY | cv2.FLOODFILL_FIXED_RANGE
+
+    for pt in seeds:
+        if mask[pt[0]+1, pt[1]+1] == 1:
+            continue
+        cv2.floodFill(image, mask, (pt[1], pt[0]), (1.0), (lowDiff), (upDiff), flags=flags)
+
+    mask = mask[1:-1,1:-1]
+    return mask
+
+
+def enhanceContrast(image, low=1.5, high=97.5):
+    """
+    Method to enhance image contrast using quantiles
+    """
+    [bandHists, minValues, maxValues] = ImageTools.computeNormHist(image, 1000)
+
+    nbBands = 1 if len(image.shape) == 2 else image.shape[2]
+    out = image.copy()
+    for i in range(nbBands):
+
+        bandData = out if nbBands == 1 else out[:,:,bandIndex]
+        nhist = bandHists[i,:]
+        minValue = minValues[i]
+        maxValue = maxValues[i]
+            # Compute quantile values to reject near-zero histogram values
+        [qmin, qmax] = ImageTools.computeQuantiles(nhist, low * 0.01, high * 0.01)
+##        print qmin, qmax
+        minValue = minValues[0] + qmin * (maxValues[0] - minValues[0]) * 1.0/nhist.shape[0]
+        maxValue = minValues[0] + qmax * (maxValues[0] - minValues[0]) * 1.0/nhist.shape[0]
+            # Theshold
+        bandData[bandData < minValue] = minValue
+        bandData[bandData > maxValue] = maxValue
+
+    return out
+
+
+def stackThresholding(image, n=15, sigma=0.7, uMin=None, uMax=None):
+    """
+    Method to segment image using threshold filters and history stack
+    Input image is thresholded n times :
+    Thresholded image(i) = threshold(image , min(image) + step * i )
+    with a step starting from minimum of the image values until
+    mean value of the image minus std
+    All thresholded images are summed with weights distributed as gaussian with mean = 0 and given sigma
+    Return segemented image
+    """
+    ImageCommon.assertIsNPArray(image)
+
+    mm = image.min() if uMin is None else uMin
+    MM = image.mean() - image.std() if uMax is None else uMax
+
+    step = (MM - mm) *1.0 / n
+    x = np.arange(mm,MM,step)
+    weight = np.exp(-(x/sigma)**2)
+    h,w = image.shape[:2]
+    stackThresholdedImage = np.zeros((h,w), dtype=np.float32)
+    for i in range(n):
+        tImage = np.zeros((h,w))
+        tImage[ image < x[i] ] = 1.0;
+##        ImageTools.displayImage(tImage, True, "tImage")
+        stackThresholdedImage += weight[i] * tImage
+
+    return stackThresholdedImage
+
+
+
+
+
+
 if __name__ == '__main__':
 
 
-##    x=np.arange(10,110,0.05)
+##    x=np.arange(10,500,0.1)
+##    y = np.power(x,0.3333) + np.power(x,3.0)
+##    plt.plot(x,y,'-g')
+##    plt.show()
+##
+##    exit()
+
+
 ####    h=np.arange(0.1,1.0,0.01)
 ##    h=np.zeros(100)
 ##    h[15:25] = 0.3
@@ -564,8 +801,15 @@ if __name__ == '__main__':
 ##    exit()
 
 
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\filtered\\img5.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_1.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_4.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_5.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_6.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_7.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_9.tif"
+    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_10.tif"
 
-    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\filtered\\img5.tif"
     image = ImageTools.loadImage(filename)
     if image is None:
         Global.logPrint("Failed to load image", 'error')
@@ -575,11 +819,143 @@ if __name__ == '__main__':
 
     ImageTools.displayImage(image, True, "Original", False)
 
-##    # compute histogram :
-##    [bandHists, minValues, maxValues] = ImageTools.computeNormHist(image, 1000)
-##    nhist = bandHists[0,:]
-##    minValue = minValues[0]
-##    maxValue = maxValues[0]
+# Pre-processing :
+    #   FFT Gauss filtering :
+    filteredImage = ImageTools.norm(gaussianLowPassFreqFilter(image, 4.0, 4.0))
+
+    #   Enhance contrast :
+    filteredImage = enhanceContrast(filteredImage, 0.55, 95.0)
+
+    ImageTools.displayImage(filteredImage, True, "pre-filtered image", False)
+##    ImageTools.displayHist(filteredImage, colors=['r'])
+
+
+# Stack Thresholding :
+    n = 20
+    sig = 1.0
+    uMin = filteredImage.min()
+    uMax = filteredImage.mean() - sig*filteredImage.std()
+    stackThresholdedImage = stackThresholding(filteredImage, n, sig, uMin, uMax)
+
+    ImageTools.displayImage(stackThresholdedImage, True, "stackThresholdedImage", False)
+
+
+# Flood fill
+    # get seeds
+    seedsThreshold = 0.6
+    seedsImage = ImageTools.norm(stackThresholdedImage)
+    seedsImage[ seedsImage >= seedsThreshold ] = 1.0
+    seedsImage[ seedsImage < seedsThreshold ] = 0.0
+
+    ImageTools.displayImage(seedsImage, True, "seedsImage", True)
+
+    start_time = time.time()
+    mask = floodFill(ImageTools.norm(stackThresholdedImage),seedsImage, lowDiff=0.5, upDiff=0.5)
+    elapsed = time.time() - start_time
+    print "Elapsed time", elapsed, "seconds"
+    ImageTools.displayImage(mask, True, "Mask image")
+
+    cv2.destroyAllWindows()
+    exit()
+
+
+# Use frequencies filter :
+##    mask = np.zeros(image.shape)
+
+    # Threshold frequencies:
+##    t1 = 300
+##    t2 = 50000
+##    print "thresholds : ", t1, t2
+##    mask[absDftImage > t1] = 1.0
+##    mask[absDftImage > t2] = 0.0
+
+    # Clear all frequencies except those in a box
+##    h = mask.shape[0]
+##    w = mask.shape[1]
+
+    # as a box
+##    szH = 12
+##    szW = 12
+##    mask[h/2-szH:h/2+szH,w/2-szW:w/2+szW] = 1.0
+    # as an ellipse
+##    szH = 12
+##    szW = 12
+##    mask[h/2-szH:h/2+szH,w/2-szW:w/2+szW] = 1.0
+##    for i in range(2*szW):
+##        x = i - szW
+##        for j in range(2*szH):
+##            y = j - szH
+##            if (x*1.0/szW)**2 + (y*1.0/szH)**2 > 1.0:
+##                mask[h/2-szH + j, w/2-szW + i] = 0.0
+    # as a 2D gauss curve
+##    sx = 5.0
+##    sy = 5.0
+##    f = 1.0
+##    szH = int(7*sx*2*np.pi*np.sqrt(sx))
+##    szW = int(7*sy*2*np.pi*np.sqrt(sy))
+##    for i in range(2*szW):
+##        x = i - szW
+##        for j in range(2*szH):
+##            y = j - szH
+##            mask[h/2-szH + j, w/2-szW + i] = f * np.exp(-(x**2 + y**2)/(4.0 * sx**2 * sy**2))
+
+##    mask[h/2:,:]=0.0
+##    mask[:,:w/2]=0.0
+##    mask[:h/2,:w/2]=0.0
+##    mask[h/2:,w/2:]=0.0
+
+##    ImageTools.displayImage(mask, True, "mask", True)
+
+
+    # Image threshold stack
+    n = 15
+    sig = 0.7
+    seedsThreshold = 0.9
+
+    mm = filteredImage.min()
+    MM = filteredImage.mean()
+    step = (MM - mm) *1.0 / n
+    x = np.arange(mm,MM,step)
+    weight = np.exp(-(x/sig)**2)
+    h,w = filteredImage.shape[:2]
+    stackThresholdedImage = np.zeros((h,w), dtype=np.float32)
+    for i in range(n):
+        tImage = np.zeros((h,w))
+        tImage[ filteredImage < x[i] ] = 1.0;
+        stackThresholdedImage += weight[i] * tImage
+
+    ImageTools.displayImage(stackThresholdedImage, True, "stackThresholdedImage", False)
+
+    seedsImage = ImageTools.norm(stackThresholdedImage)
+    seedsImage[ seedsImage >= seedsThreshold ] = 1.0
+    seedsImage[ seedsImage < seedsThreshold ] = 0.0
+
+    ImageTools.displayImage(seedsImage, True, "seedsImage", True)
+
+
+
+##    sobX = cv2.Sobel(filteredImage, -1, 0, 1, 7)
+##    sobY = cv2.Sobel(filteredImage, -1, 1, 0, 7)
+##    filteredImage = cv2.magnitude(sobX, sobY)
+##    filteredImage = cv2.Laplacian(filteredImage, cv2.CV_32F, ksize=7)
+
+
+##    ImageTools.displayImage(filteredImage, True, "2 Laplacian")
+##    ImageTools.displayHist(filteredImage, colors=['b'])
+
+
+# Try flood fill:
+##    floodFillModule(filteredImage)
+    start_time = time.time()
+    mask = floodFill(ImageTools.norm(stackThresholdedImage),seedsImage)
+    elapsed = time.time() - start_time
+    print "Elapsed time", elapsed, "seconds"
+    ImageTools.displayImage(mask, True, "Mask image")
+
+
+# Threshold module:
+##    thresholdModule(ImageTools.norm(stackThresholdedImage))
+
 
 
 
@@ -610,12 +986,16 @@ if __name__ == '__main__':
 ##        plt.plot(x,g1,'-r')
 ##    plt.show()
 
+##    filteredImage = image
 
-    sImage = separateTwoPeaks2(image)
-    if sImage is not None:
-        ImageTools.displayImage(sImage, True, "Tresholded")
-    else:
-        print "Failed to threshold image"
+# # #
+##    sImage = separateTwoPeaks2(filteredImage)
+##    if sImage is not None:
+##        ImageTools.displayImage(sImage, True, "Tresholded", False)
+##        ImageTools.displayHist(filteredImage, colors=['b'])
+##    else:
+##        print "Failed to threshold image"
+# # #
 
 
 ##    meanVec, stdVec, x = meanStdVec(image)

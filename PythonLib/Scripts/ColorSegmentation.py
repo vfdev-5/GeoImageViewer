@@ -30,6 +30,7 @@ def segment2(image, nbClasses=2):
     pass
 
 
+
 def segment(image, tol=0.01, isEqual=lambda x,y,tol : (x-y)*(x-y)*1.0/x *1.0/y < tol):
 
     """

@@ -54,7 +54,6 @@ class GIV_DLL_EXPORT ImageDataProvider : public QObject
     PROPERTY_ACCESSORS(QVector<QVector<double> >, bandHistograms, getBandHistograms, setBandHistograms)
     PROPERTY_GETACCESSOR(QStringList, bandNames, getBandNames)
 
-
     // Option
     PROPERTY_ACCESSORS(bool, cutNoDataBRBoundary, getCutNoDataBRBoundary, setCutNoDataBRBoundary)
 
@@ -67,6 +66,8 @@ public:
     virtual QString fetchProjectionRef() const { return QString(); }
     virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const
     { Q_UNUSED(pixelExtent); return QPolygonF(); }
+    virtual QVector<double> fetchGeoTransform() const { return  QVector<double>(); }
+
 
 protected:
     static void setupDataInfo(const cv::Mat & src, ImageDataProvider * dst);
@@ -91,6 +92,7 @@ public:
 
     virtual QString fetchProjectionRef() const;
     virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const;
+    virtual QVector<double> fetchGeoTransform() const;
 
 };
 

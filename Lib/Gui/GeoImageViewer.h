@@ -64,6 +64,7 @@ protected:
     void filterGeoImageLayer(Core::BaseLayer*);
 
     Core::GeoImageItem * createGeoImageItem(Core::ImageDataProvider *, const QPointF &pos=QPointF());
+    Core::GeoImageLayer * createGeoImageLayer(const QString & type, Core::ImageDataProvider * provider, const QRect &userPixelExtent = QRect());
     virtual bool onSceneDragAndDrop(const QList<QUrl> & urls);
 
     Core::GeoImageItem * getGeoImageItem(Core::BaseLayer * layer);

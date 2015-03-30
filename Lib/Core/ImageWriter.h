@@ -13,6 +13,7 @@
 namespace Core
 {
 
+class GeoImageLayer;
 class ImageDataProvider;
 class WriteImageTask;
 
@@ -26,8 +27,8 @@ public:
     explicit ImageWriter(QObject *parent = 0);
     virtual ~ImageWriter();
 
-    bool write(const QString & outputfilename, const Core::ImageDataProvider * data);
-    bool writeInBackground(const QString & outputfilename, const Core::ImageDataProvider * data);
+    bool write(const QString & outputfilename, const Core::ImageDataProvider * data, const GeoImageLayer * dataInfo);
+    bool writeInBackground(const QString & outputfilename, const Core::ImageDataProvider * data, const GeoImageLayer * dataInfo);
     void cancel();
     bool isWorking()
     { return _isWorking; }
@@ -70,12 +71,16 @@ public:
     void setDataProvider(const ImageDataProvider * p)
     { _dataProvider = p; }
 
+    void setDataInfo(const GeoImageLayer * info)
+    { _dataInfo = info; }
+
 protected:
 
     bool _canceled;
     QString _filename;
     ImageWriter * _imageWriter;
     const ImageDataProvider * _dataProvider;
+    const GeoImageLayer * _dataInfo;
 };
 
 //******************************************************************************

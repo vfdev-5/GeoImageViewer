@@ -10,7 +10,6 @@
 // Tests
 #include "ImageWriterTest.h"
 #include "Core/LayerUtils.h"
-#include "Core/ImageDataProvider.h"
 #include "Core/FloatingDataProvider.h"
 
 namespace Tests
@@ -21,6 +20,12 @@ int HEIGHT = 2000;
 int DEPTH  = CV_16U;
 //int DEPTH2  = CV_16U;
 cv::Mat TEST_MATRIX;
+QString PROJECTION_STR;
+QVector<double> GEO_TRANSFORM;
+double NO_DATA_VALUE=(1<<16) - 1;
+QList< QPair<QString,QString> > METADATA;
+QPolygonF GEO_EXTENT;
+
 //cv::Mat TEST_MATRIX2;
 
 //*************************************************************************
@@ -46,12 +51,58 @@ void ImageWriterTest::initTestCase()
         }
     }
 
+//    QString p1 = Core::getProjectionStrFromEPSG();
+//    QString p2 = Core::getProjectionStrFromGeoCS();
+//    QVERIFY(p1 == p2);
+    PROJECTION_STR = Core::getProjectionStrFromGeoCS();
+
+    QVERIFY(Core::isGeoProjection(PROJECTION_STR));
+    QVERIFY(Core::compareProjections(PROJECTION_STR, PROJECTION_STR));
+
+    GEO_TRANSFORM.resize(6);
+    GEO_TRANSFORM[0] = 1.358847; // Origin X
+    GEO_TRANSFORM[3] = 43.575298;  // Origin Y
+    GEO_TRANSFORM[2] = GEO_TRANSFORM[4] = 0.0;
+    GEO_TRANSFORM[1] = 0.0001; // Step X
+    GEO_TRANSFORM[5] = -0.0001;// Step Y
+    METADATA <<  QPair<QString,QString>("My_MD_1","THIS IS A TEST IMAGE");
+    METADATA <<  QPair<QString,QString>("My_MD_VERSION","0.0");
+    METADATA <<  QPair<QString,QString>("My_MD_GEO","Somewhere");
+    METADATA <<  QPair<QString,QString>("My_MD_Satellite","NA");
+    // (0,0) -> (w-1,0) -> (w-1,h-1) -> (0,h-1)
+    GEO_EXTENT << QPointF(GEO_TRANSFORM[0], GEO_TRANSFORM[3]);
+    GEO_EXTENT << QPointF(GEO_TRANSFORM[0]+GEO_TRANSFORM[1]*(WIDTH-1), GEO_TRANSFORM[3]);
+    GEO_EXTENT << QPointF(GEO_TRANSFORM[0]+GEO_TRANSFORM[1]*(WIDTH-1), GEO_TRANSFORM[3]+GEO_TRANSFORM[5]*(HEIGHT-1));
+    GEO_EXTENT << QPointF(GEO_TRANSFORM[0], GEO_TRANSFORM[3]+GEO_TRANSFORM[5]*(HEIGHT-1));
+
 //    Core::displayMat(TEST_MATRIX, true, "TEST_MATRIX", false);
 
     // Create a Floating image data provider
     _provider = Core::FloatingDataProvider::createDataProvider("test", TEST_MATRIX);
     QVERIFY(_provider);
     _provider->setParent(this);
+
+    _provider->setProjectionRef(PROJECTION_STR);
+    _provider->setGeoTransform(GEO_TRANSFORM);
+    _provider->setGeoExtent(GEO_EXTENT);
+
+//    QRect pixelExtent = QRect(0,0,WIDTH,HEIGHT);
+//    QVector<double> gt = Core::computeGeoTransform(GEO_EXTENT, pixelExtent);
+//    QVERIFY(gt == GEO_TRANSFORM);
+
+
+    // Create a GeoItemLayer to store geo image info :
+    _geoInfo = new Core::GeoImageLayer(this);
+    _geoInfo->setType("Image");
+    _geoInfo->setImageName(_provider->getImageName());
+    _geoInfo->setNbBands(_provider->getInputNbBands());
+    _geoInfo->setDepthInBytes(_provider->getInputDepthInBytes());
+    _geoInfo->setIsComplex(_provider->inputIsComplex());
+    _geoInfo->setGeoExtent(_provider->fetchGeoExtent());
+    _geoInfo->setGeoBBox(_geoInfo->getGeoExtent().boundingRect());
+    _geoInfo->setPixelExtent(_provider->getPixelExtent());
+    _geoInfo->setProjectionRef(_provider->fetchProjectionRef());
+    _geoInfo->setGeoTransform(_provider->fetchGeoTransform());
 
     // check createDataProvider method
     cv::Mat m = _provider->getImageData();
@@ -67,7 +118,7 @@ void ImageWriterTest::test()
 {
     QString out = QFileInfo("Input:").absoluteFilePath() + "/test_image.tif";
 
-    QVERIFY(_imageWriter->write(out, _provider));
+    QVERIFY(_imageWriter->write(out, _provider, _geoInfo));
     QVERIFY(QFile(out).exists());
 
     Core::GDALDataProvider * provider = new Core::GDALDataProvider();
@@ -78,6 +129,12 @@ void ImageWriterTest::test()
 //    Core::displayMat(m, true, "m");
 //    Core::displayMat(m2, true, "m2");
     QVERIFY(Core::isEqual(m,m2));
+
+    // test geo info:
+    QVERIFY( Core::compareProjections(provider->fetchProjectionRef(), _geoInfo->getProjectionRef()) );
+    QVERIFY( provider->fetchGeoExtent() == _geoInfo->getGeoExtent() );
+    QVERIFY( provider->fetchGeoTransform() == _geoInfo->getGeoTransform() );
+
     delete provider;
     QVERIFY(QFile(out).remove());
 }
@@ -91,7 +148,7 @@ void ImageWriterTest::test2()
     connect(_imageWriter, &Core::ImageWriter::imageWriteFinished,
             this, &Tests::ImageWriterTest::onImageWriteFinished);
     writeFinished = false;
-    _imageWriter->writeInBackground(out, _provider);
+    _imageWriter->writeInBackground(out, _provider, _geoInfo);
 
     int i = 0;
     while (!writeFinished && i++ < 50)
@@ -115,6 +172,13 @@ void ImageWriterTest::onImageWriteFinished(bool ok)
 //    Core::displayMat(m, true, "m");
 //    Core::displayMat(m2, true, "m2");
     QVERIFY(Core::isEqual(m,m2));
+
+    // test geo info:
+    QVERIFY( Core::compareProjections(provider->fetchProjectionRef(), _geoInfo->getProjectionRef()) );
+    QVERIFY( provider->fetchGeoExtent() == _geoInfo->getGeoExtent() );
+    QVERIFY( provider->fetchGeoTransform() == _geoInfo->getGeoTransform() );
+
+
     delete provider;
 
     QVERIFY(QFile(out).remove());

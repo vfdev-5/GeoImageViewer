@@ -21,6 +21,7 @@ private slots:
     void initTestCase();
     void test();
     void test2();
+    void test2_1();
     void test3();
     void cleanupTestCase();
 

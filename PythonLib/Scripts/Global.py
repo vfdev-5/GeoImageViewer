@@ -1,4 +1,4 @@
-## ---- Collection of some useful global methods ----
+# Collection of some useful global methods
 
 # Python
 import os
@@ -9,15 +9,6 @@ import glob
 import datetime
 import time
 from functools import wraps
-
-# MatplotLib
-##HAS_MATPLOTLIB=False
-##try:
-##    import matplotlib.pyplot
-##    import matplotlib.colors
-##    HAS_MATPLOTLIB=True
-##except:
-##    HAS_MATPLOTLIB=False
 
 # setup enviroment if not yet done (case of usage of 7z in UnitTest)
 path = os.path.dirname(__file__)
@@ -36,19 +27,6 @@ def existsPath(path):
     else:
         return False
 
-
-## --- DEPRECATED ----
-##def getFilesFromPath(path, extensions=[]):
-##    files = []
-##    for f in os.listdir(path):
-##        if os.path.isfile(os.path.join(path, f)):
-##            if not extensions:
-##                files.append(f)
-##            else:
-##                for ext in extensions:
-##                    if os.path.splitext(f)[1] == ext:
-##                        files.append(f)
-##    return files
 
 def getBasename(filepath):
     bfn = os.path.basename(filepath)
@@ -69,11 +47,7 @@ def getFilesFromPath2(path, extensions=[]):
             else:
                 for ext in extensions:
                     fileExt='.'+'.'.join(f.split('.')[-ext.count('.'):])
-                    ## OLD CODE
-##                    if ext.count('.') > 1:
-##                        fileExt='.'+'.'.join(f.split('.')[1:])
-##                    else:
-##                        fileExt=os.path.splitext(f)[1]
+
                     if fileExt == ext or fileExt.lower() == ext or fileExt.upper() == ext:
                         files.append(os.path.join(dp, f))
                         break

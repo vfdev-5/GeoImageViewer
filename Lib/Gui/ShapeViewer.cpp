@@ -17,7 +17,7 @@ namespace Gui
 
 double computeZValue(int index)
 {
-    return 10.0 + 100.0 * index;
+    return 10.0 + 2.0 * index;
 }
 
 //******************************************************************************
@@ -43,6 +43,7 @@ ShapeViewer::ShapeViewer(const QString &initialText, QWidget *parent) :
 
 ShapeViewer::~ShapeViewer()
 {
+    _currentTool = 0;
     Tools::ToolsManager::destroy();
 }
 
@@ -226,6 +227,16 @@ bool ShapeViewer::eventFilter(QObject * o, QEvent * e)
             return true;
         }
     }
+    else if (o == _view.viewport())
+    {
+        if (_enableTools &&
+                _currentTool &&
+                _currentTool->dispatch(e, _view.viewport()))
+        {
+            e->accept();
+            return true;
+        }
+    }
 
     return BaseViewer::eventFilter(o, e);
 }
@@ -309,6 +320,7 @@ bool ShapeViewer::removeLayer(Core::BaseLayer *layer)
 
     // remove layer:
     layer->setParent(0);
+    return true;
 }
 
 //******************************************************************************

@@ -134,8 +134,6 @@ void GeoImageViewer::onImageOpened(Core::ImageDataProvider *imageDataProvider)
 
     enableOptions(true);
 
-
-
     if (!imageDataProvider)
     {
         SD_ERR("Application failed to read the image data");
@@ -158,37 +156,12 @@ void GeoImageViewer::onImageOpened(Core::ImageDataProvider *imageDataProvider)
 
 
     // Create Geo Image Item from data provider
-//        // create a renderer
-//    Core::HistogramImageRenderer * renderer =  new Core::HistogramImageRenderer();
-//    renderer->setupConfiguration(imageDataProvider);
-
-//        // create a GeoImageItem, GraphicsScene is responsible to delete it
-//    Core::GeoImageItem * item = new Core::GeoImageItem();
-//    item->setRenderer(renderer);
-//    item->setDataProvider(imageDataProvider);
-//    _scene.addItem(item);
-//    connect(this, SIGNAL(viewportChanged(int,QRectF)),
-//            item, SLOT(updateItem(int, QRectF)));
-
     Core::GeoImageItem * item = createGeoImageItem(imageDataProvider);
 
-    // Add to layers storage
-    Core::GeoImageLayer * layer = new Core::GeoImageLayer(this);
-    layer->setType("Image");
-    layer->setImageName(imageDataProvider->getImageName());
-    layer->setNbBands(imageDataProvider->getInputNbBands());
-    layer->setDepthInBytes(imageDataProvider->getInputDepthInBytes());
-    layer->setIsComplex(imageDataProvider->inputIsComplex());
-
-    layer->setGeoExtent(imageDataProvider->fetchGeoExtent());
-    layer->setGeoBBox(layer->getGeoExtent().boundingRect());
-    // pixel extent is (0,0,w,h) = imageDataProvider.pixelExent
-    layer->setPixelExtent(imageDataProvider->getPixelExtent());
-    layer->setProjectionRef(imageDataProvider->fetchProjectionRef());
+    // Create Geo image layer and add it to layers storage
+    Core::GeoImageLayer * layer = createGeoImageLayer("Image", imageDataProvider);
 
     addLayer(layer, item);
-
-
 
     // configure renderer view :
     if (_rendererView)
@@ -323,7 +296,7 @@ void GeoImageViewer::writeGeoImageLayer(Core::BaseLayer * layer)
     _progressDialog->setValue(0);
     _progressDialog->show();
 
-    if (!_imageWriter->writeInBackground(filename, provider))
+    if (!_imageWriter->writeInBackground(filename, provider, _processedLayer))
     {
         _progressDialog->close();
     }
@@ -431,21 +404,6 @@ void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
 }
 
 //******************************************************************************
-
-//void GeoImageViewer::onItemCreated(QGraphicsItem * item)
-//{
-//    SD_TRACE("GeoImageViewer::onItemCreated");
-//    // create layer:
-//    Core::GeoShapeLayer * layer = new Core::GeoShapeLayer(this);
-//    // set geo info:
-//    layer->setPixelExtent(item->boundingRect().toRect());
-////    layer->setGeoExtent();
-////    layer->setGeoBBox(layer->getGeoExtent().boundingRect());
-//    layer->setType(_currentTool->getName());
-//    addLayer(layer, item);
-//}
-
-//******************************************************************************
 /*!
  * \brief GeoImageViewer::setRendererView method to setup a renderer view: DefaultRendererView or HistogramRendererView ...
  * \param rendererView
@@ -500,35 +458,26 @@ void GeoImageViewer::onCopyData(const QRectF &selection)
     }
 
     // Create Geo Image Item from data provider
-        // Create renderer:
-//    Core::HistogramImageRenderer * renderer =  new Core::HistogramImageRenderer();
-//    renderer->setupConfiguration(nProvider);
-
-//        // Create geo image item :
-//    Core::GeoImageItem * nItem = new Core::GeoImageItem();
-//    nItem->setPos(selection.topLeft());
-//    nItem->setDataProvider(nProvider);
-//    nItem->setRenderer(renderer);
-//    _scene.addItem(nItem);
-//    connect(this, SIGNAL(viewportChanged(int,QRectF)),
-//            nItem, SLOT(updateItem(int, QRectF)));
-
     Core::GeoImageItem * nItem = createGeoImageItem(nProvider, selection.topLeft());
 
     // Create new layer :
-    Core::GeoImageLayer * nLayer = new Core::GeoImageLayer(this);
-    nLayer->setType("Floating Image");
-    nLayer->setImageName(nProvider->getImageName());
+//    Core::GeoImageLayer * nLayer = new Core::GeoImageLayer(this);
+//    nLayer->setType("Floating Image");
+//    nLayer->setImageName(nProvider->getImageName());
 
-    nLayer->setNbBands(iLayer->getNbBands());
-    nLayer->setDepthInBytes(iLayer->getDepthInBytes());
-    nLayer->setIsComplex(iLayer->isComplex());
+//    nLayer->setNbBands(iLayer->getNbBands());
+//    nLayer->setDepthInBytes(iLayer->getDepthInBytes());
+//    nLayer->setIsComplex(iLayer->isComplex());
 
-    nLayer->setGeoExtent(nProvider->fetchGeoExtent());
-    nLayer->setGeoBBox(nLayer->getGeoExtent().boundingRect());
-    // pixel extent is intersection
-    nLayer->setPixelExtent(intersection);
-    nLayer->setProjectionRef(iLayer->getProjectionRef());
+//    nLayer->setGeoExtent(nProvider->fetchGeoExtent());
+//    nLayer->setGeoBBox(nLayer->getGeoExtent().boundingRect());
+//    // pixel extent is intersection
+//    nLayer->setPixelExtent(intersection);
+//    nLayer->setProjectionRef(nProvider->fetchProjectionRef());
+//    nLayer->setGeoTransform(nProvider->fetchGeoTransform());
+    Core::GeoImageLayer * nLayer = createGeoImageLayer("Floating Image", nProvider, intersection);
+
+
 
 
     addLayer(nLayer, nItem);
@@ -557,6 +506,34 @@ Core::GeoImageItem * GeoImageViewer::createGeoImageItem(Core::ImageDataProvider 
             out, SLOT(updateItem(int, QRectF)));
 
     return out;
+}
+
+//******************************************************************************
+
+Core::GeoImageLayer * GeoImageViewer::createGeoImageLayer(const QString &type, Core::ImageDataProvider * provider, const QRect & userPixelExtent)
+{
+    Core::GeoImageLayer * layer = new Core::GeoImageLayer(this);
+    layer->setType(type);
+    layer->setImageName(provider->getImageName());
+    layer->setNbBands(provider->getInputNbBands());
+    layer->setDepthInBytes(provider->getInputDepthInBytes());
+    layer->setIsComplex(provider->inputIsComplex());
+
+    layer->setGeoExtent(provider->fetchGeoExtent());
+    layer->setGeoBBox(layer->getGeoExtent().boundingRect());
+
+    // By default pixel extent is (0,0,w,h) = imageDataProvider.pixelExent
+    // other use user specified userPixelExtent
+    if (userPixelExtent.isEmpty())
+        layer->setPixelExtent(provider->getPixelExtent());
+    else
+        layer->setPixelExtent(userPixelExtent);
+
+    layer->setProjectionRef(provider->fetchProjectionRef());
+    layer->setGeoTransform(provider->fetchGeoTransform());
+    // !!! NEED TO ADD METADATA
+//    layer->setMetadata(imageDataProvider->fetchMetadata());
+    return layer;
 }
 
 //******************************************************************************

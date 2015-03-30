@@ -26,17 +26,30 @@ public:
     static FloatingDataProvider* createDataProvider(const QString & name, const cv::Mat & src, const QRect & intersection=QRect());
 
     virtual QString fetchProjectionRef() const
-    { return (_source) ? _source->fetchProjectionRef() :
-                         ImageDataProvider::fetchProjectionRef(); }
+    { return _projectionRef; }
     virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const;
+    virtual QVector<double> fetchGeoTransform() const
+    { return _geoTransform; }
+
+
+    void setProjectionRef(const QString & p)
+    { _projectionRef = p; }
+    void setGeoTransform(const QVector<double> & gt)
+    { _geoTransform = gt; }
+    void setGeoExtent(const QPolygonF & ge)
+    { _geoExtent = ge; }
 
     bool create(const QString & name, const cv::Mat & src, const QRect & intersection=QRect());
 
 protected:
 
     cv::Mat _data;
-    const ImageDataProvider * _source;
-    QRect _intersection;
+//    const ImageDataProvider * _source;
+//    QRect _intersection;
+
+    QString _projectionRef;
+    QVector<double> _geoTransform;
+    QPolygonF _geoExtent;
 
 
 };

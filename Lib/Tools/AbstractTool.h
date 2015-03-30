@@ -36,6 +36,8 @@ public:
     AbstractTool(QObject * parent = 0);
     virtual ~AbstractTool() {}
     virtual bool dispatch(QEvent * e, QGraphicsScene * scene) = 0;
+    virtual bool dispatch(QEvent * e, QWidget * graphicsViewViewport)
+    { Q_UNUSED(e); Q_UNUSED(graphicsViewViewport); return false; }
 
     enum {
         Type = 0,
@@ -63,6 +65,30 @@ public slots:
 
 signals:
     void itemCreated(QGraphicsItem * item);
+
+};
+
+//******************************************************************************
+
+class GIV_DLL_EXPORT ImageCreationTool : public AbstractTool
+{
+    Q_OBJECT
+public:
+
+    ImageCreationTool(QObject * parent = 0) :
+        AbstractTool(parent)
+    {
+        _toolType = Type;
+    }
+    enum {
+        Type = 2,
+    };
+
+//public slots:
+//    virtual void clear() = 0;
+
+//signals:
+//    void itemCreated(QGraphicsItem * item);
 
 };
 

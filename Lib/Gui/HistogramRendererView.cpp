@@ -489,8 +489,6 @@ void HistogramRendererView::drawHistogram()
     _ui->_isComplete->setEnabled(true);
 
     _ui->_discreteColors->setEnabled(true);
-    _ui->_discreteColors->setChecked(false);
-
     _ui->_revert->setEnabled(true);
 
     _ui->_transferFunction->setEnabled(true);
@@ -869,10 +867,10 @@ void HistogramRendererView::drawHistogram(int index)
     if (_currentHistogram && _currentHistogram->graphicsItem)
         _currentHistogram->graphicsItem->setVisible(false);
 
-    HistogramDataView & h = _histograms[index];
-    _currentHistogram = &h;
+//    HistogramDataView & h = _histograms[index];
+    _currentHistogram = &_histograms[index];
 
-    drawHistogramGraphicsItem(&h, _settings.dataPen);
+    drawHistogramGraphicsItem(_currentHistogram, _settings.dataPen);
 
     // setup transfer function and isDiscrete coulours :
     _ui->_discreteColors->setChecked(_currentHistogram->isDiscrete);
@@ -885,7 +883,7 @@ void HistogramRendererView::drawHistogram(int index)
     _ui->_transferFunction->setCurrentIndex(i);
 
     // draw color palette, sliders, etc in 100% view mode
-    drawColorPalette(h.outputStops, h.vxmin, h.vxmax);
+    drawColorPalette(_currentHistogram->outputStops, _currentHistogram->vxmin, _currentHistogram->vxmax, _currentHistogram->isDiscrete);
 
     // default choice is 95% of histogram to display
     _ui->_isPartial->setChecked(true);
@@ -917,7 +915,7 @@ void HistogramRendererView::drawAllHistograms()
     }
 
     // draw color palette, sliders, etc in 100% view mode
-    drawColorPalette(_currentHistogram->outputStops, _currentHistogram->vxmin, _currentHistogram->vxmax);
+    drawColorPalette(_currentHistogram->outputStops, _currentHistogram->vxmin, _currentHistogram->vxmax, false);
 
     // default choice is 95% of histogram to display
     _ui->_isPartial->setChecked(true);
@@ -997,7 +995,7 @@ void HistogramRendererView::drawHistogramGraphicsItem(HistogramDataView * h, con
     Method to draw a color palette with n sliders from histogram info
     The map between line and slider is done with index in the _sliderLines and the index in the ColorPalette
 */
-void HistogramRendererView::drawColorPalette(const QGradientStops & houtputStops, double hvxmin, double hvxmax)
+void HistogramRendererView::drawColorPalette(const QGradientStops & houtputStops, double hvxmin, double hvxmax, bool isDiscrete)
 {
     // remove previous slider lines :
     foreach (QGraphicsLineItem * line, _sliderLines)
@@ -1018,7 +1016,7 @@ void HistogramRendererView::drawColorPalette(const QGradientStops & houtputStops
         _sliderLines << sliderLine;
     }
 
-    _colorPalette->setupPalette(houtputStops, hvxmin, hvxmax);
+    _colorPalette->setupPalette(houtputStops, hvxmin, hvxmax, isDiscrete);
 
     connect(_colorPalette, SIGNAL(sliderPositionChanged(int,double)), this, SLOT(onSliderPositionChanged(int,double)));
 }

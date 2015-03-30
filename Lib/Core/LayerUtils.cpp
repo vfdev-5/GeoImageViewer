@@ -27,7 +27,7 @@ QPolygonF computeGeoExtent(GDALDataset * inputDataset, const QRect & pixelExtent
     {
         int width = inputDataset->GetRasterXSize();
         int height = inputDataset->GetRasterYSize();
-        pts << QPoint(0, 0) << QPoint(width, 0) << QPoint(width, height) << QPoint(0, height);
+        pts << QPoint(0, 0) << QPoint(width-1, 0) << QPoint(width-1, height-1) << QPoint(0, height-1);
     }
     else
     {
@@ -64,7 +64,30 @@ QPolygonF computeGeoExtent(GDALDataset * inputDataset, const QRect & pixelExtent
         GDALDestroyTransformer(transformArg);
     }
     dstSRS->Release();
+    OGRFree(dstSRSWkt);
     return gPts;
+}
+
+//*************************************************************************
+
+QVector<double> computeGeoTransform(const QPolygonF & geoExtent, const QRect & pixelExtent)
+{
+    if (geoExtent.isEmpty() || geoExtent.size() != 4
+            || pixelExtent.isEmpty())
+        return QVector<double>();
+    // Output geoTransform :
+    // X = gt[0] + px*gt[1] + py*gt[2]
+    // Y = gt[3] + px*gt[4] + py*gt[5]
+    QVector<double> out(6);
+    out[0] = geoExtent[0].x();
+    out[3] = geoExtent[0].y();
+    out[1] = ( geoExtent[1].x() - out[0] ) * 1.0 / (pixelExtent.width() - 1);
+    out[4] = ( geoExtent[1].y() - out[3] ) * 1.0 / (pixelExtent.width() - 1);
+    out[2] = ( geoExtent[3].x() - out[0] ) * 1.0 / (pixelExtent.height() - 1);
+    out[5] = ( geoExtent[3].y() - out[3] ) * 1.0 / (pixelExtent.height() - 1);
+
+    return out;
+
 }
 
 //*************************************************************************
@@ -263,7 +286,7 @@ cv::Mat displayMat(const cv::Mat & inputImage0, bool showMinMax, const QString &
 
 //******************************************************************************
 
-bool isEqual(const cv::Mat &src, const cv::Mat &dst)
+bool isEqual(const cv::Mat &src, const cv::Mat &dst, double tol)
 {
     if (src.type() != dst.type())
         return false;
@@ -276,8 +299,10 @@ bool isEqual(const cv::Mat &src, const cv::Mat &dst)
 
     for (int i=0; i<nbBands; i++)
     {
-        cv::Scalar s = cv::sum(sChannels[i] - dChannels[i]);
-        if (s.val[0] > 1e-5 || s.val[0] < -1e-5)
+        cv::Mat d;
+        cv::absdiff(sChannels[i], dChannels[i], d);
+        cv::Scalar s = cv::sum(d);
+        if (qAbs(s.val[0]) > tol)
         {
             return false;
         }
@@ -601,10 +626,80 @@ void computeLocalMinMax(const QVector<double> & data,
 
 }
 
+//*****************************************************************************
+
+//QString getProjectionStrFromEPSG(int epsgCode)
+//{
+//    // !!! DOES NOT WORK WITH epsgCode=4326
+//    OGRSpatialReference * dstSRS = static_cast<OGRSpatialReference*>( OSRNewSpatialReference( 0 ) );
+//    char *dstSRSWkt = 0;
+//    OGRErr err = dstSRS->importFromEPSG(epsgCode);
+//    if (err != OGRERR_NONE)
+//        return QString();
+//    dstSRS->exportToWkt(&dstSRSWkt);
+//    QString out = QString::fromLatin1(dstSRSWkt);
+//    dstSRS->Release();
+//    OGRFree(dstSRSWkt);
+//    return out;
+//}
+
+//*****************************************************************************
+
+QString getProjectionStrFromGeoCS(const QString & gcs)
+{
+    OGRSpatialReference * dstSRS = static_cast<OGRSpatialReference*>( OSRNewSpatialReference( 0 ) );
+    char *dstSRSWkt = 0;
+    dstSRS->SetWellKnownGeogCS( gcs.toStdString().c_str() );
+    dstSRS->exportToWkt(&dstSRSWkt);
+    QString out = QString::fromLatin1(dstSRSWkt);
+    dstSRS->Release();
+    OGRFree(dstSRSWkt);
+    return out;
+}
+
+//*****************************************************************************
+
+bool compareProjections(const QString & prStr1, const QString & prStr2)
+{
+    OGRSpatialReference * srcSRS1 = static_cast<OGRSpatialReference*>( OSRNewSpatialReference( prStr1.toStdString().c_str() ) );
+    if (!srcSRS1)
+        return false;
+    OGRSpatialReference * srcSRS2 = static_cast<OGRSpatialReference*>( OSRNewSpatialReference( prStr2.toStdString().c_str() ) );
+    if (!srcSRS2)
+    {
+        srcSRS1->Release();
+        return false;
+    }
+
+
+
+    bool res = srcSRS1->IsSame(srcSRS2) == 1;
+
+    srcSRS1->Release();
+    srcSRS2->Release();
+    return res;
+}
+
+//******************************************************************************
+
+bool isGeoProjection(const QString &prStr)
+{
+    OGRSpatialReference * srcSRS = static_cast<OGRSpatialReference*>( OSRNewSpatialReference( prStr.toStdString().c_str() ) );
+    if (!srcSRS)
+        return false;
+
+    bool res = srcSRS->IsGeographic() == 1;
+
+    srcSRS->Release();
+    return res;
+}
+
 //******************************************************************************
 
 bool writeToFile(const QString &outputFilename, const cv::Mat &image,
-                 const QString & projectionStr, const QVector<double> &geoTransform)
+                 const QString & projectionStr, const QVector<double> &geoTransform,
+                 double nodatavalue,
+                 const QList< QPair<QString,QString> > & metadata)
 {
     int count = GetGDALDriverManager()->GetDriverCount();
     if (count == 0)
@@ -649,6 +744,14 @@ bool writeToFile(const QString &outputFilename, const cv::Mat &image,
         outputDataset->SetGeoTransform( (double*)geoTransform.data() );
     }
 
+    // set metadata:
+    typedef QPair<QString,QString> Mdi;
+    foreach(Mdi item, metadata)
+    {
+        outputDataset->SetMetadataItem(item.first.toStdString().c_str(),
+                                       item.second.toStdString().c_str());
+    }
+
     // copy data:
     std::vector<cv::Mat> iChannels(outputNbBands);
     cv::split(image, &iChannels[0]);
@@ -668,7 +771,13 @@ bool writeToFile(const QString &outputFilename, const cv::Mat &image,
             SD_TRACE( "Failed to write data" );
             return false;
         }
+        // set nodatavalue:
+        if (nodatavalue != -123456789.0)
+        {
+            dstBand->SetNoDataValue(nodatavalue);
+        }
     }
+
 
     // close datasets:
     GDALClose(outputDataset);

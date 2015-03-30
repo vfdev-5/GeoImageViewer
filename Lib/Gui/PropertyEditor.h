@@ -51,6 +51,7 @@ protected slots:
     void onBoolPropertyChanged();
     void onIntPropertyChanged();
     void onDoublePropertyChanged();
+    void onColorPropertyChanged();
     void onPenPropertyChanged();
     void onBrushPropertyChanged();
 
@@ -72,7 +73,8 @@ class ColorEditor : public QFrame
     Q_PROPERTY_WITH_ACCESSORS(int, colorIconSize, getColorIconSize, setColorIconSize)
 public:
     ColorEditor(const QColor & color, QWidget * parent = 0);
-    QColor getColor() const;
+    QColor getColor() const
+    { return _colorValue; }
 
 signals:
     void editingFinished();

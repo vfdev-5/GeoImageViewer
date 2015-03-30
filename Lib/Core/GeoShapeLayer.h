@@ -16,6 +16,17 @@ namespace Core
 {
 
 //******************************************************************************
+/*!
+  \class GeoShapeLayer
+  \brief derived from BaseLayer and represents geographic layers
+  It has properties :
+  - pixel extent
+  - geographic extent
+  - geographic bounding box
+
+ */
+
+//******************************************************************************
 
 class GeoShapeLayer : public BaseLayer
 {

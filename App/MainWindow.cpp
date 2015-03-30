@@ -29,7 +29,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     setCentralWidget(&_viewer);
 
-    createDockWidget(&_tools, Qt::LeftDockWidgetArea)->setFloating(true);
+    createDockWidget(&_tools, Qt::LeftDockWidgetArea);
     _viewer.setToolsView(&_tools);
 
     createDockWidget(&_layers, Qt::LeftDockWidgetArea);
@@ -54,6 +54,11 @@ MainWindow::MainWindow(QWidget *parent) :
     // connect actions:
     connect(ui->actionExit, SIGNAL(triggered()), this, SLOT(onExitActionTriggered()));
     connect(ui->actionOpen_Image, SIGNAL(triggered()), this, SLOT(onOpenImageActionTriggered()));
+
+
+    //
+    showMaximized();
+
 
 }
 

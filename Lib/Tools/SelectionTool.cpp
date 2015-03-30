@@ -25,17 +25,16 @@ SelectionTool::SelectionTool(QObject * parent) :
     _brush = QBrush(QColor(Qt::transparent));
 
     // Actions:
-    _clearSelection = new QAction("Clear selection", this);
+    _clearSelection = new QAction(tr("Clear selection"), this);
     _clearSelection->setEnabled(false);
-    connect(_clearSelection, SIGNAL(triggered()),
-            this, SLOT(clear()));
+    connect(_clearSelection, SIGNAL(triggered()), this, SLOT(clear()));
     _actions.append(_clearSelection);
 
-    _toNewLayer = new QAction("Copy to new layer", this);
+    _toNewLayer = new QAction(tr("Copy to new layer"), this);
     _toNewLayer->setEnabled(false);
-    connect(_toNewLayer, SIGNAL(triggered()),
-            this, SLOT(onCopyToNewLayerTriggered()));
+    connect(_toNewLayer, SIGNAL(triggered()), this, SLOT(onCopyToNewLayerTriggered()));
     _actions.append(_toNewLayer);
+
 }
 
 //******************************************************************************

@@ -65,7 +65,7 @@ protected:
     bool _enableTools;
 
     QHash<Core::BaseLayer*, QGraphicsItem*> _layerItemMap;
-    QStandardItemModel _layers;
+//    QStandardItemModel _layers;
 
     LayersView * _layersView;
 

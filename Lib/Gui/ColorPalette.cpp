@@ -88,7 +88,7 @@ QColor computeColorAtPosition(double position, const QGradientStop & leftStop, c
 /*!
     Method to setup palette. stops and values should have same size
 */
-void ColorPalette::setupPalette(const QGradientStops & values, double valueMin, double valueMax)
+void ColorPalette::setupPalette(const QGradientStops & values, double valueMin, double valueMax, bool isDiscrete)
 {
     if(_palette)
         delete _palette;
@@ -96,7 +96,7 @@ void ColorPalette::setupPalette(const QGradientStops & values, double valueMin, 
     _xmin = valueMin;
     _xmax = valueMax;
     _stops = computeStopsFromValues(values, valueMin, valueMax);
-
+    _isDiscrete = isDiscrete;
 
     _palette = new QLinearGradient(QPointF(0.0, 0.0), QPointF(1.0, 0.0));
     updateAllStops();
@@ -115,9 +115,7 @@ void ColorPalette::setupPalette(const QGradientStops & values, double valueMin, 
         count++;
 
     }
-
     _colorPaletteRect->installSceneEventFilter(this);
-
 
 }
 

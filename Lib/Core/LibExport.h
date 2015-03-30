@@ -28,11 +28,14 @@
  *   + display image info
  *   1 - action to save 'Image' layer into a file
  *      + use a simple image writer
- *      - geo info is not written
+ *      + geo info is not written
  *   2 - use view/model architecture
  * 7) Selection tool
  *   + select a region
  *   + create a layer from zone
+ *   3 - tool to manually detect dark objects
+ *      -- IHM : Circle to select dark object, slider to define a threshold, mouse wheel changes size of circle
+ *      -- Threshold algorithm : blur + define threhold region (0.0, middle, histogram max value) + morpho close
  * 8) Layer pixel info
  *   1 - display pixel info : coordinates in pixels, geo, value
  * 9) Filters as plugins

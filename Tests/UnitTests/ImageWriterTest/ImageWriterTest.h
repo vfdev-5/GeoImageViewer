@@ -7,7 +7,8 @@
 
 // Project
 #include "Core/ImageWriter.h"
-#include "Core/ImageDataProvider.h"
+#include "Core/FloatingDataProvider.h"
+#include "Core/GeoImageLayer.h"
 
 namespace Tests
 {
@@ -28,7 +29,8 @@ protected:
 
 private:
     Core::ImageWriter * _imageWriter;
-    Core::ImageDataProvider * _provider;
+    Core::FloatingDataProvider * _provider;
+    Core::GeoImageLayer * _geoInfo;
     bool writeFinished;
 };
 
@@ -38,4 +40,4 @@ private:
 
 } 
 
-#endif // IMAGEOPENERTEST_H
+#endif // IMAGEWRITERTEST_H

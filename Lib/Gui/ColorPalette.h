@@ -50,7 +50,7 @@ public:
     virtual QRectF boundingRect() const;
     virtual void paint(QPainter * p, const QStyleOptionGraphicsItem *o, QWidget * w);
 
-    void setupPalette(const QGradientStops & values, double valueMin, double valueMax);
+    void setupPalette(const QGradientStops & values, double valueMin, double valueMax, bool isDiscrete);
     void setMinMaxRanges(double xmin, double xmax);
     QPair<double, double> getMinMaxRanges() const
     { return QPair<double, double>(_xmin, _xmax); }

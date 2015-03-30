@@ -143,7 +143,7 @@ protected:
     void drawAllHistograms();
     void drawAxes();
     void createColorPalette();
-    void drawColorPalette(const QGradientStops & houtputStops, double vxmin, double vxmax);
+    void drawColorPalette(const QGradientStops & houtputStops, double vxmin, double vxmax, bool isDiscrete);
 
     void transformAllItems(double newMin, double newMax);
 
