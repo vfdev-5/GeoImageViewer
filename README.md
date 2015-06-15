@@ -7,6 +7,8 @@ Based on Qt QGraphicsScene/View, image is shown in its own geometry. Image readi
 Project main dependencies:
 * Qt ( >= 5)
 * GDAL ( >= 1.11)
+* OpenCV ( >= 2.4)
+
 
 
 Project contains :

@@ -56,9 +56,9 @@ void ToolsManager::loadPlugins(const QString &path)
     QDir d(path);
     QStringList filters;
 #ifdef _DEBUG
-    filters << "*Plugin.d.dll" << "*Plugin.d.so";
+    filters << "*Plugin.d.dll" << "*Plugin.d.so" << "*Plugin.d.dylib";
 #else
-    filters << "*Plugin.dll" << "*Plugin.so";
+    filters << "*Plugin.dll" << "*Plugin.so" << "*Plugin.dylib";
 #endif
     foreach (QString fileName, d.entryList(filters, QDir::Files))
     {
