@@ -27,14 +27,17 @@ import GeoImageWriter
 
 class DarkObjectDetector:
     """
+    Class to detect dark objects on the image and store result as shapefile
     """
     def __init__(self):
+        self.outputFolder=""
         self.lowPassBandSize = [4.0, 4.0]
         self.enhanceContrastParams = [0.55, 95.0]
         self.stackThresholdingParams = [20, 1.0]
         self.seedsThreshold = 0.6
         self.verbose = False
         self.saveMask = False
+
 
 
     def run(self, filename):
@@ -91,7 +94,11 @@ class DarkObjectDetector:
             Global.logPrint("Elapsed time : " + str(elapsed) + " seconds")
             ImageTools.displayImage(mask, True, "Mask image")
 
-        opath = os.path.dirname(filename)
+        if len(self.outputFolder) > 0:
+            opath = self.outputFolder
+        else:
+            opath = os.path.dirname(filename)
+
         if self.saveMask:
             ofilename = opath +  "/mask_" + Global.getBasename(filename) + ".tif"
             GeoImageWriter.writeDataInGeoImage(ofilename, mask)
@@ -108,9 +115,16 @@ if __name__ == '__main__':
     filename = None
 
     args = sys.argv[1:]
-    for arg in args:
+    skipOnce=False
+    for (count, arg) in enumerate(args):
+        if skipOnce:
+            skipOnce=False
+            continue
         if arg == '--help' or arg == '-h':
-            print "Usage: DarkObjectDetector.py C:\test\image.tif [-v] [--save_mask]"
+            print "Usage: DarkObjectDetector.py C:\test\image.tif -o C:\output_folder [-v] [--save_mask]"
+        elif arg == '-o':
+            detector.outputFolder = args[count+1]
+            skipOnce=True
         elif arg == '-v':
             detector.verbose = True
         elif arg == '--save_mask':
@@ -118,13 +132,43 @@ if __name__ == '__main__':
         else:
             filename = arg
 
+
     if filename is not None:
+        start_time = time.time()
         detector.run(filename)
+        elapsed = time.time() - start_time
+        Global.logPrint("DarkObjectDetector run time : " + str(elapsed) + " seconds")
         cv2.destroyAllWindows()
         exit()
 
 
     # Tests :
+    filename = "C:\\VFomin_folder\\PISE_project\\Slick_Image_Database\\Seeps\\ASAR\\AOI\\AOI_Slick_seep_4219.tif"
+    filename = "C:\\VFomin_folder\\PISE_project\\Slick_Image_Database\\Seeps\\ASAR\\AOI\\AOI_Slick_seep_1189.tif"
+    filename = "C:\\VFomin_folder\\PISE_project\\Slick_Image_Database\\Seeps\\ASAR\\AOI\\AOI_Slick_seep_3784.tif"
+    filename = "C:\\VFomin_folder\\PISE_project\\Slick_Image_Database\\Seeps\\ASAR\\AOI\\AOI_Slick_seep_4218.tif"
+    filename = "C:\\VFomin_folder\\PISE_project\\Slick_Image_Database\\Seeps\\ASAR\\AOI\\AOI_Slick_seep_4219_1.tif"
+    filename = "C:\\VFomin_folder\\PISE_project\\Slick_Image_Database\\Seeps\\ASAR\\AOI\\AOI_Slick_seep_4219_2.tif"
+    filename = "C:\\VFomin_folder\\PISE_project\\Slick_Image_Database\\Seeps\\ASAR\\AOI\\AOI_Slick_seep_4225.tif"
+    filename = "C:\\VFomin_folder\\PISE_project\\Slick_Image_Database\\Seeps\\ASAR\\AOI\\AOI_Slick_seep_4255.tif"
+
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\filtered\\img5.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_1.tif"
+    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_4.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_5.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_6.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_7.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_9.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_10.tif"
+
+    detector.verbose = True
+    detector.outputFolder = "C:\\VFomin_folder\\PISE_project\\Slick_Image_Database\\Seeps\\ASAR\\GIV_python_test"
+
+    start_time = time.time()
+    detector.run(filename)
+    elapsed = time.time() - start_time
+    Global.logPrint("DarkObjectDetector run time : " + str(elapsed) + " seconds")
+    cv2.destroyAllWindows()
 
 
 

@@ -8,6 +8,7 @@
 #include <QHash>
 #include <QPen>
 #include <QFrame>
+//#include <QSignalMapper>
 
 // Project
 #include "Core/LibExport.h"
@@ -59,6 +60,8 @@ private:
 
     QObject * _object;
     QHash<QWidget*, int> _widgetPropertyMap;
+
+//    QSignalMapper _mapper;
 
     QWidget * _frame;
     QScrollArea * _scrollArea;

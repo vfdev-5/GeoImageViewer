@@ -6,14 +6,8 @@
 #include <QThreadPool>
 #include <QGraphicsScene>
 
-// TEST
-#include <QLabel>
-#include "LayerUtils.h"
-// TEST
-
 // Project
 #include "GeoImageItem.h"
-#include "ImageRenderer.h"
 #include "ImageDataProvider.h"
 
 namespace Core
@@ -26,18 +20,32 @@ QGraphicsRectItem * VIEWPORT = 0;
 //*************************************************************************
 /*!
     \class GeoImageItem
-    \brief inherits from QGraphicsItem and represents the geo image with its tiles of each Z level and the cache
+    \brief inherits from QGraphicsItem and represents the geo image with its tiles of each Z level and the cache.
+
+    Method (slot) that starts data loading : updateItem(int zoomLevel, const QRectF & visiblePixelExtent)
+
+    1) Data loading and rendering
+    The class has children instances of ImageDataProvider (as image source) and ImageRenderer (as data renderer to rgba format).
+    It also has an instance of a derived QRunnable class (TilesLoadTask) which is used with QThreadPool to load tiles.
+    Tiles are represented by QGraphicsPixmapItem and are grouped by Z level in QGraphicsItemGroups.
+
+    2) Z Level groups and Cache
+    Tiles cache is implemented using QHash that maps tile name (as key) to its data QGraphicsPixmapItem. A list of tile names (cache keys) stores
+    the history of loaded tiles.
+
+
+
   */
 
 //*************************************************************************
 
-GeoImageItem::GeoImageItem(QGraphicsItem *parent) :
+GeoImageItem::GeoImageItem(ImageDataProvider * provider, ImageRenderer * renderer, ImageRendererConfiguration * conf, QGraphicsItem *parent) :
     QGraphicsItem(parent),
     QObject(0),
-    _dataProvider(0),
-    _renderer(0),
-    _nbXTiles(0),
-    _nbYTiles(0),
+//    _dataProvider(provider),
+//    _renderer(renderer),
+//    _nbXTiles(0),
+//    _nbYTiles(0),
     _root(new QGraphicsItemGroup(this))
 {
     _task = new TilesLoadTask(this);
@@ -47,6 +55,9 @@ GeoImageItem::GeoImageItem(QGraphicsItem *parent) :
     // when calls _task->setTilesToLoad(tiles) in Main Thread and
     // onTileLoaded() in the same thread
 
+    setDataProvider(provider);
+    setRenderer(renderer);
+    _rconf = conf;
 }
 
 //*************************************************************************
@@ -63,6 +74,11 @@ GeoImageItem::~GeoImageItem()
         // scene is already cleared -> tiles and cache also
         delete _task;
     }
+
+    // destroy renderer configuration
+    if (_rconf)
+        delete _rconf;
+
 }
 
 //*************************************************************************
@@ -86,26 +102,48 @@ void GeoImageItem::paint(QPainter * /*p*/, const QStyleOptionGraphicsItem * /*o*
 
 //*************************************************************************
 
+ImageRendererConfiguration GeoImageItem::getRendererConfiguration() const
+{
+    return *_rconf;
+}
+
+//*************************************************************************
+
+void GeoImageItem::onRendererConfigurationChanged(Core::ImageRendererConfiguration conf)
+{
+    // Avoid concurrent access :
+    clearCache();
+    // set conf:
+    *_rconf = conf;
+    // reload tiles
+    updateItem(_currentZoomLevel, _currentVisiblePixelExtent);
+}
+
+//*************************************************************************
+/*!
+  \brief GeoImageItem::clearCache
+  Method to clear all loaded tiles and clean used memory
+ */
 void GeoImageItem::clearCache()
 {
 #ifdef GEOIMAGEITEM_CACHE_VERBOSE
-    SD_TRACE("---- Clear Cache : ")
-        #endif
+    SD_TRACE("---- Clear Cache : ");
+#endif
 
-            // wait until last processed work is done
-            QThreadPool * pool = QThreadPool::globalInstance();
+    // wait until last processed work is done
+    QThreadPool * pool = QThreadPool::globalInstance();
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 2, 0))
     pool->clear();
-    _task->cancel();
 #endif
+    _task->cancel();
     if (pool->waitForDone())
     {
 
 #ifdef GEOIMAGEITEM_CACHE_VERBOSE
-        SD_TRACE("---- Clear Cache : start clearing")
-        #endif
-                // Clean layer dependant data
-                foreach(QGraphicsItemGroup* item, _zoomTileGroups.values())
+        SD_TRACE("---- Clear Cache : start clearing");
+#endif
+        // Clean layer dependant data
+        foreach(QGraphicsItemGroup* item, _zoomTileGroups.values())
         {
             scene()->removeItem(item);
             _root->removeFromGroup(item);
@@ -115,8 +153,8 @@ void GeoImageItem::clearCache()
         _tilesCache.clear();
         _tilesCacheHistory.clear();
 #ifdef GEOIMAGEITEM_CACHE_VERBOSE
-        SD_TRACE("---- Clear Cache : end clearing")
-        #endif
+        SD_TRACE("---- Clear Cache : end clearing");
+#endif
 
     }
     else
@@ -169,17 +207,23 @@ void GeoImageItem::updateItem(int nZoomLevel, const QRectF &nVisiblePixelExtent)
     if (!isVisible())
         return;
 
+    if (!_dataProvider || !_renderer || !_rconf)
+    {
+        SD_TRACE("GeoImageItem::updateItem : data provider and/or renderer are null");
+        return;
+    }
+
     int zoomLevel = (nZoomLevel > 0) ? 0 : nZoomLevel;
-    zoomLevel = (zoomLevel < _zoomMinLevel) ? _zoomMinLevel : zoomLevel;
+    zoomLevel = _currentZoomLevel = (zoomLevel < _zoomMinLevel) ? _zoomMinLevel : zoomLevel;
     int nbXTilesAtZ=qCeil(_nbXTiles*qPow(2.0,zoomLevel));
     int nbYTilesAtZ=qCeil(_nbYTiles*qPow(2.0,zoomLevel));
     int tileSize = _settings.TileSize;
 
     // enlarge nVisibleSceneRect
-    QRectF visibleSceneRect = nVisiblePixelExtent.adjusted(-10.0,
-                                                          -10.0,
-                                                          +10.0,
-                                                          +10.0);
+    QRectF visibleSceneRect = _currentVisiblePixelExtent = nVisiblePixelExtent.adjusted(-10.0,
+                                                                                        -10.0,
+                                                                                        +10.0,
+                                                                                        +10.0);
 
 #ifdef GEOIMAGEITEM_DISPLAY_VIEWPORT
     if (VIEWPORT)
@@ -271,21 +315,6 @@ void GeoImageItem::updateItem(int nZoomLevel, const QRectF &nVisiblePixelExtent)
     // start thread pool
     if (!tiles.isEmpty())
     {
-
-        // TEST
-//        TilesLoadTask::TileToLoad t = tiles.takeFirst();
-//        cv::Mat data = _dataProvider->getImageData(t.tileExtent, t.tileSize);
-//        cv::Mat r = _renderer->render(data);
-//        displayMat(r, true, "r");
-
-//        QPixmap p = QPixmap::fromImage(QImage(r.data, r.cols, r.rows, QImage::Format_ARGB32));
-////        QPixmap p = QPixmap::fromImage(QImage(r.data, r.cols, r.rows, QImage::Format_RGBA8888));
-//        QLabel * l = new QLabel();
-//        l->setPixmap(p.copy());
-//        l->show();
-        // TEST
-
-
         // Maintain cache:
         maintainCache(visibleTilesInCache, tiles.size());
 
@@ -294,8 +323,11 @@ void GeoImageItem::updateItem(int nZoomLevel, const QRectF &nVisiblePixelExtent)
         QThreadPool * pool = QThreadPool::globalInstance();
         if (pool->waitForDone())
         {
-            // Only one thread is possible due to GDAL reader (e.g. TIFF)
-            pool->start(_task);
+            // Start at most 'maxNbOfThreads' threads
+            for (int i=0; i<qMin(_settings.MaxNbOfThreads, pool->maxThreadCount());i++)
+            {
+                pool->start(_task);
+            }
         }
         else
         {
@@ -303,6 +335,13 @@ void GeoImageItem::updateItem(int nZoomLevel, const QRectF &nVisiblePixelExtent)
         }
     }
 }
+
+//******************************************************************************
+
+//void GeoImageItem::onDataChanged(const QRect &extent)
+//{
+//    SD_TRACE("GeoImageItem::onDataChanged(const QRect &extent)");
+//}
 
 //******************************************************************************
 
@@ -415,6 +454,7 @@ void TilesLoadTask::run()
     StartTimer("Start load tiles");
 #endif
 
+    // !!! WHY THERE IS NO MUTEX LOCK FOR _canceled ???
     _canceled=false;
     int counter=0;
     while (counter<1000) {
@@ -462,11 +502,12 @@ void TilesLoadTask::run()
 #ifdef RENDERER_TIMER_ON
                 StartTimer("render");
 #endif
-                r = _item->_renderer->render(data, true);
+                r = _item->_renderer->render(data, _item->_rconf, true);
 #ifdef RENDERER_TIMER_ON
                 StopTimer();
 #endif
-
+                if (r.empty())
+                    continue;
             }
             // Here cv::Mat data is deleted
 
@@ -484,6 +525,10 @@ void TilesLoadTask::run()
         // Store :
         if (!_canceled)
             emit tileLoaded(tile, t.tileGroup, t.cacheKey);
+        else
+        {
+            delete tile;
+        }
 
     }
 

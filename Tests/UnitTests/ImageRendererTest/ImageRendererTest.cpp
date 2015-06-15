@@ -61,14 +61,12 @@ void ImageRendererTest::test()
 
     // Define renderer:
     Core::HistogramImageRenderer renderer;
-    Core::ImageRendererConfiguration conf;
-    conf.minValues << 0.0;
-    conf.maxValues << 400.0;
-    conf.toRGBMapping.insert(0,0);
-    conf.toRGBMapping.insert(1,0);
-    conf.toRGBMapping.insert(2,0);
-    renderer.setConfiguration(conf);
     Core::HistogramRendererConfiguration hConf;
+    hConf.minValues << 0.0;
+    hConf.maxValues << 400.0;
+    hConf.toRGBMapping.insert(0,0);
+    hConf.toRGBMapping.insert(1,0);
+    hConf.toRGBMapping.insert(2,0);
     hConf.qMinValues << 0.0;
     hConf.qMaxValues << 400.0;
     hConf.transferFunctions << Core::HistogramRendererConfiguration::availableTransferFunctions[0];
@@ -84,11 +82,9 @@ void ImageRendererTest::test()
     // above 400.0 is gradiend to white
     stops << QGradientStop(1.0, Qt::white);
     hConf.normHistStops << stops;
-    renderer.setHistConfiguration(hConf);
-
 
     // Render raw data
-    cv::Mat r = renderer.render(m, true);
+    cv::Mat r = renderer.render(m, &hConf, true);
 
 #ifdef _DEBUG
     std::cout << "Display matrix value :" << std::endl;
@@ -191,15 +187,12 @@ void ImageRendererTest::test2()
 
     // Define renderer:
     Core::HistogramImageRenderer renderer;
-    Core::ImageRendererConfiguration conf;
-    conf.minValues << 0.0 << 0.0 << 0.0;
-    conf.maxValues << 200.0 << 150.0 << 220.0;
-    conf.toRGBMapping.insert(0,0);
-    conf.toRGBMapping.insert(1,1);
-    conf.toRGBMapping.insert(2,2);
-    renderer.setConfiguration(conf);
-
     Core::HistogramRendererConfiguration hConf;
+    hConf.minValues << 0.0 << 0.0 << 0.0;
+    hConf.maxValues << 200.0 << 150.0 << 220.0;
+    hConf.toRGBMapping.insert(0,0);
+    hConf.toRGBMapping.insert(1,1);
+    hConf.toRGBMapping.insert(2,2);
     hConf.mode = Core::HistogramRendererConfiguration::RGB;
     hConf.qMinValues << 0.0 << 0.0 << 0.0;
     hConf.qMaxValues << 200.0 << 150.0 << 220.0;
@@ -233,10 +226,8 @@ void ImageRendererTest::test2()
     bStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::blue);
     hConf.normRGBHistStops << rStops << gStops << bStops;
 
-    renderer.setHistConfiguration(hConf);
-
     // Render raw data
-    cv::Mat r = renderer.render(m, true);
+    cv::Mat r = renderer.render(m, &hConf, true);
 
 #ifdef _DEBUG
     std::cout << "Display matrix value :" << std::endl;
@@ -338,15 +329,12 @@ void ImageRendererTest::test3()
 
     // Define renderer:
     Core::HistogramImageRenderer renderer;
-    Core::ImageRendererConfiguration conf;
-    conf.minValues << 0.0 << 0.0 << 0.0;
-    conf.maxValues << 200.0 << 150.0 << 220.0;
-    conf.toRGBMapping.insert(0,0);
-    conf.toRGBMapping.insert(1,0);
-    conf.toRGBMapping.insert(2,0);
-    renderer.setConfiguration(conf);
-
     Core::HistogramRendererConfiguration hConf;
+    hConf.minValues << 0.0 << 0.0 << 0.0;
+    hConf.maxValues << 200.0 << 150.0 << 220.0;
+    hConf.toRGBMapping.insert(0,0);
+    hConf.toRGBMapping.insert(1,0);
+    hConf.toRGBMapping.insert(2,0);
     hConf.mode = Core::HistogramRendererConfiguration::GRAY;
     hConf.qMinValues << 0.0 << 0.0 << 0.0;
     hConf.qMaxValues << 200.0 << 150.0 << 220.0;
@@ -380,10 +368,8 @@ void ImageRendererTest::test3()
     bStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::blue);
     hConf.normRGBHistStops << rStops << gStops << bStops;
 
-    renderer.setHistConfiguration(hConf);
-
     // Render raw data
-    cv::Mat r = renderer.render(m, true);
+    cv::Mat r = renderer.render(m, &hConf, true);
 
 #ifdef _DEBUG
     std::cout << "Display matrix value :" << std::endl;

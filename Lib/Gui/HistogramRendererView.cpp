@@ -265,7 +265,7 @@ void HistogramRendererView::resetToDefault()
 
 
     // notify
-    emit renderConfigurationChanged();
+    emit renderConfigurationChanged(_conf);
 
 }
 
@@ -324,43 +324,39 @@ void HistogramRendererView::setupMenu()
  * \param renderer
  * \param layer
  */
-void HistogramRendererView::setup(Core::ImageRenderer * renderer, const Core::ImageDataProvider * provider)
+void HistogramRendererView::setup(const Core::ImageRendererConfiguration &conf, const Core::ImageDataProvider * provider)
 {
-
-    setupRenderer(renderer);
-
-    Core::HistogramImageRenderer* hRenderer = qobject_cast<Core::HistogramImageRenderer*>(_renderer);
-    if (!hRenderer)
+    const Core::HistogramRendererConfiguration * test = static_cast<const Core::HistogramRendererConfiguration*>(&conf);
+    if (!test)
     {
-        SD_TRACE("HistogramRendererView::setup : Failed to cast renderer into HistogramLayerRenderer");
+        SD_TRACE("HistogramRendererView::setup : Failed to cast ImageRendererConfiguration into HistogramRendererConfiguration");
         return;
     }
+    _conf = *test;
+    _initialConf = _conf;
 
-    Core::ImageRendererConfiguration conf = _renderer->getConfiguration();
-    Core::HistogramRendererConfiguration histConf = hRenderer->getHistConfiguration();
-
+    int nbBands = _conf.normHistStops.size();
 
     // configure toRGBMapping frame:
-    int nbBands = provider->getNbBands();
-    bool isComplex = provider->isComplex();
-//    if (nbBands > 1 && !isComplex)
-    if (histConf.mode == Core::HistogramRendererConfiguration::RGB)
+    if (_conf.mode == Core::HistogramRendererConfiguration::RGB)
     {
+        int nbBands = _conf.normHistStops.size();
         _ui->_toRGBMapping->setVisible(true);
-        configureAChannel(_ui->_redChannel, conf.toRGBMapping[0]+1, 1, nbBands);
-        configureAChannel(_ui->_greenChannel, conf.toRGBMapping[1]+1, 1, nbBands);
-        configureAChannel(_ui->_blueChannel, conf.toRGBMapping[2]+1, 1, nbBands);
-        configureAChannel(_ui->_grayChannel, conf.toRGBMapping[0]+1, 1, nbBands);
+        configureAChannel(_ui->_redChannel, _conf.toRGBMapping[0]+1, 1, nbBands);
+        configureAChannel(_ui->_greenChannel, _conf.toRGBMapping[1]+1, 1, nbBands);
+        configureAChannel(_ui->_blueChannel, _conf.toRGBMapping[2]+1, 1, nbBands);
+        configureAChannel(_ui->_grayChannel, _conf.toRGBMapping[0]+1, 1, nbBands);
+        _mode = RGB;
     }
     else
-//    if (nbBands == 1 && !isComplex)
     {
         _ui->_toRGBMapping->setVisible(false);
+        _mode = GRAY;
     }
 
     // create histogram views
     // 1) 1 band layer -> mode=GRAY, 1 histogram
-    // 2) Complex N bands layer -> mode=GRAY, 1 of 4*N histograms
+    // 2) Complex M bands layer -> mode=GRAY, 1 of 4*M histograms
     // 3) Non-complex N bands layer -> { mode=RGB, 3 histograms | mode=GRAY, 1 of N histograms }
 
     nbBands = qMin(3, nbBands);
@@ -368,8 +364,7 @@ void HistogramRendererView::setup(Core::ImageRenderer * renderer, const Core::Im
     {
         int index = conf.toRGBMapping[i];
         addHistogram(index, provider->getBandNames()[index],
-                     provider->getBandHistograms()[index],
-                     conf, histConf);
+                     provider->getBandHistograms()[index]);
     }
 
     drawHistogram();
@@ -379,67 +374,75 @@ void HistogramRendererView::setup(Core::ImageRenderer * renderer, const Core::Im
 /*!
  * \brief HistogramRendererView::applyNewRendererConfiguration
  */
-void HistogramRendererView::applyNewRendererConfiguration()
-{
-    Core::HistogramImageRenderer* hRenderer = qobject_cast<Core::HistogramImageRenderer*>(_renderer);
-    if (!hRenderer)
-    {
-        SD_TRACE("HistogramRendererView::setup : Failed to cast renderer into HistogramLayerRenderer");
-        return;
-    }
+//void HistogramRendererView::applyNewRendererConfiguration()
+//{
+//    Core::HistogramImageRenderer* hRenderer = qobject_cast<Core::HistogramImageRenderer*>(_renderer);
+//    if (!hRenderer)
+//    {
+//        SD_TRACE("HistogramRendererView::setup : Failed to cast renderer into HistogramLayerRenderer");
+//        return;
+//    }
 
-    // RGB mapping configuration
-    if (_mode == RGB)
-    {
-        Core::ImageRendererConfiguration conf = hRenderer->getConfiguration();
-        conf.toRGBMapping[0] = _ui->_redChannel->value()-1;
-        conf.toRGBMapping[1] = _ui->_greenChannel->value()-1;
-        conf.toRGBMapping[2] = _ui->_blueChannel->value()-1;
-        hRenderer->setConfiguration(conf);
-    }
+//    // RGB mapping configuration
+//    if (_mode == RGB)
+//    {
+//        Core::ImageRendererConfiguration conf = hRenderer->getConfiguration();
+//        conf.toRGBMapping[0] = _ui->_redChannel->value()-1;
+//        conf.toRGBMapping[1] = _ui->_greenChannel->value()-1;
+//        conf.toRGBMapping[2] = _ui->_blueChannel->value()-1;
+//        hRenderer->setConfiguration(conf);
+//    }
 
     // Histogram configuration
-    int index = _currentHistogram->bandId;
-    Core::HistogramRendererConfiguration histConf = hRenderer->getHistConfiguration();
-    if (index > -1)
-    {
-        histConf.isDiscreteValues[index] = _currentHistogram->isDiscrete;
-        histConf.normHistStops[index] = computeStopsFromValues(_currentHistogram->outputStops, _currentHistogram->xmin, _currentHistogram->xmax);
-        histConf.transferFunctions[index] = Core::HistogramRendererConfiguration::getTransferFunctionByName(_currentHistogram->transferFunctionName);
-    }
-    else
-    { // all bands -> update all histograms and histConf
-        for (int i=0;i<_histograms.size();i++)
-        {
-            copyPositions(_currentHistogram->outputStops,_histograms[i].outputStops);
-            histConf.isDiscreteValues[i]=_histograms[i].isDiscrete;
-            histConf.normHistStops[i]=computeStopsFromValues(_histograms[i].outputStops, _histograms[i].xmin, _histograms[i].xmax);
-            histConf.transferFunctions[i]=Core::HistogramRendererConfiguration::getTransferFunctionByName(_histograms[i].transferFunctionName);
-        }
-    }
-    hRenderer->setHistConfiguration(histConf);
-}
+//    int index = _currentHistogram->bandId;
+//    Core::HistogramRendererConfiguration histConf = hRenderer->getHistConfiguration();
+//    if (index > -1)
+//    {
+//        histConf.isDiscreteValues[index] = _currentHistogram->isDiscrete;
+//        histConf.normHistStops[index] = computeStopsFromValues(_currentHistogram->outputStops, _currentHistogram->xmin, _currentHistogram->xmax);
+//        histConf.transferFunctions[index] = Core::HistogramRendererConfiguration::getTransferFunctionByName(_currentHistogram->transferFunctionName);
+//    }
+//    else
+//    { // all bands -> update all histograms and histConf
+//        for (int i=0;i<_histograms.size();i++)
+//        {
+//            copyPositions(_currentHistogram->outputStops,_histograms[i].outputStops);
+//            histConf.isDiscreteValues[i]=_histograms[i].isDiscrete;
+//            histConf.normHistStops[i]=computeStopsFromValues(_histograms[i].outputStops, _histograms[i].xmin, _histograms[i].xmax);
+//            histConf.transferFunctions[i]=Core::HistogramRendererConfiguration::getTransferFunctionByName(_histograms[i].transferFunctionName);
+//        }
+//    }
+//    hRenderer->setHistConfiguration(histConf);
+//}
 
 //*************************************************************************
 
 /*!
     Method to add histogram data. For single band display, add only one histogram. For RGB display, add exactly 3 histograms.
 */
-void HistogramRendererView::addHistogram(int id, const QString &name, const QVector<double> & data,
-                                         const Core::ImageRendererConfiguration &conf, const Core::HistogramRendererConfiguration & histConf)
+void HistogramRendererView::addHistogram(int id, const QString &name, const QVector<double> & data)
 {
     _ui->_histList->addItem(name, id);
 
     int index = _histograms.size();
     _histograms.resize(index+1);
     _histograms[index].bandId=id;
-    _histograms[index].xmin=conf.minValues[id];
-    _histograms[index].xmax=conf.maxValues[id];
-    _histograms[index].xmin2=histConf.qMinValues[id];
-    _histograms[index].xmax2=histConf.qMaxValues[id];
-    _histograms[index].transferFunctionName=histConf.transferFunctions[id]->getName();
-    _histograms[index].isDiscrete=histConf.isDiscreteValues[id];
-    _histograms[index].outputStops=computeValuesFromStops(histConf.normHistStops[id], _histograms[index].xmin, _histograms[index].xmax);
+    _histograms[index].xmin=_conf.minValues[id];
+    _histograms[index].xmax=_conf.maxValues[id];
+    _histograms[index].xmin2=_conf.qMinValues[id];
+    _histograms[index].xmax2=_conf.qMaxValues[id];
+    _histograms[index].transferFunctionName=_conf.transferFunctions[id]->getName();
+    _histograms[index].isDiscrete=_conf.isDiscreteValues[id];
+
+    if (_conf.mode == Core::HistogramRendererConfiguration::GRAY)
+    {
+        _histograms[index].outputStops=computeValuesFromStops(_conf.normHistStops[id], _histograms[index].xmin, _histograms[index].xmax);
+    }
+    else if (_conf.mode == Core::HistogramRendererConfiguration::RGB)
+    {
+        _histograms[index].outputStops=computeValuesFromStops(_conf.normRGBHistStops[id], _histograms[index].xmin, _histograms[index].xmax);
+    }
+
     // draw histogram bars :
     _histograms[index].graphicsItem = createHistogramGraphicsItem(data, _settings.dataPen);
     _histograms[index].graphicsItem->setVisible(false);
@@ -472,8 +475,6 @@ void HistogramRendererView::drawHistogram()
         SD_TRACE("HistogramRendererView::drawHistogram() : user should add 1 (gray mode) or 3 (rgb mode) histogram datas");
         return;
     }
-
-
 
     if (_ui->_transferFunction->count()==0)
     {
@@ -526,7 +527,7 @@ void HistogramRendererView::setTransferFunctionNames(const QStringList &transfer
 */
 void HistogramRendererView::onUpdateTimerTimeout()
 {
-    emit renderConfigurationChanged();
+    emit renderConfigurationChanged(_conf);
 }
 
 //*************************************************************************
@@ -556,7 +557,7 @@ void HistogramRendererView::updateHistogramData(int index, double xpos, const QC
         _updateDelayTimer.start(_settings.updateDelayMaxTime);
     else
     {
-        emit renderConfigurationChanged();
+        emit renderConfigurationChanged(_conf);
     }
 
 }
@@ -749,7 +750,7 @@ void HistogramRendererView::onTransferFunctionChanged(QString tf)
         return;
 
     _currentHistogram->transferFunctionName = tf;
-    emit renderConfigurationChanged();
+    emit renderConfigurationChanged(_conf);
 }
 
 //*************************************************************************
@@ -761,7 +762,7 @@ void HistogramRendererView::onDiscreteColorsClicked(bool checked)
 {
     _colorPalette->setIsDiscrete(checked);
     _currentHistogram->isDiscrete = _colorPalette->isDiscrete();
-    emit renderConfigurationChanged();
+    emit renderConfigurationChanged(_conf);
 }
 
 //*************************************************************************

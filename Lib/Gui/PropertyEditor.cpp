@@ -98,6 +98,11 @@ void PropertyEditor::setup(QObject * object)
         return;
     }
 
+    // disconnect previous connections
+//    if (_object)
+//    {
+//        disconnect(_object, 0, this, 0);
+//    }
 
     _object = object;
     _widgetPropertyMap.clear();
@@ -126,6 +131,15 @@ void PropertyEditor::setup(QObject * object)
 
             label[0] = label[0].toUpper();
             label += " : ";
+
+//            QMetaMethod notifySignal = property.notifySignal();
+//            if (notifySignal.isValid())
+//            { // connect signal with 'this'
+//                QString signalSignature = QString("%1").arg(notifySignal.methodSignature().data());
+//                connect(_object, signalSignature.toLatin1().constData(),
+//                        _mapper, SLOT(onPropertyChanged(const QVariant &)));
+//            }
+
             if (property.isWritable())
             {
                 QWidget * w = editableWidget(property.read(object), options);
@@ -171,7 +185,6 @@ QHash<QString, QHash<QString, QString> > PropertyEditor::getPropertyInfos(const 
     }
     return propertyOptionsMap;
 }
-
 
 //******************************************************************************
 
@@ -264,15 +277,15 @@ QWidget * PropertyEditor::readableWidget(const QVariant &value)
         l->setWordWrap(true);
         return l;
     }
-    else if (value.type() == QVariant::Rect)
+    else if (value.type() == QMetaType::QRect)
     {
         return createRectWidget(value.toRect());
     }
-    else if (value.type() == QVariant::RectF)
+    else if (value.type() == QMetaType::QRectF)
     {
         return createRectWidget(value.toRectF());
     }
-    else if (value.type() == QVariant::PolygonF)
+    else if (value.type() == QMetaType::QPolygonF)
     {
         return createPolygonWidget(value.value<QPolygonF>());
     }
@@ -289,7 +302,7 @@ QWidget * PropertyEditor::readableWidget(const QVariant &value)
 
 //******************************************************************************
 
-#define onPropertyChanged(Type, newValue) \
+#define OnPropertyChanged(Type, newValue) \
     Type * edit = qobject_cast<Type *>(sender()); \
     if (!edit) return; \
     if (!_widgetPropertyMap.contains(edit)) return; \
@@ -301,56 +314,62 @@ QWidget * PropertyEditor::readableWidget(const QVariant &value)
         SD_TRACE(QString("onPropertyChanged : failed to write new property value !")); \
     }
 
-#define foo(Type) \
-    Type * edit = new Type(); \
-    int propertyIndex = _widgetPropertyMap.value(edit, -1);
 
 void PropertyEditor::onStringPropertyChanged()
 {
-    onPropertyChanged(QLineEdit, edit->text());
+    OnPropertyChanged(QLineEdit, edit->text());
 }
 
 //******************************************************************************
 
 void PropertyEditor::onBoolPropertyChanged()
 {
-    onPropertyChanged(QCheckBox, edit->checkState() == Qt::Checked);
+    OnPropertyChanged(QCheckBox, edit->checkState() == Qt::Checked);
 }
 
 //******************************************************************************
 
 void PropertyEditor::onIntPropertyChanged()
 {
-    onPropertyChanged(QSpinBox, edit->value())
+    OnPropertyChanged(QSpinBox, edit->value())
 }
 
 //******************************************************************************
 
 void PropertyEditor::onDoublePropertyChanged()
 {
-    onPropertyChanged(QDoubleSpinBox, edit->value());
+    OnPropertyChanged(QDoubleSpinBox, edit->value());
 }
 
 //******************************************************************************
 
 void PropertyEditor::onColorPropertyChanged()
 {
-    onPropertyChanged(ColorEditor, edit->getColor());
+    OnPropertyChanged(ColorEditor, edit->getColor());
 }
 
 //******************************************************************************
 
 void PropertyEditor::onPenPropertyChanged()
 {
-    onPropertyChanged(PenEditor, edit->getPen());
+    OnPropertyChanged(PenEditor, edit->getPen());
 }
 
 //******************************************************************************
 
 void PropertyEditor::onBrushPropertyChanged()
 {
-    onPropertyChanged(BrushEditor, edit->getBrush());
+    OnPropertyChanged(BrushEditor, edit->getBrush());
 }
+
+//******************************************************************************
+
+//void PropertyEditor::onPropertyChanged(const QVariant & newValue)
+//{
+//    int a = 10;
+//    a++;
+//    int b = a * 10;
+//}
 
 //******************************************************************************
 /*!

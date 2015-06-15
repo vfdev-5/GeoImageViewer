@@ -50,7 +50,8 @@ cv::Mat FloatingDataProvider::getImageData(const QRect & srcPixelExtent, int dst
     QSize dstPixelExtent;
     if (dstPixelWidth == 0 && dstPixelHeight == 0)
     { // Full resolution
-        dstPixelExtent = srcRequestedExtent.size();
+//        dstPixelExtent = srcRequestedExtent.size();
+        dstPixelExtent = srcExtent.size();
     }
     else if (dstPixelHeight == 0)
     { // output keeps aspect ratio
@@ -68,7 +69,9 @@ cv::Mat FloatingDataProvider::getImageData(const QRect & srcPixelExtent, int dst
     int reqScaledW = qMin(qCeil(scaleX*srcRequestedExtent.width()), dstPixelExtent.width());
     int reqScaledH = qMin(qCeil(scaleY*srcRequestedExtent.height()), dstPixelExtent.height());
 
-    if (_cutNoDataBRBoundary)
+    if (_cutNoDataBRBoundary &&
+            (srcRequestedExtent.x() == srcExtent.x()) &&
+            (srcRequestedExtent.y() == srcExtent.y()))
     {
         if (reqScaledW < dstPixelExtent.width())
             dstPixelExtent.setWidth(reqScaledW);
@@ -82,12 +85,16 @@ cv::Mat FloatingDataProvider::getImageData(const QRect & srcPixelExtent, int dst
                reqScaledH);
 
     // Output matrix is encoded as Float32 for each band (Real Imagery) or Float32 for (re,im,abs,phase) and for each band (Complex Imagery)
+//    out = cv::Mat(dstPixelExtent.height(),
+//                  dstPixelExtent.width(),
+//                  convertTypeToOpenCV(4, false, _nbBands),
+//                  cv::Scalar::all(NoDataValue));
     out = cv::Mat(dstPixelExtent.height(),
                   dstPixelExtent.width(),
-                  convertTypeToOpenCV(4, false, _nbBands),
-                  cv::Scalar(NoDataValue));
-    cv::Mat dstMat = out(r);
+                  convertTypeToOpenCV(4, false, _nbBands));
+    out.setTo(NoDataValue);
 
+    cv::Mat dstMat = out(r);
 
     // Read data:
     cv::Rect r2(srcRequestedExtent.x(), srcRequestedExtent.y(),
@@ -95,10 +102,34 @@ cv::Mat FloatingDataProvider::getImageData(const QRect & srcPixelExtent, int dst
     cv::Mat srcMat = _data(r2);
     cv::resize(srcMat, dstMat, dstMat.size());
 
-//    displayMat(out, true, "out");
-
     return out;
 
+}
+
+//******************************************************************************
+
+void FloatingDataProvider::setImageData(const QPoint &offset, const cv::Mat &data)
+{
+    QRect r(offset.x(), offset.y(), data.cols, data.rows);
+    // if rect is in image:
+    QRect imRect(0,0,_data.cols,_data.rows);
+    r = imRect.intersected(r);
+    if (r.isEmpty())
+        return;
+
+    cv::Mat dataCP;
+    if (data.depth() != _data.depth())
+    {
+        data.convertTo(dataCP, _data.depth());
+    }
+    else
+    {
+        dataCP = data;
+    }
+    dataCP.copyTo(_data(cv::Rect(r.x(),r.y(),r.width(),r.height())));
+
+    // call 'update' on current zone -> GeoImageItem should be updated
+    emit dataChanged(QRect(offset.x(), offset.y(), data.cols, data.rows));
 }
 
 //******************************************************************************
@@ -112,13 +143,12 @@ bool FloatingDataProvider::create(const QString &name, const cv::Mat &src, const
     }
     else
     {
-        if (!QRect(0,0,src.cols,src.rows).intersects(intersection))
+        intersection = QRect(0,0,src.cols,src.rows).intersected(iIntersection);
+        if (intersection.isEmpty())
             return false;
     }
 
-//    _intersection = intersection;
-
-    setImageName("Region of " + name);
+    setImageName(name);
     // Copy input info :
     _inputWidth     = src.cols;
     _inputHeight    = src.rows;
@@ -145,8 +175,11 @@ bool FloatingDataProvider::create(const QString &name, const cv::Mat &src, const
 
     _pixelExtent = QRect(0,0,intersection.width(),intersection.height());
 
+    // compute mask :
+    cv::Mat mask = ImageDataProvider::computeMask(_data);
+
     // compute data stats:
-    if (!computeNormalizedHistogram(_data,
+    if (!computeNormalizedHistogram(_data, mask,
                                     _minValues,
                                     _maxValues,
                                     _bandHistograms,
@@ -157,6 +190,28 @@ bool FloatingDataProvider::create(const QString &name, const cv::Mat &src, const
     }
     return true;
 
+}
+
+//******************************************************************************
+
+FloatingDataProvider* FloatingDataProvider::createEmptyDataProvider(const QString & name, int width, int height)
+{
+    FloatingDataProvider * dst = new FloatingDataProvider();
+
+    cv::Mat src(height,
+                width,
+                CV_32F,
+//                cv::Scalar::all(NoDataValue));
+                cv::Scalar::all(10));
+    src.at<float>(0,0) = 0;
+
+    if (!dst->create(name, src, QRect()))
+    {
+        delete dst;
+        return 0;
+    }
+    dst->setEditable(true);
+    return dst;
 }
 
 //******************************************************************************
@@ -174,22 +229,32 @@ FloatingDataProvider* FloatingDataProvider::createDataProvider(const QString & n
 
 //******************************************************************************
 
-FloatingDataProvider* FloatingDataProvider::createDataProvider(const ImageDataProvider * src, const QRect & intersection)
+FloatingDataProvider* FloatingDataProvider::createDataProvider(const ImageDataProvider * src, const QRect & iIntersection)
 {
     FloatingDataProvider * dst = 0;
-    if (!src->getPixelExtent().intersects(intersection))
+    QRect intersection = src->getPixelExtent().intersected(iIntersection);
+    if (intersection.isEmpty())
         return dst;
 
-    dst = new FloatingDataProvider();
-//    dst->_intersection = intersection;
 
-    dst->setImageName("Region of " + src->getImageName());
-    // Copy input info :
+    // test buffer size needed : if larger than 200 Mb -> error
+    double size = intersection.width() * intersection.height() * src->getInputNbBands() * src->getInputDepthInBytes();
+    if (size > 1024.0 * 1024.0 * 200.0 )
+    {
+        SD_ERR("Image selection is too large.");
+        return dst;
+    }
+
+    dst = new FloatingDataProvider();
+
+    dst->setImageName(tr("Region of ") + src->getImageName());
+    // Copy input info which should be the same as src input info
+    // output data provider is ROI of src and not a filter
     dst->_inputWidth     = src->getWidth();
     dst->_inputHeight    = src->getHeight();
-    dst->_inputDepth     = src->getDepthInBytes();
-    dst->_inputNbBands   = src->getNbBands();
-    dst->_inputIsComplex = src->isComplex();
+    dst->_inputDepth     = src->getInputDepthInBytes();
+    dst->_inputNbBands   = src->getInputNbBands();
+    dst->_inputIsComplex = src->inputIsComplex();
 
     dst->_bandNames = src->getBandNames();
 
@@ -199,8 +264,11 @@ FloatingDataProvider* FloatingDataProvider::createDataProvider(const ImageDataPr
 
     dst->_pixelExtent = QRect(0,0,intersection.width(),intersection.height());
 
+    // compute mask
+    cv::Mat mask = ImageDataProvider::computeMask(dst->_data);
+
     // compute data stats:
-    if (!computeNormalizedHistogram(dst->_data,
+    if (!computeNormalizedHistogram(dst->_data, mask,
                                     dst->_minValues,
                                     dst->_maxValues,
                                     dst->_bandHistograms,

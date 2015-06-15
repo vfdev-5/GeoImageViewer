@@ -1,4 +1,13 @@
-# Basic Scripts for image IO and display
+#-------------------------------------------------------------------------------
+# Name: Image tools
+# Purpose: Basic Scripts for image IO and display
+#
+# Author:      vfomin
+#
+# Created:     03/04/2015
+# Copyright:   (c) vfomin 2015
+# Licence:     <your licence>
+#-------------------------------------------------------------------------------
 
 """
 Loader methods:
@@ -81,28 +90,35 @@ def displayImage(image0, showMinMax=True, name="image", waitKey=True, rescale=Tr
     """
     Method to display image
     Input image should be of shape (height, width) or (height, width, nbBands)
+
+    Return displayed RGB-image
+
     """
     ImageCommon.assertImage(image0)
 
     nbBands = 1 if len(image0.shape) == 2 else image0.shape[2]
+    isComplex = np.iscomplexobj(image0)
 
     if showMinMax:
         Global.logPrint("Image \'" + name + "\' has size: " + str(image0.shape[0]) + ", " + str(image0.shape[1]) + " and nbBands= " + str(nbBands))
-
+        Global.logPrint("Image is complex : " + str(isComplex))
+        Global.logPrint("Image data type is : " + str(image0.dtype))
 
     # define mapping
-    if nbBands == 1:
+    if nbBands == 1 and not isComplex:
         mapping = [1,1,1]
         image = image0
-    elif nbBands == 2:
+    elif nbBands == 1 and isComplex:
         mapping = [1,1,1]
         # create abs band from Re and Im
         image = np.zeros((image0.shape[0], image0.shape[1]))
-        image = cv2.magnitude(image0[:,:,0], image0[:,:,1])
-        nbBands = 1
-    elif nbBands >= 3:
+        image = np.absolute(image0)
+    elif nbBands >= 3 and not isComplex:
         mapping = [3,2,1]
         image = image0
+    else:
+        Global.logPrint("Image render mapping is not defined",'error')
+        return
 
     # rescale if image is larger than a screen of 800 pixels
     if rescale:
@@ -118,10 +134,9 @@ def displayImage(image0, showMinMax=True, name="image", waitKey=True, rescale=Tr
     outputImage = np.zeros((image.shape[0], image.shape[1], 3), dtype=np.uint8)
 
     for i in range(3):
-
         bandIndex = mapping[i]-1
         # compute min/max on the band
-        bandData = image if nbBands == 1 else image[:,:,bandIndex]
+        bandData = image if len(image.shape) == 2 else image[:,:,0] if nbBands == 1 else image[:,:,bandIndex]
         minValues[bandIndex] = bandData.min()
         maxValues[bandIndex] = bandData.max()
         if (maxValues[bandIndex] - minValues[bandIndex] > 1000):
@@ -141,12 +156,15 @@ def displayImage(image0, showMinMax=True, name="image", waitKey=True, rescale=Tr
 
         bandData[bandData > nmax] = nmax
         bandData[bandData < nmin] = nmin
-        outputImage[:,:,i] = (255.0 * (bandData - nmin) / (nmax - nmin)) if nmax > nmin else 0.0
+        if nmax > nmin:
+            outputImage[:,:,i] = (255.0 * (bandData[:,:] - nmin) / (nmax - nmin))
 
     cv2.imshow(name, outputImage)
 
     if (waitKey):
         cv2.waitKey(0)
+
+    return outputImage
 
 
 def displayHist(image, show=True, colors=['r','g','b','m','y'], uMinValues=None, uMaxValues=None):
@@ -433,7 +451,8 @@ def computeFFT(image):
     return fftShift(cv2.dft(image, flags=cv2.DFT_COMPLEX_OUTPUT))
 
 
-
+# Tests
+# ###############################################################################
 if __name__ == "__main__":
 
     filenames = []

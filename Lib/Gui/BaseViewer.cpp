@@ -14,6 +14,7 @@
 #include <QScrollBar>
 #include <QAction>
 #include <QMenu>
+#include <QLabel>
 
 // Project
 #include "BaseViewer.h"
@@ -54,11 +55,14 @@ BaseViewer::BaseViewer(const QString &initialText, QWidget *parent) :
     _zoomMinLevel(-5),
     _zoomMaxLevel(5),
     _initialText(initialText),
+    _pointInfo(new QLabel()),
     _handScrolling(false),
     _lastMouseEvent(QEvent::None, QPointF(), QPointF(), QPointF(), Qt::NoButton, 0, 0)
 {
     QVBoxLayout * layout = new QVBoxLayout(this);
     layout->addWidget(&_view);
+    layout->addWidget(_pointInfo);
+    _pointInfo->setVisible(false);
 
     _scene.installEventFilter(this);
 
@@ -115,7 +119,6 @@ void BaseViewer::clear()
     }
 
     _view.setBackgroundBrush(QBrush(Qt::white));
-//    _view.fitInView(_scene.sceneRect(), Qt::KeepAspectRatio);
 
     // reset zoom level
     _zoomLevel = 0;
@@ -162,17 +165,23 @@ void BaseViewer::onZoomActionTriggered()
 {
     if (sender() == _zoomIn)
     {
-        centerOnAtZoom(_zoomLevel+1,
-                       _view.mapToScene(
-                        _view.mapFromGlobal(_menu.pos())
-                            ));
+        if (_zoomLevel+1<=_zoomMaxLevel)
+        {
+            centerOnAtZoom(_zoomLevel+1,
+                           _view.mapToScene(
+                               _view.mapFromGlobal(_menu.pos())
+                               ));
+        }
     }
     else if (sender() == _zoomOut)
     {
-        centerOnAtZoom(_zoomLevel-1,
-                       _view.mapToScene(
-                        _view.mapFromGlobal(_menu.pos())
-                            ));
+        if (_zoomLevel-1>=_zoomMinLevel)
+        {
+            centerOnAtZoom(_zoomLevel-1,
+                           _view.mapToScene(
+                               _view.mapFromGlobal(_menu.pos())
+                               ));
+        }
     }
 }
 
@@ -210,7 +219,7 @@ bool BaseViewer::eventFilter(QObject * o, QEvent * e)
             return true;
         }
         else if (_settings.enableScroll &&
-                    scrollOnMouse(e))
+                 scrollOnMouse(e))
         {
             e->accept();
             return true;
@@ -453,6 +462,13 @@ void BaseViewer::viewportInfo()
     SD_TRACE(QString("view scale : %1, %2").arg(sx).arg(sy));
 #endif
 
+}
+
+//******************************************************************************
+
+void BaseViewer::showPointInfo(bool v)
+{
+    _pointInfo->setVisible(v);
 }
 
 //******************************************************************************

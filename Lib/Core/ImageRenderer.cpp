@@ -18,84 +18,23 @@ ImageRenderer::ImageRenderer(QObject *parent) :
 }
 
 //******************************************************************************
-/*!
- * \brief ImageRenderer::setToRGBMapping method to setup default 'Bands-to-RGB' mapping
- * \param layer
- * \return
- */
 
-bool ImageRenderer::setToRGBMapping(ImageDataProvider *provider)
+bool ImageRenderer::setupConfiguration(const ImageDataProvider *dataProvider, ImageRendererConfiguration * conf)
 {
-    int nbBands=provider->getNbBands();
-    bool isComplex=provider->isComplex();
-    _conf.toRGBMapping.clear();
-    if (nbBands == 1 && !isComplex)
-    {
-        _conf.toRGBMapping.insert(0, 0);
-        _conf.toRGBMapping.insert(1, 0);
-        _conf.toRGBMapping.insert(2, 0);
-    }
-    else if (nbBands >= 1 && isComplex)
-    {
-        // TODO !!! NEED TO CREATE VIRTUAL BANDS
-        SD_ERR(QObject::tr("Complex images are not yet supported"));
-    }
-    else if (provider->getNbBands() > 2 && !isComplex)
-    { // Image with more the 2 not complex bands is interpreted as RGB image
-        _conf.toRGBMapping.insert(0, 0);
-        _conf.toRGBMapping.insert(1, 1);
-        _conf.toRGBMapping.insert(2, 2);
-    }
-    else if (provider->getNbBands() == 2 && !isComplex)
-    { // Image with 2 bands is not interpreted as complex image and displayed as gray level image
-        _conf.toRGBMapping.insert(0, 0);
-        _conf.toRGBMapping.insert(1, 0);
-        _conf.toRGBMapping.insert(2, 0);
-    }
-    else
-    {
-        SD_TRACE("ImageRenderer::setToRGBMapping : Failed to create toRGB mapping");
+    if (!dataProvider || !conf)
         return false;
-    }
-    return true;
+    conf->minValues = dataProvider->getMinValues();
+    conf->maxValues = dataProvider->getMaxValues();
+    conf->toRGBMapping = computeToRGBMapping(dataProvider);
+    return !conf->toRGBMapping.isEmpty();
 }
 
 //******************************************************************************
 
-bool ImageRenderer::setupConfiguration(ImageDataProvider *dataProvider)
-{
-
-    _conf.minValues = dataProvider->getMinValues();
-    _conf.maxValues = dataProvider->getMaxValues();
-
-    if (!setToRGBMapping(dataProvider))
-    {
-        return false;
-    }
-
-    return true;
-}
-
-//******************************************************************************
-
-void ImageRenderer::setConfiguration(const ImageRendererConfiguration & conf)
-{
-    _conf = conf;
-}
-
-//******************************************************************************
-
-inline bool ImageRenderer::checkBeforeRender(const cv::Mat & rawData)
-{
-    int nbBands = rawData.channels();
-    if (nbBands != _conf.minValues.size() ||
-            nbBands != _conf.maxValues.size())
-        return false;
-    if (_conf.toRGBMapping.size() != 3)
-        return false;
-
-    return true;
-}
+//void ImageRenderer::setConfiguration(const ImageRendererConfiguration & conf)
+//{
+//    _conf = conf;
+//}
 
 //******************************************************************************
 /*!
@@ -103,10 +42,10 @@ inline bool ImageRenderer::checkBeforeRender(const cv::Mat & rawData)
  * \param rawData
  * \return Matrix in RGBA 32-bits format, 4 channels
  */
-cv::Mat ImageRenderer::render(const cv::Mat &oRawData, bool isBGRA)
+cv::Mat ImageRenderer::render(const cv::Mat &oRawData, const ImageRendererConfiguration * conf, bool isBGRA)
 {
     cv::Mat outputImage8U;
-    if (!checkBeforeRender(oRawData))
+    if (!checkBeforeRender(oRawData.channels(), conf))
         return outputImage8U;
 
     // Get alpha channel and rewrite noDataValues to zero
@@ -115,7 +54,7 @@ cv::Mat ImageRenderer::render(const cv::Mat &oRawData, bool isBGRA)
     cv::Mat rawData = oRawData.mul(mask);
 
     int nbBands = rawData.channels();
-    const QVector<int> & mapping = _conf.toRGBMapping;
+    const QVector<int> & mapping = conf->toRGBMapping;
 
     std::vector<cv::Mat> iAlpha8U(nbBands);
     std::vector<cv::Mat> iChannels(nbBands);
@@ -133,8 +72,8 @@ cv::Mat ImageRenderer::render(const cv::Mat &oRawData, bool isBGRA)
        double a(1.0);
        double b(0.0);
 
-       a = 255.0 / ( _conf.maxValues[index] - _conf.minValues[index] );
-       b = - 255.0 * _conf.minValues[index] / ( _conf.maxValues[index] - _conf.minValues[index] );
+       a = 255.0 / ( conf->maxValues[index] - conf->minValues[index] );
+       b = - 255.0 * conf->minValues[index] / ( conf->maxValues[index] - conf->minValues[index] );
        iChannels[index].convertTo(oChannels[i], CV_8U, a, b);
     }
 
@@ -142,6 +81,61 @@ cv::Mat ImageRenderer::render(const cv::Mat &oRawData, bool isBGRA)
     if (isBGRA)
         cv::cvtColor(outputImage8U, outputImage8U, CV_RGBA2BGRA);
     return outputImage8U;
+}
+
+//******************************************************************************
+//******************************************************************************
+/*!
+ * \brief computeToRGBMapping method to compute default 'Bands-to-RGB' mapping
+ * \param ImageDataProvider
+ * \return toRGBMapping as QVector<int>
+ */
+
+QVector<int> computeToRGBMapping(const ImageDataProvider *provider)
+{
+    QVector<int> toRGBMapping;
+    bool isComplex=provider->inputIsComplex();
+    int nbBands=provider->getInputNbBands();
+    if (!isComplex)
+    {
+        if (nbBands == 1)
+        {
+            toRGBMapping.insert(0, 0);
+            toRGBMapping.insert(1, 0);
+            toRGBMapping.insert(2, 0);
+        }
+        else if (provider->getNbBands() > 2 )
+        { // Image with more the 2 not complex bands is interpreted as RGB image
+            toRGBMapping.insert(0, 0);
+            toRGBMapping.insert(1, 1);
+            toRGBMapping.insert(2, 2);
+        }
+        else if (provider->getNbBands() == 2)
+        { // Image with 2 bands is not interpreted as complex image and displayed as gray level image
+            toRGBMapping.insert(0, 0);
+            toRGBMapping.insert(1, 0);
+            toRGBMapping.insert(2, 0);
+        }
+        else
+        {
+            SD_TRACE("ImageRenderer::setToRGBMapping : Failed to create toRGB mapping");
+        }
+    }
+    else
+    {
+        if (nbBands >= 1)
+        {
+            // Single or Multi-bands Complex image -> choose Abs channel of the 1st band
+            toRGBMapping.insert(0, 2);
+            toRGBMapping.insert(1, 2);
+            toRGBMapping.insert(2, 2);
+        }
+        else
+        {
+            SD_TRACE("ImageRenderer::setToRGBMapping : Failed to create toRGB mapping");
+        }
+    }
+    return toRGBMapping;
 }
 
 //******************************************************************************

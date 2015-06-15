@@ -10,11 +10,12 @@ namespace Gui
 
 DefaultRendererView::DefaultRendererView(QWidget *parent) :
     AbstractRendererView(parent),
-//    _renderer(0),
-    _dataProvider(0),
     ui(new Ui_DefaultRendererView)
 {
+
     ui->setupUi(this);
+    connect(ui->_revert, SIGNAL(clicked()), this, SLOT(revert()));
+
 }
 
 //******************************************************************************
@@ -38,9 +39,22 @@ void DefaultRendererView::clear()
 
 //******************************************************************************
 
-void DefaultRendererView::setup(Core::ImageRenderer * renderer, const Core::ImageDataProvider * provider)
+void DefaultRendererView::revert()
 {
-    setupRenderer(renderer);
+    // !!!! NEED TO PROCEED AS A NEW CONF IS APPLIED !!!!
+//    _renderer->setupConfiguration(_dataProvider);
+
+    setup(_initialConf, _dataProvider);
+    emit renderConfigurationChanged(_initialConf);
+
+}
+
+//******************************************************************************
+
+void DefaultRendererView::setup(const Core::ImageRendererConfiguration &conf, const Core::ImageDataProvider * provider)
+{
+    _conf = conf;
+    _initialConf = conf;
     _dataProvider=provider;
 
     clear();
@@ -49,9 +63,6 @@ void DefaultRendererView::setup(Core::ImageRenderer * renderer, const Core::Imag
     ui->_red->addItems(_dataProvider->getBandNames());
     ui->_green->addItems(_dataProvider->getBandNames());
     ui->_blue->addItems(_dataProvider->getBandNames());
-
-    // get rgb mapping:
-    _conf = _renderer->getConfiguration();
 
     const QVector<int> & mapping = _conf.toRGBMapping;
     ui->_red->setCurrentIndex(mapping[0]);
@@ -65,11 +76,10 @@ void DefaultRendererView::setup(Core::ImageRenderer * renderer, const Core::Imag
 
 //******************************************************************************
 
-void DefaultRendererView::applyNewRendererConfiguration()
-{
-    _renderer->setConfiguration(_conf);
-}
-
+//void DefaultRendererView::applyNewRendererConfiguration()
+//{
+////    _renderer->setConfiguration(_conf);
+//}
 
 //******************************************************************************
 
@@ -97,7 +107,7 @@ void DefaultRendererView::on__band_activated(int index)
 void DefaultRendererView::on__red_activated(int index)
 {
     _conf.toRGBMapping[0]=index;
-    emit renderConfigurationChanged();
+    emit renderConfigurationChanged(_conf);
 }
 
 //******************************************************************************
@@ -105,7 +115,7 @@ void DefaultRendererView::on__red_activated(int index)
 void DefaultRendererView::on__green_activated(int index)
 {
     _conf.toRGBMapping[1]=index;
-    emit renderConfigurationChanged();
+    emit renderConfigurationChanged(_conf);
 }
 
 //******************************************************************************
@@ -113,7 +123,7 @@ void DefaultRendererView::on__green_activated(int index)
 void DefaultRendererView::on__blue_activated(int index)
 {
     _conf.toRGBMapping[2]=index;
-    emit renderConfigurationChanged();
+    emit renderConfigurationChanged(_conf);
 }
 
 //******************************************************************************
@@ -122,7 +132,7 @@ void DefaultRendererView::on__min_editingFinished()
 {
     int index = ui->_band->currentIndex();
     _conf.minValues[index]=ui->_min->value();
-    emit renderConfigurationChanged();
+    emit renderConfigurationChanged(_conf);
 }
 
 //******************************************************************************
@@ -131,7 +141,7 @@ void DefaultRendererView::on__max_editingFinished()
 {
     int index = ui->_band->currentIndex();
     _conf.maxValues[index]=ui->_max->value();
-    emit renderConfigurationChanged();
+    emit renderConfigurationChanged(_conf);
 }
 
 //******************************************************************************

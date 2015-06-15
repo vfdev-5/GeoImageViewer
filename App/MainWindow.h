@@ -7,12 +7,12 @@
 
 // Project
 #include "Gui/GeoImageViewer.h"
-#include "Gui/HistogramRendererView.h"
+//#include "Gui/HistogramRendererView.h"
 #include "Gui/DefaultRendererView.h"
 #include "Gui/ToolsView.h"
 #include "Gui/LayersView.h"
 
-#define USE_HISTOGRAM
+//#define USE_HISTOGRAM
 
 namespace Ui {
 class MainWindow;

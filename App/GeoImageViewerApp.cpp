@@ -13,8 +13,6 @@
 // Qt
 #include <QApplication>
 
-#include <QLabel>
-
 // Project
 #include "MainWindow.h"
 #include "Tools/ToolsManager.h"
@@ -25,7 +23,7 @@ int main(int argc, char *argv[])
 
     QApplication a(argc, argv);
     //     Setup plugins
-//    Tools::ToolsManager::get()->loadPlugins(qApp->applicationDirPath() + "/Plugins/Tools");
+    Tools::ToolsManager::get()->loadPlugins(qApp->applicationDirPath() + "/Plugins/Tools");
     Filters::FiltersManager::get()->loadPlugins(qApp->applicationDirPath() + "/Plugins/Filters");
     //     display main window
     MainWindow w;

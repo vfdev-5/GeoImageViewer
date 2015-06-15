@@ -24,6 +24,7 @@ class GIV_DLL_EXPORT AbstractFilter : public QObject
     Q_PROPERTY_WITH_GETACCESSOR(QString, description, getDescription)
 
     PROPERTY_GETACCESSOR(QString, errorMessage, getErrorMessage)
+    PROPERTY_ACCESSORS(float, noDataValue, getNoDataValue, setNoDataValue)
 
 public:
     AbstractFilter(QObject * parent = 0);

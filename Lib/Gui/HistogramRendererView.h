@@ -12,10 +12,6 @@
 #include <QTimer>
 #include <QVector>
 
-// Opencv
-#include <opencv2/core/core.hpp>
-
-
 // Project
 #include "Core/LibExport.h"
 #include "Core/HistogramImageRenderer.h"
@@ -97,13 +93,10 @@ public:
     explicit HistogramRendererView(QWidget *parent = 0);
     virtual ~HistogramRendererView();
 
-    virtual void setup(Core::ImageRenderer * renderer, const Core::ImageDataProvider * provider);
-    virtual void applyNewRendererConfiguration();
+    virtual void setup(const Core::ImageRendererConfiguration & conf, const Core::ImageDataProvider * provider);
 
 protected:
-
-    void addHistogram(int id, const QString & name, const QVector<double> &data,
-                      const Core::ImageRendererConfiguration & conf, const Core::HistogramRendererConfiguration & histConf);
+    void addHistogram(int id, const QString & name, const QVector<double> &data);
     void drawHistogram();
     void setTransferFunctionNames(const QStringList & transferFunctionNames);
 
@@ -154,6 +147,10 @@ protected:
 
     void setupMenu();
 
+
+    Core::HistogramRendererConfiguration _conf;
+    Core::HistogramRendererConfiguration _initialConf;
+
 private:
 
     QGraphicsItemGroup * createHistogramGraphicsItem(const QVector<double> & data, const QPen &dataPen);
@@ -186,8 +183,6 @@ private:
 
     Mode _mode;
     QTimer _updateDelayTimer;
-
-//    Core::HistogramImageRenderer * _hRenderer;
 
 };
 

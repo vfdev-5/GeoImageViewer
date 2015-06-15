@@ -10,11 +10,13 @@
 
 // Project
 #include "Global.h"
+#include "ImageRenderer.h"
 
 namespace Core
 {
 
-class ImageRenderer;
+//class ImageRenderer;
+//class ImageRendererConfiguration;
 class ImageDataProvider;
 
 //******************************************************************************
@@ -31,15 +33,15 @@ public:
     {
         int TileSize;
         int CacheSize;
+        int MaxNbOfThreads;
         Settings() :
             TileSize(512),
-            CacheSize(50)
+            CacheSize(50),
+            MaxNbOfThreads(1)
         {}
     };
 
-
-
-    explicit GeoImageItem(QGraphicsItem * parent = 0);
+    explicit GeoImageItem(ImageDataProvider * provider, ImageRenderer * renderer, ImageRendererConfiguration *conf, QGraphicsItem * parent = 0);
     virtual ~GeoImageItem();
 
     enum { Type = UserType + 2 };
@@ -52,22 +54,13 @@ public:
     int getZoomMinLevel()
     { return _zoomMinLevel; }
 
-    void setRenderer(ImageRenderer * renderer);
-    void setDataProvider(ImageDataProvider * provider);
-
     const ImageDataProvider * getConstDataProvider() const
     { return _dataProvider; }
-
-    const ImageRenderer * getConstRenderer() const
-    { return _renderer; }
-
-    ImageRenderer * getRenderer()
-    { return _renderer; }
-
+    ImageRendererConfiguration getRendererConfiguration() const;
 
 public slots:
     void updateItem(int zoomLevel, const QRectF & visiblePixelExtent);
-
+    void onRendererConfigurationChanged(Core::ImageRendererConfiguration conf);
 
 protected slots:
     void onTileLoaded(QGraphicsPixmapItem*tile, QGraphicsItemGroup * tileGroup, const QString &key);
@@ -78,12 +71,20 @@ protected:
     void showCacheInfo();
     void computeZoomMinLevel();
 
+    void setRenderer(ImageRenderer * renderer);
+    void setDataProvider(ImageDataProvider * provider);
+
     ImageRenderer * _renderer;
+    ImageRendererConfiguration * _rconf;
     ImageDataProvider * _dataProvider;
 
     int _nbXTiles;
     int _nbYTiles;
     int _zoomMinLevel;
+
+    //
+    int _currentZoomLevel;
+    QRectF _currentVisiblePixelExtent;
 
     Settings _settings;
 

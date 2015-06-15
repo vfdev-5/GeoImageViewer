@@ -1,4 +1,13 @@
-# Collection of some useful global methods
+#-------------------------------------------------------------------------------
+# Name: Global
+# Purpose: Collection of some useful global methods
+#
+# Author:      vfomin
+#
+# Created:     09/12/2014
+# Copyright:   (c) vfomin 2015
+# Licence:     <your licence>
+#-------------------------------------------------------------------------------
 
 # Python
 import os

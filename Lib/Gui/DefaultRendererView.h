@@ -26,11 +26,13 @@ class GIV_DLL_EXPORT DefaultRendererView : public AbstractRendererView
 public:
     explicit DefaultRendererView(QWidget *parent = 0);
     virtual ~DefaultRendererView();
-    virtual void setup(Core::ImageRenderer * renderer, const Core::ImageDataProvider * provider);
-    virtual void applyNewRendererConfiguration();
+//    virtual void setup(Core::ImageRenderer * renderer, const Core::ImageDataProvider * provider);
+    virtual void setup(const Core::ImageRendererConfiguration & conf, const Core::ImageDataProvider * provider);
+//    virtual void applyNewRendererConfiguration();
 
 public slots:
     virtual void clear();
+    virtual void revert();
 
 protected slots:
     void on__band_activated(int);
@@ -46,10 +48,8 @@ private:
 
     void setupBandConfiguration(int index);
 
-//    Core::ImageRenderer * _renderer;
-
     Core::ImageRendererConfiguration _conf;
-    const Core::ImageDataProvider * _dataProvider;
+    Core::ImageRendererConfiguration _initialConf;
 
 };
 

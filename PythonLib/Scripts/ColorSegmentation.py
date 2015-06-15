@@ -26,12 +26,8 @@ def testIsEqual(tol=0.01, isEqual=lambda x,y,tol : (x-y)*(x-y)*1.0/(x + tol*0.00
     plt.show()
 
 
-def segment2(image, nbClasses=2):
-    pass
 
-
-
-def segment(image, tol=0.01, isEqual=lambda x,y,tol : (x-y)*(x-y)*1.0/x *1.0/y < tol):
+def graphSegment(image, tol=0.01, isEqual=lambda x,y,tol : (x-y)*(x-y)*1.0/x *1.0/y < tol):
 
     """
     Segmentation method consists of coloring image pixels if they are 'connected'.
@@ -93,25 +89,57 @@ def segment(image, tol=0.01, isEqual=lambda x,y,tol : (x-y)*(x-y)*1.0/x *1.0/y <
 
 
 
+def meanShift():
+    # define mean-shift parameters :
+    # spatial radius
+    sp = 20
+    # color radius
+    cr = 20
+    res = cv2.pyrMeanShiftFiltering(out, sp, cr)
+    ImageTools.displayImage(res, True, "Mean-shift")
+
+
 
 if __name__ == '__main__':
 
 
 ##    testIsEqual()
-    tol=12.0
-    isEqual = lambda x,y,tol: np.sqrt((x-y)*(x-y)) < tol
+##    tol=12.0
+##    isEqual = lambda x,y,tol: np.sqrt((x-y)*(x-y)) < tol
 ##
 ##    testIsEqual(tol, isEqual)
 ##    exit()
 
-    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\filtered\\img1.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\filtered\\img1.tif"
+    filename = "C:\\VFomin_folder\\PISE_project\\Slick_Image_Database\\Seeps\\ASAR\\AOI\\AOI_Slick_seep_4219.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\Slick_Image_Database\\Seeps\\ASAR\\AOI\\AOI_Slick_seep_1189.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_4.tif"
+##    filename = "C:\\VFomin_folder\\PISE_project\\MyExamples\\Qt_GeoImageViewer_test\\Test_Image_Data\\orig\\test_1.tif"
+
+
+
     image = ImageTools.loadImage(filename)
     if image is None:
         Global.logPrint("Failed to load image", 'error')
         exit()
     nbBands = 1 if len(image.shape) == 2 else image.shape[2]
     Global.logPrint("Image info: " + str(image.shape[0]) + ", " + str(image.shape[1]) + ", nbBands=" + str(nbBands))
-##    ImageTools.displayImage(image)
+##    ImageTools.displayImage(image, True, "Original", False)
+
+
+    # Gabor filtering :
+    n=5
+    angles = np.arange(0.0, 360, 360.0/n)
+
+    for theta in angles:
+        kernel = cv2.getGaborKernel((7,7), 5.0, theta * np.pi / 180.0, 1.0, 1.0, ktype=cv2.CV_32F)
+        ImageTools.displayImage(kernel, True, "Kernel", False)
+        out = cv2.filter2D(image, -1, kernel)
+        ImageTools.displayImage(out, True, "Gabor filtered : " + str(theta), False)
+
+    ImageTools.displayImage(image, True, "Original")
+
+##    plt.show
 
 ##    dImage = np.zeros((3,3))
 ##    dImage[0,0]=10.5
@@ -126,14 +154,14 @@ if __name__ == '__main__':
 ##    dImage[2,1]=15.2
 ##    dImage[2,2]=15.2
 
-    dImage = ImageTools.downsample(image, (10, 10))
+##    dImage = ImageTools.downsample(image, (10, 10))
 ##    dImage = dImage[0:10,0:10]
 ##    print dImage
-    ImageTools.displayImage(dImage)
-
-    cImage = segment(dImage, tol, isEqual)
+##    ImageTools.displayImage(dImage)
+##
+##    cImage = graphSegment(dImage, tol, isEqual)
 ##    print cImage
-    ImageTools.displayImage(cImage, True, "segmented")
+##    ImageTools.displayImage(cImage, True, "segmented")
 
 
     cv2.destroyAllWindows()

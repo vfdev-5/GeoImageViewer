@@ -12,7 +12,8 @@ BaseLayer::BaseLayer(QObject *parent) :
     QObject(parent),
     _isVisible(true),
     _opacity(1.0),
-    _zValue(0)
+    _zValue(0),
+    _editable(false)
 {
 }
 

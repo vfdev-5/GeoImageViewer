@@ -19,7 +19,8 @@ LayersView::LayersView(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::LayersView),
     _removeLayer(tr("Remove"), this),
-    _saveLayer(tr("Save"), this)
+    _saveLayer(tr("Save"), this),
+    _createNewLayer(tr("Create"), this)
 {
     ui->setupUi(this);
 
@@ -30,13 +31,22 @@ LayersView::LayersView(QWidget *parent) :
                                << "isVisible"
                                );
 
-    setupMenu();
-
     ui->_layers->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->_layers, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(onItemClicked(QListWidgetItem*)));
     connect(ui->_layers, SIGNAL(itemChanged(QListWidgetItem*)), this, SLOT(onItemChanged(QListWidgetItem*)));
     connect(ui->_layers, SIGNAL(itemOrderChanged()), this, SLOT(onItemOrderChanged()));
     connect(ui->_layers, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onContextMenuRequested(QPoint)));
+
+
+    connect(&_removeLayer, SIGNAL(triggered()), this, SLOT(onRemoveLayer()));
+    connect(&_saveLayer, SIGNAL(triggered()), this, SLOT(onSaveLayer()));
+    connect(&_createNewLayer, SIGNAL(triggered()), this, SIGNAL(createNewLayer()));
+
+    _menu.addAction(&_createNewLayer);
+    _menu.addSeparator();
+    _menu.addAction(&_saveLayer);
+    _menu.addSeparator();
+    _menu.addAction(&_removeLayer);
 }
 
 //******************************************************************************
@@ -48,15 +58,20 @@ LayersView::~LayersView()
 
 //******************************************************************************
 
-void LayersView::setupMenu()
+void LayersView::setupMenuOnItem()
 {
-    _removeLayer.setVisible(true);
+    _createNewLayer.setEnabled(false);
+    _removeLayer.setEnabled(true);
     _saveLayer.setEnabled(false);
-    _menu.addAction(&_saveLayer);
-    _menu.addSeparator();
-    _menu.addAction(&_removeLayer);
-    connect(&_removeLayer, SIGNAL(triggered()), this, SLOT(onRemoveLayer()));
-    connect(&_saveLayer, SIGNAL(triggered()), this, SLOT(onSaveLayer()));
+}
+
+//******************************************************************************
+
+void LayersView::setupMenuNoItem()
+{
+    _createNewLayer.setEnabled(true);
+    _removeLayer.setEnabled(false);
+    _saveLayer.setEnabled(false);
 }
 
 //******************************************************************************
@@ -76,6 +91,7 @@ void LayersView::onRemoveLayer()
         _itemLayerMap.remove(item);
         delete item;
         delete layer;
+        // signal is sent to ShapeViewer that layer is destroyed and a slot is called
     }
 
 }
@@ -108,7 +124,7 @@ void LayersView::addLayer(Core::BaseLayer *layer)
                    Qt::ItemIsEnabled |
                    Qt::ItemIsUserCheckable);
     item->setCheckState(Qt::Checked);
-    layer->setZValue(0);
+    layer->setZValue(-12345);
 
     _itemLayerMap.insert(item, layer);
     // insert item at row = 0
@@ -215,7 +231,7 @@ void LayersView::onContextMenuRequested(QPoint p)
     QListWidgetItem * item = ui->_layers->itemAt(p);
     if (item)
     {
-        _saveLayer.setEnabled(false);
+        setupMenuOnItem();
         // test if layer can be saved
         Core::BaseLayer * layer = _itemLayerMap.value(item, 0);
         if (layer && layer->canSave())
@@ -223,6 +239,11 @@ void LayersView::onContextMenuRequested(QPoint p)
             _saveLayer.setEnabled(true);
         }
 
+        _menu.popup(ui->_layers->mapToGlobal(p));
+    }
+    else
+    {
+        setupMenuNoItem();
         _menu.popup(ui->_layers->mapToGlobal(p));
     }
 }

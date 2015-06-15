@@ -119,6 +119,104 @@ void LayerUtilsTest::test_GeoComputationMethods()
 
 //*************************************************************************
 
+void LayerUtilsTest::test_OpencvOperations()
+{
+    try
+    {
+        cv::Mat m1(100,100,CV_16UC(5));
+        m1.setTo(1);
+        cv::Mat m2(100,100,CV_16UC(5));
+        m2.setTo(1);
+        m2 = m2.mul(5);
+        m1 = m1 + m2;
+        m1 = m1 * 2 + m2;
+        QVERIFY(true);
+    }
+    catch (const cv::Exception & e)
+    {
+        QVERIFY(false);
+    }
+}
+
+//*************************************************************************
+
+//void LayerUtilsTest::test_VectorizeAsPolygons()
+//{
+//    cv::Mat m(100, 100, CV_8U, cv::Scalar(0));
+//    // box: (10,10) -> (10,19) -> (19,19) -> (19,10) -> (10,10)
+//    cv::Mat m1(10, 10, CV_8U, cv::Scalar(255));
+//    m1.copyTo(m(cv::Rect(10, 10, 10, 10)));
+//    // rectangle: (50,5) -> (50,19) -> (84,19) -> (84,5) -> (50,5)
+//    cv::Mat m2(15, 35, CV_8U, cv::Scalar(255));
+//    m2.copyTo(m(cv::Rect(50, 5, 35, 15)));
+//    // cross: (25,40) ->
+//    cv::Mat m3(20, 7, CV_8U, cv::Scalar(255));
+//    m3.copyTo(m(cv::Rect(25, 40, 7, 20)));
+//    m3 = cv::Mat(7, 20, CV_8U, cv::Scalar(255));
+//    m3.copyTo(m(cv::Rect(20, 45, 20, 7)));
+
+////    Core::displayMat(m, true, "m");
+
+//    QVector<QPolygonF> contours = Core::vectorizeAsPolygons(m);
+
+//    QVERIFY(contours.size() == 3);
+
+//    foreach (QPolygonF contour, contours)
+//    {
+
+//        if (contour[0] == QPointF(10, 10))
+//        {
+//            QVERIFY(contour.size() == 5);
+//            QVERIFY(contour[1] == QPointF(10,19));
+//            QVERIFY(contour[1] == QPointF(19,19));
+//            QVERIFY(contour[1] == QPointF(19,10));
+//        }
+//        else if (contour[0] == QPointF(50, 5))
+//        {
+//            QVERIFY(contour.size() == 5);
+//            QVERIFY(contour[1] == QPointF(50,19));
+//            QVERIFY(contour[1] == QPointF(84,19));
+//            QVERIFY(contour[1] == QPointF(84,5));
+//        }
+//        else if (contour[0] == QPointF(25, 40))
+//        {
+//            QVERIFY(contour.size() >= 13);
+////            QVERIFY(contour.indexOf(QPointF() >= 0);
+//        }
+//    }
+//    QVERIFY(true);
+//}
+
+//*************************************************************************
+
+cv::Mat computeMaskND(const cv::Mat & data, float noDataValue)
+{
+    cv::Mat m = data != noDataValue;
+    cv::Mat out;
+    m.convertTo(out, data.depth(), 1.0/255.0);
+    return out;
+}
+
+bool checkMatrices(const cv::Mat & m1, const cv::Mat & m2, float nodatavalue)
+{
+    cv::Mat mask = Core::ImageDataProvider::computeMask(m1);
+    cv::Mat mask2 = Core::ImageDataProvider::computeMask(m2, nodatavalue);
+    if (!Core::isEqual(mask,mask2))
+        return false;
+
+    cv::Mat maskND, mask2ND;
+    maskND = computeMaskND(m1, Core::ImageDataProvider::NoDataValue);
+    mask2ND = computeMaskND(m2, nodatavalue);
+
+    cv::Mat mm1 = m1.mul(maskND);
+    cv::Mat mm2 = m2.mul(mask2ND);
+
+    if (!Core::isEqual(mm1,mm2))
+        return false;
+
+    return true;
+}
+
 void LayerUtilsTest::test_FileReadWriteMethods()
 {
 
@@ -135,9 +233,9 @@ void LayerUtilsTest::test_FileReadWriteMethods()
     cv::Mat m = provider->getImageData();
     cv::Mat m2;
     TEST_MATRIX.convertTo(m2, m.depth());
-    //    Core::displayMat(m, true, "m");
-    //    Core::displayMat(m2, true, "m2");
-    QVERIFY(Core::isEqual(m,m2));
+//    Core::displayMat(m, true, "m");
+//    Core::displayMat(m2, true, "m2");
+    QVERIFY(checkMatrices(m,m2,NO_DATA_VALUE));
     // Check geo info :
     QVERIFY( Core::compareProjections(provider->fetchProjectionRef(), PROJECTION_STR) );
     QVERIFY( comparePolygons(provider->fetchGeoExtent(), GEO_EXTENT) );

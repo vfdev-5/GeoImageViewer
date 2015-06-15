@@ -10,10 +10,10 @@ include_directories(${GDAL_INCLUDE_DIR})
 link_libraries(${GDAL_LIBRARY})
 
 ## include & link to 3rd party : LMFIT
-include_directories(${CMAKE_SOURCE_DIR}/3rdparty/lmfit)
-#include_directories(${CMAKE_BINARY_DIR}/3rdparty)
-link_directories(${CMAKE_BINARY_DIR}/3rdparty/lmfit)
-link_libraries(optimized "lmfit" debug "lmfit.d")
+#include_directories(${CMAKE_SOURCE_DIR}/3rdparty/lmfit)
+##include_directories(${CMAKE_BINARY_DIR}/3rdparty)
+#link_directories(${CMAKE_BINARY_DIR}/3rdparty/lmfit)
+#link_libraries(optimized "lmfit" debug "lmfit.d")
 
 ## include & link to Qt :
 SET(INSTALL_QT_DLLS OFF)

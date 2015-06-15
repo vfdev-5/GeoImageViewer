@@ -7,6 +7,10 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 link_directories(${OpenCV_LIB_DIR})
 link_libraries(${OpenCV_LIBS})
 
+## include & link to GDAL :
+include_directories(${GDAL_INCLUDE_DIRS})
+link_libraries(${GDAL_LIBRARY})
+
 ## include & link to Qt :
 SET(INSTALL_QT_DLLS OFF)
 include(Qt)

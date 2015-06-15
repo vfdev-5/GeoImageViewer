@@ -17,6 +17,7 @@ class QAction;
 class QProgressDialog;
 class QKeyEvent;
 class QShowEvent;
+class QLabel;
 
 namespace Gui
 {
@@ -52,6 +53,8 @@ public:
     void setSettings(const Settings & settings)
     { _settings = settings; }
 
+    void showPointInfo(bool v);
+
 signals:
     void viewportChanged(int zoomLevel, const QRectF & visibleSceneRect);
 
@@ -79,6 +82,8 @@ protected:
     QGraphicsView _view;
 
     QGraphicsSimpleTextItem * _initialTextItem;
+    QLabel * _pointInfo;
+
     QString _initialText;
     QProgressDialog * _progressDialog;
 

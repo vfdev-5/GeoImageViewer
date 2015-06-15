@@ -41,9 +41,7 @@ protected:
     virtual bool mouseMoveEvent(QGraphicsSceneMouseEvent * e, QGraphicsScene * scene);
     virtual bool mouseReleaseEvent(QGraphicsSceneMouseEvent * e, QGraphicsScene * scene);
 
-    bool _pressed;
     QGraphicsRectItem * _rect;
-    QPointF _anchor;
 
 };
 

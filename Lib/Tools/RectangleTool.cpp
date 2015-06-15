@@ -15,7 +15,6 @@ namespace Tools
 
 RectangleTool::RectangleTool(QObject *parent) :
     ItemCreationTool(parent),
-    _pressed(false),
     _pen(QColor(Qt::black), 0, Qt::SolidLine),
     _brush(QColor(Qt::white)),
     _rect(0)

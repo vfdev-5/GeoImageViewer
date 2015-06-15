@@ -46,6 +46,7 @@ public:
 signals:
     void layerSelected(Core::BaseLayer*);
     void saveLayer(Core::BaseLayer*);
+    void createNewLayer();
 
 
 protected slots:
@@ -62,7 +63,8 @@ protected:
 
 private:
 
-    void setupMenu();
+    void setupMenuOnItem();
+    void setupMenuNoItem();
 
     Ui::LayersView *ui;
 
@@ -71,6 +73,7 @@ private:
     QMenu _menu;
     QAction _removeLayer;
     QAction _saveLayer;
+    QAction _createNewLayer;
 
 };
 

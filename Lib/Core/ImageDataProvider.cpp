@@ -25,18 +25,33 @@ const float ImageDataProvider::NoDataValue = -FLT_MAX + 1.0;
 /*!
   \class ImageDataProvider
   \brief abstract class that provides image data to other structures.
+
   Derived classes specifies the manner of how data is provided : from a GDAL Dataset, temp buffer, etc
   Class contains input data info which represents the original data (inputNbBands, inputIsComplex, etc)
   and provided data info which represents provided data type (which can be different from the input data).
-  Thus, a ImageDataProvider can be seen as a filter.
+  ImageDataProvider can be seen as a filter. Complex bands are interpreted as 4 non-complex bands (re,im,abs,phase)
+
+  For example, input image can be of type :
+  1) Single band, Non-Complex
+  2) Single band, Complex
+  3) Multi-bands (N), Non-Complex
+  4) Multi-bands (M), Complex
+
+  Data provider will interpret this input as :
+  1) Single-band, Non-Complex
+  2) 4 bands, Non-Complex = (Re,Im,Abs,Phase)
+  3) Multi-bands (N), Non-Complex
+  4) Multi-bands (4*M), Non-Complex = (Re_1,Im_1,Abs_1,Phase_1,...,Re_M,Im_M,Abs_M,Phase_M)
 
 
-    Option cutNoDataBRBoundary allows to get a matrix without bottom-right boundary from
-    getImageData(QRect, 512, 512) even if size is specified.
-    E.g. : user calls getImageData(r, 512, 512) and cutNoDataBRBoundary=true =>
-    the output matrix will be smaller than 512, 512 if requested rect r when mapped
-    to the output matrix zone is smaller than the output matrix rect.
-    Default value of cutNoDataBRBoundary is true.
+  Option cutNoDataBRBoundary allows to get a matrix without bottom-right boundary from
+  getImageData(QRect, 512, 512) even if size is specified.
+  E.g. : user calls getImageData(r, 512, 512) and cutNoDataBRBoundary=true =>
+  the output matrix will be smaller than 512, 512 if requested rect r when mapped
+  to the output matrix zone is smaller than the output matrix rect.
+  Default value of cutNoDataBRBoundary is true.
+
+
 
 
 
@@ -46,7 +61,8 @@ const float ImageDataProvider::NoDataValue = -FLT_MAX + 1.0;
 
 ImageDataProvider::ImageDataProvider(QObject *parent) :
     QObject(parent),
-    _cutNoDataBRBoundary(true)
+    _cutNoDataBRBoundary(true),
+    _editable(false)
 {
 }
 
@@ -65,10 +81,28 @@ void ImageDataProvider::setupDataInfo(const cv::Mat & src, ImageDataProvider * d
 }
 
 //******************************************************************************
+
+cv::Mat ImageDataProvider::computeMask(const cv::Mat &data, float noDataValue)
+{
+    cv::Mat out;
+    cv::Mat mask = data != noDataValue;
+    std::vector<cv::Mat> iChannels(data.channels());
+    cv::split(mask, &iChannels[0]);
+    out = iChannels[0];
+    for (int i=1;i<iChannels.size();i++)
+    {
+        cv::bitwise_and(out, iChannels[i], out);
+    }
+    return out;
+
+}
+
+//******************************************************************************
 //******************************************************************************
 
 GDALDataProvider::GDALDataProvider(QObject *parent) :
-    ImageDataProvider(parent)
+    ImageDataProvider(parent),
+    _dataset(0)
 {
 }
 
@@ -84,6 +118,9 @@ GDALDataProvider::~GDALDataProvider()
 
 bool GDALDataProvider::setup(const QString &filepath)
 {
+    if (_dataset)
+        GDALClose(_dataset);
+
     _dataset = static_cast<GDALDataset *>(GDALOpen(filepath.toStdString().c_str(), GA_ReadOnly));
     if (!_dataset)
     {
@@ -91,6 +128,15 @@ bool GDALDataProvider::setup(const QString &filepath)
         return false;
     }
     _filePath=filepath;
+
+    char ** papszFileList = _dataset->GetFileList();
+    if( CSLCount(papszFileList) > 0 )
+    {
+        _location = QString(papszFileList[0]);
+    }
+    CSLDestroy( papszFileList );
+
+
 
     _width = _inputWidth = _dataset->GetRasterXSize();
     _height = _inputHeight = _dataset->GetRasterYSize();
@@ -170,7 +216,8 @@ cv::Mat GDALDataProvider::getImageData(const QRect & srcPixelExtent, int dstPixe
     QSize dstPixelExtent;
     if (dstPixelWidth == 0 && dstPixelHeight == 0)
     { // Full resolution
-        dstPixelExtent = srcRequestedExtent.size();
+//        dstPixelExtent = srcRequestedExtent.size();
+        dstPixelExtent = srcExtent.size();
     }
     else if (dstPixelHeight == 0)
     { // output keeps aspect ratio
@@ -188,7 +235,9 @@ cv::Mat GDALDataProvider::getImageData(const QRect & srcPixelExtent, int dstPixe
     int reqScaledW = qMin(qCeil(scaleX*srcRequestedExtent.width()), dstPixelExtent.width());
     int reqScaledH = qMin(qCeil(scaleY*srcRequestedExtent.height()), dstPixelExtent.height());
 
-    if (_cutNoDataBRBoundary)
+    if (_cutNoDataBRBoundary &&
+            (srcRequestedExtent.x() == srcExtent.x()) &&
+            (srcRequestedExtent.y() == srcExtent.y()))
     {
         if (reqScaledW < dstPixelExtent.width())
             dstPixelExtent.setWidth(reqScaledW);
@@ -204,16 +253,26 @@ cv::Mat GDALDataProvider::getImageData(const QRect & srcPixelExtent, int dstPixe
 
     // Output matrix is encoded as Float32 for each band (Real Imagery) or Float32 for (re,im,abs,phase) and for each band (Complex Imagery)
     // Matrix is initialized with noData value : -FLT_MAX + 1.0
+//    int depth = 4; // REAL -> {32F} | CMPLX -> {32F(re),32F(im),32F(abs),32F(phase)}
+
+//    out = cv::Mat(dstPixelExtent.height(),
+//                  dstPixelExtent.width(),
+//                  convertTypeToOpenCV(4, false, _nbBands),
+//                  cv::Scalar::all(NoDataValue));
+
     out = cv::Mat(dstPixelExtent.height(),
                   dstPixelExtent.width(),
-                  convertTypeToOpenCV(4, false, _nbBands),
-                  cv::Scalar(NoDataValue));
+                  convertTypeToOpenCV(4, false, _nbBands));
+    out.setTo(NoDataValue);
+
+
     cv::Mat b = out(r);
+//    cv::Mat mask(b.cols, b.rows, CV_8U, cv::Scalar(0));
 
     // Read data:
-    GDALDataType dstDatatype= (!_isComplex) ? GDT_Float32 : GDT_CFloat32;
-    int depth = (!_isComplex) ? GDALGetDataTypeSize(dstDatatype)/8 : GDALGetDataTypeSize(dstDatatype)/4; // REAL -> {32F} | CMPLX -> {32F(re),32F(im),32F(abs),32F(phase)}
-    int nbBands = _dataset->GetRasterCount();
+    GDALDataType dstDatatype= (!_inputIsComplex) ? GDT_Float32 : GDT_CFloat32;
+    int depth = (!_inputIsComplex) ? GDALGetDataTypeSize(dstDatatype)/8 : GDALGetDataTypeSize(dstDatatype)/4; // REAL -> {32F} | CMPLX -> {32F(re),32F(im),32F(abs),32F(phase)}
+    int nbBands = _dataset->GetRasterCount(); // nbBands
 
 //    int desiredNbOfSamples=srcImgExtent.width()*srcImgExtent.height();
 
@@ -243,23 +302,78 @@ cv::Mat GDALDataProvider::getImageData(const QRect & srcPixelExtent, int dstPixe
             return cv::Mat();
         }
 
-        if (_isComplex)
+        if (_inputIsComplex)
         {
             // Compute Abs,Phase and write into the buffer
-            uchar * srcPtr = b.data+i*depth;
             double re, im, abs, phase;
-            for (int i=0;i<r.width*r.height;i++)
+            for (int p=0;p<r.height;p++)
             {
-                re = reinterpret_cast<float*>(srcPtr)[0];
-                im = reinterpret_cast<float*>(srcPtr)[1];
-                abs = qSqrt(re*re + im*im);
-                phase = atan2(im,re);
-                reinterpret_cast<float*>(srcPtr)[2] = (float) abs;
-                reinterpret_cast<float*>(srcPtr)[3] = (float) phase;
-                srcPtr+=depth*nbBands;
+                uchar * srcPtr = b.data+i*depth + p*nbBands*depth*dstPixelExtent.width();
+                for (int q=0;q<r.width;q++)
+                {
+                    re = reinterpret_cast<float*>(srcPtr)[0];
+                    im = reinterpret_cast<float*>(srcPtr)[1];
+                    abs = qSqrt(re*re + im*im);
+                    phase = atan2(im,re);
+                    reinterpret_cast<float*>(srcPtr)[2] = (float) abs;
+                    reinterpret_cast<float*>(srcPtr)[3] = (float) phase;
+                    srcPtr+=depth*nbBands;
+                }
             }
         }
 
+        // get mask band :
+        GDALRasterBand * maskband = band->GetMaskBand();
+        // !!! CAN NOT USE maskband->GetMaskFlags() & GMF_ALL_VALID
+        // !!! maskband->GetMaskFlags() is always GMF_ALL_VALID
+        if (maskband)
+        {
+            cv::Mat m(r.height, r.width, CV_8U, cv::Scalar(0));
+            CPLErr err = maskband->RasterIO( GF_Read,
+                                             srcRequestedExtent.x(),
+                                             srcRequestedExtent.y(),
+                                             srcRequestedExtent.width(),
+                                             srcRequestedExtent.height(),
+                                             m.data, // data buffer offset : CMPLX -> {32F(re),32F(im),32F(abs),32F(phase)}
+                                             r.width, // data buffer size (width)
+                                             r.height,// data buffer size (height)
+                                             GDT_Byte, // pixel type : REAL -> 32F | CMPLX -> 64F
+                                             1, // pixel size : REAL -> nbBands * 4 {32F} | CMPLX -> nbBands * 8 = {32F(re),32F(im),32F(abs),32F(phase)} * nbBands
+                                             r.width); // buffer line length
+            // r.width replaces dstPixelExtent.width() for the buffer line lenght because dstPixelExtent.width()
+            // can be larger than r.width but matrix m is of size (r.height, r.width)
+
+
+            if (err != CE_None)
+            {
+                SD_TRACE( "Failed to read mask data" );
+                return cv::Mat();
+            }
+            m /= 255;
+
+            // check if whole matrix is filled <-> no nodata values
+            double sum = cv::sum(m).val[0];
+            if (sum < r.height * r.width)
+            {
+                // apply mask :
+                uchar * mskPtr = m.data;
+                int v;
+                for (int p=0;p<r.height;p++)
+                {
+                    uchar * srcPtr = b.data+i*depth + p*nbBands*depth*dstPixelExtent.width();
+                    for (int q=0;q<r.width;q++)
+                    {
+                        v = mskPtr[0];
+                        if (v < 1)
+                        {
+                            reinterpret_cast<float*>(srcPtr)[0] = NoDataValue;
+                        }
+                        srcPtr+=depth*nbBands;
+                        mskPtr++;
+                    }
+                }
+            }
+        }
     }
 
     return out;

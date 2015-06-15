@@ -1,14 +1,19 @@
 
 // Qt
 #include <QDir>
-#include <QFileInfo>
-#include <QThreadPool>
+#include <QImage>
+#include <QLabel>
 
 // OpenCV
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
+// Project
+#include "Core/LayerUtils.h"
 
 // Tests
 #include "ColorTest.h"
+
 
 namespace Tests
 {
@@ -73,18 +78,119 @@ void ColorTest::test()
     v = 256 & 0xff;
     v = 257 & 0xff;
 
-
-
-    //
-//    double alpha = 0.001;
-//    double nvalue = 255 * alpha + (1.0 - alpha) * 255;
-//    uchar u = (uchar) nvalue;
-//    int a = 0;
-//    QVERIFY(true);
+    //    double alpha = 0.001;
+    //    double nvalue = 255 * alpha + (1.0 - alpha) * 255;
+    //    uchar u = (uchar) nvalue;
+    //    int a = 0;
+    //    QVERIFY(true);
 
 
 }
 
+//*************************************************************************
+
+void ColorTest::test2()
+{
+    cv::Mat m(10, 10, CV_8U, cv::Scalar(0));
+
+    // cv::Mat has BGRA format
+    m.at<uchar>(0,0) = 10;
+    m.at<uchar>(0,1) = 20;
+    m.at<uchar>(1,0) = 30;
+    m.at<uchar>(1,1) = 40;
+
+    // a)
+    std::vector<cv::Mat> oChannels(3);
+    oChannels[0] = oChannels[1] = oChannels[2] = m;
+    cv::Mat out;
+    cv::merge(oChannels, out);
+//    Core::printMat(out, "out");
+
+    QVERIFY(out.channels() == 3);
+    QVERIFY(out.rows == 10);
+    QVERIFY(out.cols == 10);
+    QVERIFY(out.type() == CV_8UC3);
+
+    // b)
+    //    cv::Mat out2[] = {m,m,m};
+    //    Core::printMat(*out2, "out2");
+
+    //    QVERIFY(out2->channels() == 3);
+    //    QVERIFY(out2->rows == 10);
+    //    QVERIFY(out2->cols == 10);
+    //    QVERIFY(out2->type() == CV_8UC3);
+
+
+}
+
+//*************************************************************************
+/*
+void ColorTest::test3()
+{
+
+    cv::Mat data(100, 100, CV_32F, cv::Scalar(0));
+
+    cv::Mat i1(10,20,CV_32F,cv::Scalar(10));
+    i1.copyTo(data(cv::Rect(10,5,20,10)));
+
+    cv::Mat i2(20,30,CV_32F,cv::Scalar(20));
+    i2.copyTo(data(cv::Rect(30,55,30,20)));
+
+    cv::Mat i3(10,10,CV_32F,cv::Scalar(30));
+    i3.copyTo(data(cv::Rect(60,15,10,10)));
+
+    cv::Mat i4(10,20,CV_32F,cv::Scalar(40));
+    i4.copyTo(data(cv::Rect(70,45,20,10)));
+
+    Core::displayMat(data,true,"data");
+
+    int _threshold = 20;
+
+
+
+    cv::Mat in;
+    if (data.channels() > 1)
+    {
+        std::vector<cv::Mat> iChannels(data.channels());
+        cv::split(data, &iChannels[0]);
+        in = iChannels[0];
+    }
+    else
+    {
+        in = data;
+    }
+
+    cv::Mat processedData;
+    cv::threshold(in, processedData, _threshold, 255, cv::THRESH_BINARY);
+
+    cv::Mat out, processedData8U;
+    if (processedData.depth() != CV_8U)
+    {
+        processedData.convertTo(processedData8U, CV_8U);
+    }
+    else
+    {
+        processedData8U = processedData;
+    }
+    std::vector<cv::Mat> oChannels(3);
+    oChannels[0] = oChannels[1] = oChannels[2] = processedData8U;
+    cv::merge(oChannels, out);
+
+
+    QImage im = QImage(out.data,
+                  out.cols,
+                  out.rows,
+                  QImage::Format_RGB888);
+
+    QLabel * label = new QLabel();
+    label->setPixmap(QPixmap::fromImage(im));
+    label->show();
+
+    Core::displayMat(out, true, "out");
+
+
+}
+*/
 //*************************************************************************
 
 }

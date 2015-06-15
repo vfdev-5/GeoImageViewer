@@ -23,7 +23,7 @@ set QTCREATOR=C:\Qt\Qt5.3.2\Tools\QtCreator\bin\qtcreator
 
 if "%KIT%"=="VC12" (
 	set QT_DIR=C:\Qt\Qt5.3.2\5.3\msvc2013_64_opengl
-	set OPENCV_DIR=C:\VFomin_folder\PISE_project\Storm_app\Dependencies\Win.VC12.x64\OpenCV
+	set OPENCV_DIR=C:\VFomin_folder\PISE_project\Pise_dependencies_compile\opencv_2.4.9_VC12x64
 	set GDAL_DIR=C:\VFomin_folder\PISE_project\Pise_dependencies_compile\gdal_1.11.1_build_VC12x64
 ) 
 

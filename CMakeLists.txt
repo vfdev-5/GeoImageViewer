@@ -23,10 +23,11 @@ find_package( Qt REQUIRED )
 
 
 # add library :
-add_subdirectory("3rdparty")
+#add_subdirectory("3rdparty")
 add_subdirectory("Lib")
 add_subdirectory("Plugins")
 add_subdirectory("App")
+#add_subdirectory("App_HistogramModule")
 add_subdirectory("App2")
 add_subdirectory("Tests")
 

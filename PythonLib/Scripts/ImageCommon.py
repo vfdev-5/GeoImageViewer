@@ -1,4 +1,14 @@
-# Some image common methods
+#-------------------------------------------------------------------------------
+# Name: Image common
+# Purpose: Some image common methods
+#
+# Author:      vfomin
+#
+# Created:     25/03/2015
+# Copyright:   (c) vfomin 2015
+# Licence:     <your licence>
+#-------------------------------------------------------------------------------
+
 """
 Image common module contains useful functions ...
 

@@ -238,22 +238,31 @@ void OpenImageFileTask::run()
     _reporter->endValue=99;
     QVector<double> minValues;
     QVector<double> maxValues;
-    QVector<QVector<double> > bandHistograms;
-    cv::Mat data = provider->getImageData(QRect(), 512);
-    if (data.empty() ||
-            !computeNormalizedHistogram(data,
-                                        minValues, maxValues,
-                                        bandHistograms,
-                                        1000, _reporter))
+    QVector< QVector<double> > bandHistograms;
+    cv::Mat data = provider->getImageData(QRect(), 1024);
+    if (data.empty())
     {
         ClearData();
         _imageOpener->taskFinished(0);
         return;
     }
+
+    // compute NoDataMask :
+    cv::Mat mask = ImageDataProvider::computeMask(data);
+
+    if (!computeNormalizedHistogram(data, mask,
+                                minValues, maxValues,
+                                bandHistograms,
+                                1000, _reporter) )
+    {
+        ClearData();
+        _imageOpener->taskFinished(0);
+        return;
+    }
+
     provider->setMinValues(minValues);
     provider->setMaxValues(maxValues);
     provider->setBandHistograms(bandHistograms);
-
 
     Cancel();
 

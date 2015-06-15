@@ -177,8 +177,10 @@ cv::Mat displayMat(const cv::Mat & inputImage0, bool showMinMax, const QString &
     else
         windowNameS = windowName;
 
+    int depth = inputImage0.elemSize1();
+
     cv::Mat inputImage;
-    if (inputImage0.type() != CV_32F && inputImage0.type() != CV_64F)
+    if (inputImage0.depth() != CV_32F && inputImage0.depth() != CV_64F)
     {
         inputImage0.convertTo(inputImage, CV_32F);
     }
@@ -234,10 +236,11 @@ cv::Mat displayMat(const cv::Mat & inputImage0, bool showMinMax, const QString &
     // show image size :
     if (showMinMax)
     {
-        SD_TRACE( QString( "Image \'" + windowNameS + "\' has size : %1, %2 and nbBands = %3" )
+        SD_TRACE( QString( "Image \'" + windowNameS + "\' has size : %1, %2 and nbBands = %3. Depth (bytes) = %4" )
                   .arg( inputImage0.cols )
                   .arg( inputImage0.rows )
-                  .arg( inputImage0.channels()));
+                  .arg( inputImage0.channels())
+                  .arg( depth ));
     }
 
     // compute min/max values & render:
@@ -291,6 +294,9 @@ bool isEqual(const cv::Mat &src, const cv::Mat &dst, double tol)
     if (src.type() != dst.type())
         return false;
 
+    if (src.rows != dst.rows || src.cols != dst.cols)
+        return false;
+
     int nbBands = src.channels();
 
     std::vector<cv::Mat> sChannels(nbBands), dChannels(nbBands);
@@ -312,6 +318,64 @@ bool isEqual(const cv::Mat &src, const cv::Mat &dst, double tol)
 
 //******************************************************************************
 
+cv::Mat computeMask(const cv::Mat &data, float noDataValue, cv::Mat * unmask)
+{
+    cv::Mat mask;
+    cv::Mat m = data != noDataValue;
+    m.convertTo(mask, data.depth(), 1.0/255.0);
+    if (unmask)
+    {
+        cv::Mat m2 = data == noDataValue;
+        m2.convertTo(*unmask, data.depth(), 1.0/255.0);
+    }
+    return mask;
+}
+
+//******************************************************************************
+
+QVector<QPolygonF> vectorizeAsPolygons(const cv::Mat & inputImage)
+{
+    QVector<QPolygonF> output;
+
+    if (inputImage.type() != CV_8U)
+        return output;
+
+    // - contours represents array of array of contour points
+    // - hierarchy represents array of (next, prev, 1st child, parent) contour indices
+    // e.g. if hierarchy[i]["parent"] = -1 -> outer contour
+    // e.g. if hierarchy[i]["parent"] > 0 -> inner contour
+    std::vector<std::vector<cv::Point> > contours;
+    std::vector<cv::Vec4i> hierarchy;
+    cv::findContours(inputImage, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+
+    if (hierarchy.size() > 0)
+    {
+        int index = 0;
+        while (index >= 0)
+        {
+            // if has parent -> skip because it has been already added
+            if (hierarchy[index][3] >= 0)
+                continue;
+
+            std::vector<cv::Point> contour = contours[index];
+            QPolygonF c;
+            for (int i=0;i<contour.size();i++)
+            {
+                c << QPointF(contour[i].x, contour[i].y);
+            }
+            // close polygon:
+            c << QPointF(contour[0].x, contour[0].y);
+            output << c;
+            index = hierarchy[index][0];
+        }
+    }
+
+    return output;
+}
+
+
+//******************************************************************************
+
 template<typename T>
 void printPixel(const cv::Mat & singleBand, int i, int j)
 {
@@ -323,7 +387,7 @@ void printMat(const cv::Mat & inputImage0, const QString &windowName)
 {
 
     cv::Mat inputImage;
-    if (inputImage0.type() != CV_64F)
+    if (inputImage0.depth() != CV_32F)
     {
         inputImage0.convertTo(inputImage, CV_32F);
     }
@@ -352,7 +416,7 @@ void printMat(const cv::Mat & inputImage0, const QString &windowName)
             std::cout << "(";
             for (int k=0; k<nbBands; k++)
             {
-                printPixel<double>(iChannels[k], i, j);
+                printPixel<float>(iChannels[k], i, j);
                 std::cout << " ";
             }
             std::cout << ")";
@@ -375,7 +439,7 @@ if (reporter)   \
     r*(reporter->endValue - reporter->startValue) + reporter->startValue); \
 } \
 
-bool computeNormalizedHistogram(const cv::Mat & data,
+bool computeNormalizedHistogram(const cv::Mat & data, const cv::Mat & noDataMask,
                                 QVector<double> & minValues, QVector<double> & maxValues,
                                 QVector< QVector<double> > & bandHistograms,
                                 int histSize, ProgressReporter *reporter)
@@ -404,10 +468,9 @@ bool computeNormalizedHistogram(const cv::Mat & data,
         cv::Mat bandHistogram;
         // 1) compute range of the image : real min/max
         double mm, MM;
-        cv::minMaxLoc(band32F, &mm, &MM);
+        cv::minMaxLoc(band32F, &mm, &MM, 0, 0, noDataMask);
         minValues[i] = mm;
         maxValues[i] = MM;
-
 
         REPORT();
 
@@ -422,15 +485,18 @@ bool computeNormalizedHistogram(const cv::Mat & data,
         int channels[] = {0};
         float histRangeArray[] = {(float) mm, (float) MM};
         const float * ranges[] = { histRangeArray };
-        cv::calcHist( &band32F, 1, channels, cv::Mat(), bandHistogram, 1, histSizeArray, ranges, true, false ); // bool uniform=true, bool accumulate=false
+        cv::calcHist( &band32F, 1, channels, noDataMask, bandHistogram, 1, histSizeArray, ranges, true, false ); // bool uniform=true, bool accumulate=false
 
         REPORT();
 
         cv::minMaxLoc(bandHistogram, &mm, &MM);
-        QVector<double> bandHistogramVector(histSize);
-        for (int k=0; k<bandHistogram.rows;k++)
+        QVector<double> bandHistogramVector(histSize, 0.0);
+        if (MM > mm)
         {
-            bandHistogramVector[k] = (bandHistogram.at<float>(k,0) - mm)/(MM - mm);
+            for (int k=0; k<bandHistogram.rows;k++)
+            {
+                bandHistogramVector[k] = (bandHistogram.at<float>(k,0) - mm)/(MM - mm);
+            }
         }
         bandHistograms << bandHistogramVector;
         REPORT();
@@ -461,10 +527,17 @@ bool computeQuantileMinMaxValues(const QVector<double> & minValues, const QVecto
     double qMinValue(0), qMaxValue(0);
     for (int i=0;i<bandHistograms.size();i++)
     {
-        if (!computeQuantileMinMaxValue(bandHistograms[i], lowerCut, upperCut,
-                                   minValues[i], maxValues[i], &qMinValue, &qMaxValue))
+        if (qAbs(maxValues[i] - minValues[i]) > 1e-8)
         {
-            return false;
+            if (!computeQuantileMinMaxValue(bandHistograms[i], lowerCut, upperCut,
+                                            minValues[i], maxValues[i], &qMinValue, &qMaxValue))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            qMinValue=qMaxValue=minValues[i];
         }
         qMinValues->append(qMinValue);
         qMaxValues->append(qMaxValue);

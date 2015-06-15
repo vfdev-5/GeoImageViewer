@@ -16,7 +16,9 @@ class LayerUtilsTest : public QObject
 private slots:
     void initTestCase();
     void test_GeoComputationMethods();
+    void test_OpencvOperations();
     void test_FileReadWriteMethods();
+//    void test_VectorizeAsPolygons();
     void cleanupTestCase();
 
 private:

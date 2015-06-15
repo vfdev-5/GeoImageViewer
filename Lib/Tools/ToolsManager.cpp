@@ -8,7 +8,7 @@
 #include "ToolsManager.h"
 #include "RectangleTool.h"
 #include "SelectionTool.h"
-#include "BrushTool.h"
+//#include "BrushTool.h"
 #include "MoveTool.h"
 
 
@@ -30,7 +30,7 @@ ToolsManager::ToolsManager()
     insertTool(new NavigationTool(this));
     insertTool(new MoveTool(this));
     insertTool(new RectangleShapeTool(this));
-    insertTool(new BrushTool(this));
+//    insertTool(new BrushTool(this));
 }
 
 //******************************************************************************

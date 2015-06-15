@@ -36,6 +36,7 @@ class BaseLayer : public QObject
 
     PROPERTY_ACCESSORS(QString, type, getType, setType)
     PROPERTY_GETACCESSOR(int, zValue, getZValue)
+    PROPERTY_ACCESSORS(bool, editable, isEditable, setEditable)
 
     Q_CLASSINFO("isVisible","label:Visible")
     Q_CLASSINFO("opacity","label:Transparency;minValue:0.0;maxValue:1.0")

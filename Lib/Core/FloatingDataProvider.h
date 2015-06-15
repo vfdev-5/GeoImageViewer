@@ -21,9 +21,11 @@ class GIV_DLL_EXPORT FloatingDataProvider : public ImageDataProvider
 public:
     explicit FloatingDataProvider(QObject *parent = 0);
     virtual cv::Mat getImageData(const QRect & srcPixelExtent=QRect(), int dstPixelWidth=0, int dstPixelHeight=0) const;
+    void setImageData(const QPoint & offset, const cv::Mat & data);
 
     static FloatingDataProvider* createDataProvider(const ImageDataProvider *src, const QRect & pixelExtent);
     static FloatingDataProvider* createDataProvider(const QString & name, const cv::Mat & src, const QRect & intersection=QRect());
+    static FloatingDataProvider* createEmptyDataProvider(const QString & name, int width, int height);
 
     virtual QString fetchProjectionRef() const
     { return _projectionRef; }
@@ -41,11 +43,13 @@ public:
 
     bool create(const QString & name, const cv::Mat & src, const QRect & intersection=QRect());
 
+signals:
+    void dataChanged(const QRect & pixelExtent);
+
+
 protected:
 
     cv::Mat _data;
-//    const ImageDataProvider * _source;
-//    QRect _intersection;
 
     QString _projectionRef;
     QVector<double> _geoTransform;

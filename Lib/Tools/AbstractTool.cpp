@@ -1,8 +1,10 @@
+// Qt
+#include <QGraphicsScene>
+#include <QPainter>
 
 // Project
 #include "AbstractTool.h"
 
-#include <QGraphicsEllipseItem>
 
 namespace Tools
 {
@@ -30,9 +32,27 @@ AbstractTool::AbstractTool(QObject *parent) :
 //******************************************************************************
 
 ItemCreationTool::ItemCreationTool(QObject *parent) :
-    AbstractTool(parent)
+    CreationTool(parent)
 {
     _toolType = Type;
+}
+
+//******************************************************************************
+
+ImageCreationTool::ImageCreationTool(QObject * parent) :
+    CreationTool(parent),
+    _drawingsItem(0),
+    _mode(QPainter::CompositionMode_SourceOver),
+    _erase(false)
+{
+    _toolType = Type;
+}
+//******************************************************************************
+
+void ImageCreationTool::setErase(bool erase)
+{
+    _erase = erase;
+    _mode = _erase ? QPainter::CompositionMode_SourceOut : QPainter::CompositionMode_SourceOver;
 }
 
 //******************************************************************************

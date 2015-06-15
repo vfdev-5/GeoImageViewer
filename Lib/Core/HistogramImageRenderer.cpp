@@ -95,8 +95,8 @@ inline double normalize(double value, double vmin, double vmax)
     3) N Bands, not complex imagery then the HistogramRendererConfiguration is
         a) mode is GRAY or RGB
         b) normHistStops is N arrays of default 'stops'. The number 'stops' and possible colors are not limited.
-        c) normRGBHistStops is 3 arrays of default 'stops'
-        d) Transfer functions and isDiscreteColours options are available in GRAY mode
+        c) normRGBHistStops is N arrays of default RGB 'stops'
+        d) Transfer functions and isDiscreteColours options are available
 
 
 
@@ -113,91 +113,91 @@ HistogramImageRenderer::HistogramImageRenderer(QObject *parent) :
 
 //******************************************************************************
 
-void HistogramImageRenderer::setHistConfiguration(const HistogramRendererConfiguration & conf)
-{
-    _histConf = conf;
-}
+//void HistogramImageRenderer::setHistConfiguration(const HistogramRendererConfiguration & conf)
+//{
+//    _histConf = conf;
+//}
 
 //******************************************************************************
 
 /*!
- * \brief HistogramImageRenderer::setupConfiguration method allows to configurate the renderer using the ImageDataProvider
+ * \brief HistogramImageRenderer::setupHistConfiguration method allows to configurate a renderer histogram configuration using the ImageDataProvider
  * \param ImageDataProvider
- * \return true if configuration is successful
+ * \return HistogramRendererConfiguration
  */
-bool HistogramImageRenderer::setupConfiguration(ImageDataProvider * provider)
+
+void setupGrayModeConf(const ImageDataProvider *provider, HistogramRendererConfiguration * histConf)
 {
-
-    if (!ImageRenderer::setupConfiguration(provider))
-        return false;
-
-    computeQuantileMinMaxValues(provider->getMinValues(), provider->getMaxValues(),
-                                provider->getBandHistograms(),
-                                _settings.quantileMinValue, _settings.quantileMaxValue,
-                                &_histConf.qMinValues, &_histConf.qMaxValues);
-
     int nbBands = provider->getNbBands();
-    bool isComplex = provider->inputIsComplex();
-
-    // Setup Gray mode options:
-    _histConf.transferFunctions.clear();
-    _histConf.isDiscreteValues.clear();
-    _histConf.normHistStops.clear();
+    histConf->transferFunctions.clear();
+    histConf->isDiscreteValues.clear();
+    histConf->normHistStops.clear();
     for (int i=0;i<nbBands;i++)
     {
-        _histConf.transferFunctions << HistogramRendererConfiguration::availableTransferFunctions[0];
-        _histConf.isDiscreteValues << false;
-        double a=(_histConf.qMaxValues[i] - _histConf.qMinValues[i]) / (_conf.maxValues[i] - _conf.minValues[i]);
-        double b=(_histConf.qMinValues[i] - _conf.minValues[i]) / (_conf.maxValues[i] - _conf.minValues[i]);
+        histConf->transferFunctions << HistogramRendererConfiguration::availableTransferFunctions[0];
+        histConf->isDiscreteValues << false;
+        double a(1.0), b(0.0);
+        if (qAbs(provider->getMaxValues()[i] - provider->getMinValues()[i]) > 1e-8)
+        {
+            a=(histConf->qMaxValues[i] - histConf->qMinValues[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
+            b=(histConf->qMinValues[i] - provider->getMinValues()[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
+        }
+        if (a == 0)
+            a = 1.0;
+        histConf->normHistStops << resetStops(-1, a, b);
+    }
+    histConf->mode = HistogramRendererConfiguration::GRAY;
+}
+
+void setupRGBModeConf(const ImageDataProvider *provider, HistogramRendererConfiguration * histConf)
+{
+    int nbBands = provider->getNbBands();
+    histConf->rgbTransferFunction = HistogramRendererConfiguration::availableTransferFunctions[0];
+    histConf->isRGBDiscreteValue = false;
+    histConf->normRGBHistStops.clear();
+    for (int i=0;i<nbBands;i++)
+    {
+        double a(1.0), b(0.0);
+        if (qAbs(provider->getMaxValues()[i] - provider->getMinValues()[i]) > 1e-8)
+        {
+            a=(histConf->qMaxValues[i] - histConf->qMinValues[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
+            b=(histConf->qMinValues[i] - provider->getMinValues()[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
+        }
         if (a == 0)
             a = 1;
-//        _histConf.normHistStops << resetStops(nbBands == 1 ? -1 : i, a, b);
-        _histConf.normHistStops << resetStops(-1, a, b);
+        histConf->normRGBHistStops << resetStops(i, a, b);
     }
-    _histConf.mode = HistogramRendererConfiguration::GRAY;
+    // by default choose : RGB mode if available
+    histConf->mode = HistogramRendererConfiguration::RGB;
+}
+
+bool HistogramImageRenderer::setupConfiguration(const ImageDataProvider *provider, HistogramRendererConfiguration * conf)
+{
+    if (!provider || !conf)
+        return false;
+
+    if(!ImageRenderer::setupConfiguration(provider, conf))
+        return false;
+
+    double quantileMinValue(2.5), quantileMaxValue(97.5);
+    computeQuantileMinMaxValues(provider->getMinValues(), provider->getMaxValues(),
+                                provider->getBandHistograms(),
+                                quantileMinValue, quantileMaxValue,
+                                &conf->qMinValues, &conf->qMaxValues);
+
+    bool inputIsComplex = provider->inputIsComplex();
+    int nbBands = provider->getNbBands();
+
+    // Setup Gray mode options:
+    setupGrayModeConf(provider, conf);
 
     // Setup RGB mode options:
-    if (nbBands > 1 && !isComplex)
+    if (nbBands > 2 && !inputIsComplex)
     {
-        _histConf.rgbTransferFunction = HistogramRendererConfiguration::availableTransferFunctions[0];
-        _histConf.isRGBDiscreteValue = false;
-        _histConf.normRGBHistStops.clear();
-        for (int i=0;i<nbBands;i++)
-        {
-            double a=(_histConf.qMaxValues[i] - _histConf.qMinValues[i]) / (_conf.maxValues[i] - _conf.minValues[i]);
-            double b=(_histConf.qMinValues[i] - _conf.minValues[i]) / (_conf.maxValues[i] - _conf.minValues[i]);
-            if (a == 0)
-                a = 1;
-            _histConf.normRGBHistStops << resetStops(i, a, b);
-        }
-        _histConf.mode = HistogramRendererConfiguration::RGB;
+        setupRGBModeConf(provider, conf);
     }
 
     return true;
-
-}
-
-//******************************************************************************
-
-bool HistogramImageRenderer::checkHistConf()
-{
-    if (_histConf.mode == HistogramRendererConfiguration::GRAY)
-    {
-        return !_histConf.normHistStops.isEmpty() &&
-                !_histConf.isDiscreteValues.isEmpty() &&
-                !_histConf.transferFunctions.isEmpty();
-    }
-    else
-    if (_histConf.mode == HistogramRendererConfiguration::RGB)
-    {
-        return !_histConf.normRGBHistStops.isEmpty() &&
-                _histConf.rgbTransferFunction;
-    }
-    else
-    {
-        return false;
-    }
-
 }
 
 //******************************************************************************
@@ -215,15 +215,20 @@ bool HistogramImageRenderer::checkHistConf()
 
 inline void renderPixel(float * srcPtr, uchar *dstPtr, const QVector<int> &mapping,
                         const QVector<double> & minValues, const QVector<double> & maxValues,
-                        const QVector<TransferFunction *> &transferFunctions, const QVector<bool> & isDiscreteValues,
+//                        const QVector<TransferFunction *> &transferFunctions, const QVector<bool> & isDiscreteValues,
+                        TransferFunction *transferFunction, bool isDiscreteValue,
                         const QVector<QGradientStops> & normHistStops);
 
 
-cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, bool isBGRA)
+cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, const ImageRendererConfiguration *conf, bool isBGRA)
 {
-
     cv::Mat outputImage8U;
-    if (!checkBeforeRender(rawData) || !checkHistConf())
+
+    const HistogramRendererConfiguration * hconf = static_cast<const HistogramRendererConfiguration*>(conf);
+    if (!hconf)
+        return outputImage8U;
+
+    if (!checkBeforeRender(rawData.channels(), hconf))
         return outputImage8U;
 
     int w=rawData.cols;
@@ -239,37 +244,27 @@ cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, bool isBGRA)
         rawData32F.convertTo(rawData32F, CV_32F);
     }
 
-    QVector<int> & mapping = _conf.toRGBMapping;
+    const QVector<int> & mapping = hconf->toRGBMapping;
     float * srcPtr = reinterpret_cast<float*>(rawData32F.data);
     uchar * dstPtr = outputImage8U.data;
 
-
-//    const QVector<double> &minValues = _conf.minValues;
-//    const QVector<double> &maxValues = _conf.maxValues;
-
-    QVector<TransferFunction*> transferFunctions;
-    QVector<bool> isDiscreteValues;
+    TransferFunction* transferFunction;
+    bool isDiscreteValue;
     QVector<QGradientStops> normHistStops;
 
-    //    const QVector<TransferFunction*> & transferFunctions = _histConf.transferFunctions;
-    //    const QVector<bool> & isDiscreteValues = _histConf.isDiscreteValues;
-    //    const QVector<QGradientStops> & normHistStops = _histConf.normHistStops;
-    if (_histConf.mode == HistogramRendererConfiguration::GRAY)
+    if (hconf->mode == HistogramRendererConfiguration::GRAY)
     {
-        transferFunctions = _histConf.transferFunctions;
-        isDiscreteValues  = _histConf.isDiscreteValues;
-        normHistStops     = _histConf.normHistStops;
+        int index = mapping[0]; // mapping[0] == mapping[1] == mapping[2]
+        transferFunction = hconf->transferFunctions[index];
+        isDiscreteValue  = hconf->isDiscreteValues[index];
+        normHistStops    = hconf->normHistStops;
     }
     else
-    if (_histConf.mode == HistogramRendererConfiguration::RGB)
+    if (hconf->mode == HistogramRendererConfiguration::RGB)
     {
-        transferFunctions << _histConf.rgbTransferFunction
-                          << _histConf.rgbTransferFunction
-                          << _histConf.rgbTransferFunction;
-        isDiscreteValues  << _histConf.isRGBDiscreteValue
-                          << _histConf.isRGBDiscreteValue
-                          << _histConf.isRGBDiscreteValue;
-        normHistStops      = _histConf.normRGBHistStops;
+        transferFunction = hconf->rgbTransferFunction;
+        isDiscreteValue  = hconf->isRGBDiscreteValue;
+        normHistStops    = hconf->normRGBHistStops;
     }
 
 
@@ -293,8 +288,8 @@ cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, bool isBGRA)
 
         // render to RGB
         renderPixel(srcPtr, dstPtr, mapping,
-                    _conf.minValues, _conf.maxValues,
-                    _histConf.transferFunctions, _histConf.isDiscreteValues,
+                    hconf->minValues, hconf->maxValues,
+                    transferFunction, isDiscreteValue,
                     normHistStops);
 
         if (isBGRA)
@@ -316,10 +311,10 @@ cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, bool isBGRA)
     value = srcPtr[index];                  \
     a=minValues[index];       \
     b=maxValues[index];       \
-    tf = transferFunctions[index];    \
+    /*tf = transferFunctions[index];*/    \
     if (tf) \
 { \
-    isDiscreteColors=isDiscreteValues[index];  \
+    /*isDiscreteColors=isDiscreteValues[index];*/  \
     \
     /* Clamp value between band min/max and normalize between [0,1]*/ \
     value = normalize(clamp(value, a, b),a, b); \
@@ -363,14 +358,15 @@ cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, bool isBGRA)
 
 inline void renderPixel(float * srcPtr, uchar * dstPtr, const QVector<int> & mapping,
                         const QVector<double> &minValues, const QVector<double> &maxValues,
-                        const QVector<TransferFunction*> & transferFunctions, const QVector<bool> & isDiscreteValues,
+//                        const QVector<TransferFunction*> & transferFunctions, const QVector<bool> & isDiscreteValues,
+                        TransferFunction* transferFunction, bool isDiscreteValues,
                         const QVector<QGradientStops> & normHistStops)
 {
     int index;
     double value = 0.0;
     double alpha = 0.0, a, b;
-    TransferFunction * tf = 0;
-    bool isDiscreteColors = false;
+    TransferFunction * tf = transferFunction;
+    bool isDiscreteColors = isDiscreteValues;
     int l = -1;
     QGradientStop fStop, lStop;
     // loop on input bands :
@@ -387,10 +383,10 @@ inline void renderPixel(float * srcPtr, uchar * dstPtr, const QVector<int> & map
     value = srcPtr[index];
     a=minValues[index];
     b=maxValues[index];
-    tf = transferFunctions[index];
+//    tf = transferFunctions[index];
     if (tf)
     {
-        isDiscreteColors=isDiscreteValues[index];
+//        isDiscreteColors=isDiscreteValues[index];
 
         /* Clamp value between band min/max and normalize between [0,1]*/
         value = normalize(clamp(value, a, b),a, b);
@@ -437,10 +433,10 @@ inline void renderPixel(float * srcPtr, uchar * dstPtr, const QVector<int> & map
     value = srcPtr[index];
     a=minValues[index];
     b=maxValues[index];
-    tf = transferFunctions[index];
+//    tf = transferFunctions[index];
     if (tf)
     {
-        isDiscreteColors=isDiscreteValues[index];
+//        isDiscreteColors=isDiscreteValues[index];
 
         /* Clamp value between band min/max and normalize between [0,1]*/
         value = normalize(clamp(value, a, b),a, b);
@@ -486,10 +482,10 @@ inline void renderPixel(float * srcPtr, uchar * dstPtr, const QVector<int> & map
     value = srcPtr[index];
     a=minValues[index];
     b=maxValues[index];
-    tf = transferFunctions[index];
+//    tf = transferFunctions[index];
     if (tf)
     {
-        isDiscreteColors=isDiscreteValues[index];
+//        isDiscreteColors=isDiscreteValues[index];
 
         /* Clamp value between band min/max and normalize between [0,1]*/
         value = normalize(clamp(value, a, b),a, b);

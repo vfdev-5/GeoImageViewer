@@ -1,6 +1,8 @@
 
 // Qt
 #include <QGraphicsItem>
+#include <QLabel>
+#include <QGraphicsSceneMouseEvent>
 
 // Project
 #include "ShapeViewer.h"
@@ -52,24 +54,43 @@ ShapeViewer::~ShapeViewer()
 void ShapeViewer::clear()
 {
     SD_TRACE("ShapeViewer::clear");
-    foreach (Core::BaseLayer * layer, _layerItemMap.keys())
+    foreach (Core::BaseLayer * layer, _layers)
     {
-        removeLayer(layer);
+        layer->setParent(0);
+        disconnect(layer, 0, 0, 0);
+        removeItem(layer);
+        delete layer;
     }
+    _layers.clear();
     _layerItemMap.clear();
 
     if (_layersView)
-        _layersView->setLayers(_layerItemMap.keys());
+        _layersView->setLayers(_layers);
 
     BaseViewer::clear();
 }
 
 //******************************************************************************
 
-void ShapeViewer::onToolChanged(QString toolName)
+void ShapeViewer::onToolChanged(const QString & toolName)
 {
     SD_TRACE("onToolChanged : " + toolName);
+    Tools::AbstractTool * tool = _toolsManager->getTool(toolName);
+    // change to the new one
+    if (!tool)
+    {
+        SD_TRACE("onToolChanged : failed to find the tool by name : " + toolName);
+        return;
+    }
 
+    changeTool(tool);
+}
+
+//******************************************************************************
+
+void ShapeViewer::changeTool(Tools::AbstractTool *newTool)
+{
+    // disable previous tool :
     if (_currentTool)
     {
         // disconnect 'item => layer' link
@@ -86,20 +107,15 @@ void ShapeViewer::onToolChanged(QString toolName)
                 _menu.removeAction(a);
             }
         }
-
     }
 
-    // change to the new one
-    _currentTool = _toolsManager->getTool(toolName);
-    if (!_currentTool)
-    {
-        SD_TRACE("onToolChanged : failed to find the tool by name : " + toolName);
-        return;
-    }
+    // setup new tool :
+    _currentTool = newTool;
     if (_currentTool->getType() == Tools::ItemCreationTool::Type)
     {
         connect(_currentTool, SIGNAL(itemCreated(QGraphicsItem*)), this, SLOT(onItemCreated(QGraphicsItem*)));
     }
+
     setCurrentCursor(_currentTool->getCursor());
 
     // add actions to menu:
@@ -110,7 +126,6 @@ void ShapeViewer::onToolChanged(QString toolName)
         _menu.addSeparator();
         _menu.addActions(_currentTool->getActions());
     }
-
 }
 
 //******************************************************************************
@@ -173,21 +188,18 @@ void ShapeViewer::onBaseLayerDestroyed(QObject * layerObj)
     if (!layer)
         return;
 
-    // remove graphics item:
-    QGraphicsItem * item = _layerItemMap.value(layer, 0);
-    if (!item)
+    if (!removeItem(layer))
     {
-        SD_TRACE("ShapeViewer::removeLayer : no graphics item associated with base layer");
+        SD_TRACE("ShapeViewer::onBaseLayerDestroyed : failed to remove layer");
         return;
     }
-    _scene.removeItem(item);
-    delete item;
 
     // remove layer from the map :
     _layerItemMap.remove(layer);
+    _layers.removeAll(layer);
 
     // if the last layer destroyed -> clear
-    if (_layerItemMap.isEmpty())
+    if (_layers.isEmpty())
     {
         clear();
     }
@@ -200,6 +212,13 @@ void ShapeViewer::onBaseLayerSelected(Core::BaseLayer * layer)
 {
     Q_UNUSED(layer);
     SD_TRACE("ShapeViewer::onBaseLayerSelected");
+}
+
+//******************************************************************************
+
+void ShapeViewer::onCreateBaseLayer()
+{
+    // Nothing to do
 }
 
 //******************************************************************************
@@ -226,6 +245,17 @@ bool ShapeViewer::eventFilter(QObject * o, QEvent * e)
             e->accept();
             return true;
         }
+        // display current point info :
+        if (e->type() == QEvent::GraphicsSceneMouseMove)
+        {
+            if (_pointInfo->isVisible())
+            {
+                QGraphicsSceneMouseEvent * event = static_cast<QGraphicsSceneMouseEvent*>(e);
+                _pointInfo->setText(QString("Pixel coordinates : %1, %2")
+                                    .arg(event->scenePos().x())
+                                    .arg(event->scenePos().y()));
+            }
+        }
     }
     else if (o == _view.viewport())
     {
@@ -243,24 +273,54 @@ bool ShapeViewer::eventFilter(QObject * o, QEvent * e)
 
 //******************************************************************************
 
+Core::BaseLayer* ShapeViewer::getCurrentLayer()
+{
+    if (_layersView)
+        return _layersView->getCurrentLayer();
+    if (!_layers.isEmpty())
+        return _layers.last();
+    return 0;
+}
+
+//******************************************************************************
+
 void ShapeViewer::addLayer(Core::BaseLayer * layer, QGraphicsItem * item)
 {
-    layer->setZValue(item->zValue());
+
     // create layer:
     connect(layer, SIGNAL(layerStateChanged()), this, SLOT(onBaseLayerStateChanged()));
     connect(layer, SIGNAL(destroyed(QObject*)), this, SLOT(onBaseLayerDestroyed(QObject*)));
 
+
+    _layers.append(layer);
     _layerItemMap.insert(layer, item);
 
     if (_layersView)
+    {
         _layersView->addLayer(layer);
+    }
+    else
+    {
+        int count = _layers.size()-1;
+        item->setZValue(computeZValue(count));
+        layer->setZValue(count);
+    }
 }
 
 //******************************************************************************
 
 void ShapeViewer::setToolsView(AbstractToolsView *toolsView)
 {
+
+    if (_toolsView)
+    {
+        disconnect(_toolsView, SIGNAL(toolChanged(QString)), this, SLOT(onToolChanged(QString)));
+    }
+
     _toolsView = toolsView;
+    if (!_toolsView)
+        return;
+
     connect(_toolsView, SIGNAL(toolChanged(QString)), this, SLOT(onToolChanged(QString)));
 
     QList<Tools::AbstractTool*> list = _toolsManager->getTools();
@@ -282,6 +342,9 @@ void ShapeViewer::setLayersView(LayersView *view)
                 this, SLOT(onBaseLayerSelected(Core::BaseLayer*)));
         disconnect(_layersView, SIGNAL(saveLayer(Core::BaseLayer*)),
                 this, SLOT(onSaveBaseLayer(Core::BaseLayer*)));
+        disconnect(_layersView, SIGNAL(createNewLayer()),
+                this, SLOT(onCreateBaseLayer()));
+
     }
 
     _layersView = view;
@@ -293,33 +356,32 @@ void ShapeViewer::setLayersView(LayersView *view)
             this, SLOT(onBaseLayerSelected(Core::BaseLayer*)));
     connect(_layersView, SIGNAL(saveLayer(Core::BaseLayer*)),
             this, SLOT(onSaveBaseLayer(Core::BaseLayer*)));
+    connect(_layersView, SIGNAL(createNewLayer()),
+            this, SLOT(onCreateBaseLayer()));
 
 }
 
 //******************************************************************************
 
-bool ShapeViewer::removeLayer(Core::BaseLayer *layer)
+bool ShapeViewer::removeItem(Core::BaseLayer *layer)
 {
     if (!layer)
     {
-        SD_TRACE("ShapeViewer::removeLayer : base layer is null");
+        SD_TRACE("ShapeViewer::removeItem : base layer is null");
         return false;
     }
-
 
     // remove graphics item:
     QGraphicsItem * item = _layerItemMap.value(layer, 0);
     if (!item)
     {
-        SD_TRACE("ShapeViewer::removeLayer : no graphics item associated with base layer");
+        SD_TRACE("ShapeViewer::removeItem : no graphics item associated with base layer");
         return false;
     }
 
     _scene.removeItem(item);
     delete item;
 
-    // remove layer:
-    layer->setParent(0);
     return true;
 }
 

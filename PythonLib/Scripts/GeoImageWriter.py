@@ -72,7 +72,7 @@ def polygonizeToKML(image, filename, layerName="Layer_name"):
 
 def writeVectorFromMask(image, filename, layerName="Layer_name", layerFormat="ESRI Shapefile"):
         """
-        Method to polygonize image data into a vector file (.kml)
+        Method to polygonize image data into a vector file (in layerFormat)
         Input image should be single band of type uint8.
         Input image is polygonized using opencv findContours method.
         """
@@ -116,7 +116,7 @@ def writeVectorFromMask(image, filename, layerName="Layer_name", layerFormat="ES
                 else:
                     geom=ogr.Geometry(ogr.wkbPolygon)
                     ring = ogr.Geometry(ogr.wkbLinearRing)
-                    for point in contours[index]:
+                    for point in contour:
                         ring.AddPoint(point[0][0], point[0][1])
                     # close ring
                     ring.AddPoint(contour[0][0][0],contour[0][0][1])

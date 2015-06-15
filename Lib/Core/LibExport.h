@@ -8,8 +8,13 @@
  *   1 - problem with "all bands" : switch on/off -> histograms are not correctly shown
  *   2 - possibility to choose Bands to RGB mapping for multiband images
  *   2 - choice of RGB / GRAY mode for multiband images
+ *   2 - complex images
  *   1 - when edit slider value, value should be limited by histogram values and not visible min/max range
  *   1 - use view/model architecture
+ *
+ *   !!! RECODE CONCURRENT USAGE OF ImageRenderer between AbstractRendererView and GeoImageItem
+ *
+ *
  * 2) Image loading/display
  *   + create overview file .ovr
  *   0 - support complex imagery  => GDAL does not work correctly with CSK L1A => pending
@@ -39,6 +44,7 @@
  * 8) Layer pixel info
  *   1 - display pixel info : coordinates in pixels, geo, value
  * 9) Filters as plugins
+ *   - Should apply filter on data ignoring NoDatValues
  *   + default blur filter
  *   + default filter dialog
  *   1 - 'lasso' filter to select a color uniform regions
@@ -47,6 +53,8 @@
  * 10) Save/Load project
  *   1 - save workspace in xml file
  *   1 - load workspace from xml file
+ * 11) PropertyEditor
+ *  - when variable is changed -> notify the property editor
  *
  */
 

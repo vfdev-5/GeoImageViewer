@@ -29,6 +29,7 @@ class GIV_DLL_EXPORT ImageDataProvider : public QObject
     Q_OBJECT
 
     PROPERTY_ACCESSORS(QString, imageName, getImageName, setImageName)
+    PROPERTY_GETACCESSOR(QString, location, getLocation)
 
     // INPUT Image Data Info :
     PROPERTY_GETACCESSOR(int, inputNbBands, getInputNbBands)
@@ -56,9 +57,12 @@ class GIV_DLL_EXPORT ImageDataProvider : public QObject
 
     // Option
     PROPERTY_ACCESSORS(bool, cutNoDataBRBoundary, getCutNoDataBRBoundary, setCutNoDataBRBoundary)
+    PROPERTY_ACCESSORS(bool, editable, isEditable, setEditable)
 
 public:
     static const float NoDataValue;
+
+    static cv::Mat computeMask(const cv::Mat & data, float noDataValue=NoDataValue);
 
     explicit ImageDataProvider(QObject *parent = 0);
     virtual cv::Mat getImageData(const QRect & srcPixelExtent=QRect(), int dstPixelWidth=0, int dstPixelHeight=0) const = 0 ;
@@ -67,7 +71,6 @@ public:
     virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const
     { Q_UNUSED(pixelExtent); return QPolygonF(); }
     virtual QVector<double> fetchGeoTransform() const { return  QVector<double>(); }
-
 
 protected:
     static void setupDataInfo(const cv::Mat & src, ImageDataProvider * dst);

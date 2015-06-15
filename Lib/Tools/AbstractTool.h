@@ -11,8 +11,13 @@
 // Project
 #include "Core/LibExport.h"
 #include "Core/Global.h"
+#include "Core/ImageDataProvider.h"
+#include "Core/DrawingsItem.h"
 
 class QGraphicsScene;
+class QAbstractGraphicsShapeItem;
+class QGraphicsPixmapItem;
+class QGraphicsView;
 class QGraphicsItem;
 class QAction;
 
@@ -49,7 +54,23 @@ public:
 
 //******************************************************************************
 
-class GIV_DLL_EXPORT ItemCreationTool : public AbstractTool
+class GIV_DLL_EXPORT CreationTool : public AbstractTool
+{
+    Q_OBJECT
+public:
+    CreationTool(QObject * parent = 0) :
+        AbstractTool(parent),
+        _pressed(false)
+    {}
+
+protected:
+    bool _pressed;
+    QPointF _anchor;
+};
+
+//******************************************************************************
+
+class GIV_DLL_EXPORT ItemCreationTool : public CreationTool
 {
     Q_OBJECT
 public:
@@ -70,26 +91,28 @@ signals:
 
 //******************************************************************************
 
-class GIV_DLL_EXPORT ImageCreationTool : public AbstractTool
+class GIV_DLL_EXPORT ImageCreationTool : public CreationTool
 {
     Q_OBJECT
+
+    PTR_PROPERTY_ACCESSORS(Core::DrawingsItem, drawingsItem, getDrawingsItem, setDrawingsItem)
+
+    Q_PROPERTY(bool erase READ erase WRITE setErase)
+    PROPERTY_GETACCESSOR(bool, erase, erase)
+    Q_CLASSINFO("erase","label:Erase")
+
 public:
 
-    ImageCreationTool(QObject * parent = 0) :
-        AbstractTool(parent)
-    {
-        _toolType = Type;
-    }
+    ImageCreationTool(QObject * parent = 0);
     enum {
         Type = 2,
     };
 
-//public slots:
-//    virtual void clear() = 0;
+    virtual void setErase(bool erase);
 
-//signals:
-//    void itemCreated(QGraphicsItem * item);
 
+protected:
+    int _mode;
 };
 
 //******************************************************************************

@@ -7,11 +7,12 @@
 
 // Project
 #include "FiltersManager.h"
-#include "BlurFilter.h"
 #include "Core/Global.h"
 #include "Core/ImageDataProvider.h"
 #include "Core/FloatingDataProvider.h"
 #include "Core/LayerUtils.h"
+#include "BlurFilter.h"
+#include "PowerFilter.h"
 
 namespace Filters
 {
@@ -67,6 +68,7 @@ FiltersManager::FiltersManager() :
 {
     // Insert default filters :
     insertFilter(new BlurFilter());
+    insertFilter(new PowerFilter());
 }
 
 //******************************************************************************

@@ -19,7 +19,7 @@ class ImageDataProvider;
 
 //******************************************************************************
 
-struct ImageRendererConfiguration {
+struct GIV_DLL_EXPORT ImageRendererConfiguration {
     QVector<int> toRGBMapping; //!< RGB to Bands mapping. Key is RGB and value is image band
     QVector<double> minValues;
     QVector<double> maxValues;
@@ -32,23 +32,48 @@ class GIV_DLL_EXPORT ImageRenderer : public QObject
 
 public:
     ImageRenderer(QObject * parent = 0);
-    virtual cv::Mat render(const cv::Mat & rawData, bool isBGRA=false);
+    virtual cv::Mat render(const cv::Mat & rawData, const ImageRendererConfiguration * conf, bool isBGRA=false);
 
-    ImageRendererConfiguration getConfiguration() const
-    { return _conf; }
-    void setConfiguration(const ImageRendererConfiguration &conf);
+//    ImageRendererConfiguration getConfiguration() const
+//    { return _conf; }
+//    void setConfiguration(const ImageRendererConfiguration &conf);
 
-    virtual bool setupConfiguration(ImageDataProvider * dataProvider);
+    static bool setupConfiguration(const ImageDataProvider *dataProvider, ImageRendererConfiguration * conf);
 
+//signals:
+//    void configurationAboutToChange();
 protected:
-    bool setToRGBMapping(ImageDataProvider * provider);
-    inline bool checkBeforeRender(const cv::Mat &);
-
-    ImageRendererConfiguration _conf;
+    bool checkBeforeRender(int nbBands, const ImageRendererConfiguration * conf);
+//    ImageRendererConfiguration _conf;
 
 
 };
 
+//******************************************************************************
+
+//inline bool ImageRenderer::checkBeforeRender(int nbBands)
+//{
+//    if (nbBands != _conf.minValues.size() ||
+//            nbBands != _conf.maxValues.size())
+//        return false;
+//    if (_conf.toRGBMapping.size() != 3)
+//        return false;
+//    return true;
+//}
+
+inline bool ImageRenderer::checkBeforeRender(int nbBands, const ImageRendererConfiguration * conf)
+{
+    if (nbBands != conf->minValues.size() ||
+            nbBands != conf->maxValues.size())
+        return false;
+    if (conf->toRGBMapping.size() != 3)
+        return false;
+    return true;
+}
+
+//******************************************************************************
+
+QVector<int> computeToRGBMapping(const ImageDataProvider *provider);
 
 //******************************************************************************
 
