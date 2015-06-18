@@ -218,13 +218,13 @@ void ImageRendererTest::test2()
 
 
     // RGB :
-    hConf.rgbTransferFunction = Core::HistogramRendererConfiguration::availableTransferFunctions[0];
-    hConf.isRGBDiscreteValue = false;
-    QGradientStops rStops, gStops, bStops;
-    rStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::red);
-    gStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::green);
-    bStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::blue);
-    hConf.normRGBHistStops << rStops << gStops << bStops;
+//    hConf.rgbTransferFunctions << Core::HistogramRendererConfiguration::availableTransferFunctions[0];
+//    hConf.isRGBDiscreteValues << false;
+//    QGradientStops rStops, gStops, bStops;
+//    rStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::red);
+//    gStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::green);
+//    bStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::blue);
+//    hConf.normRGBHistStops << rStops << gStops << bStops;
 
     // Render raw data
     cv::Mat r = renderer.render(m, &hConf, true);
@@ -359,14 +359,14 @@ void ImageRendererTest::test3()
     hConf.normHistStops << stops;
 
 
-    // RGB :
-    hConf.rgbTransferFunction = Core::HistogramRendererConfiguration::availableTransferFunctions[0];
-    hConf.isRGBDiscreteValue = false;
-    QGradientStops rStops, gStops, bStops;
-    rStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::red);
-    gStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::green);
-    bStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::blue);
-    hConf.normRGBHistStops << rStops << gStops << bStops;
+//    // RGB :
+//    hConf.rgbTransferFunction = Core::HistogramRendererConfiguration::availableTransferFunctions[0];
+//    hConf.isRGBDiscreteValue = false;
+//    QGradientStops rStops, gStops, bStops;
+//    rStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::red);
+//    gStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::green);
+//    bStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::blue);
+////    hConf.normRGBHistStops << rStops << gStops << bStops;
 
     // Render raw data
     cv::Mat r = renderer.render(m, &hConf, true);

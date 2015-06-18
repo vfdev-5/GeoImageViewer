@@ -3,7 +3,6 @@
 #include <QStack>
 #include <QTime>
 #include <QString>
-#include <QPair>
 
 // Project
 #include "Global.h"

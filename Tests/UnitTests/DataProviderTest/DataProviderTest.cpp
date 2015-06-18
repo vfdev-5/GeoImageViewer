@@ -201,11 +201,11 @@ void DataProviderTest::test_computeMask()
 
     cv::merge(iChannels, data);
 
-    trueMask(r1) = 0;
-    trueMask(r2) = 0;
-    trueMask(r3) = 0;
-    trueMask(r4) = 0;
-    trueMask(r5) = 0;
+    trueMask(r1) = cv::Mat::zeros(r1.height, r1.width, trueMask.type());
+    trueMask(r2) = cv::Mat::zeros(r2.height, r2.width, trueMask.type());
+    trueMask(r3) = cv::Mat::zeros(r3.height, r3.width, trueMask.type());
+    trueMask(r4) = cv::Mat::zeros(r4.height, r4.width, trueMask.type());
+    trueMask(r5) = cv::Mat::zeros(r5.height, r5.width, trueMask.type());
 
     cv::Mat mask = Core::ImageDataProvider::computeMask(data);
 

@@ -26,9 +26,7 @@ class GIV_DLL_EXPORT DefaultRendererView : public AbstractRendererView
 public:
     explicit DefaultRendererView(QWidget *parent = 0);
     virtual ~DefaultRendererView();
-//    virtual void setup(Core::ImageRenderer * renderer, const Core::ImageDataProvider * provider);
-    virtual void setup(const Core::ImageRendererConfiguration & conf, const Core::ImageDataProvider * provider);
-//    virtual void applyNewRendererConfiguration();
+    virtual void setup(const Core::ImageRendererConfiguration * conf, const Core::ImageDataProvider * provider);
 
 public slots:
     virtual void clear();

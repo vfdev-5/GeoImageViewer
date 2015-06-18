@@ -26,43 +26,43 @@ namespace Tools
 
 
 FilterTool::FilterTool(QGraphicsScene *scene, QGraphicsView *view, QObject *parent):
-       ImageCreationTool(parent),
-       _scene(scene),
-       _view(view),
-       _dataProvider(0),
-       _cursorShape(0),
-       _cursorShapeScale(-1),
-       _cursorShapeZValue(1000),
-       _size(100),
-       _isValid(false),
-       _opacity(0.5)
-   {
-       _toolType = Type;
+    ImageCreationTool(parent),
+    _scene(scene),
+    _view(view),
+    _dataProvider(0),
+    _cursorShape(0),
+    _cursorShapeScale(-1),
+    _cursorShapeZValue(1000),
+    _size(100),
+    _isValid(false),
+    _opacity(0.5)
+{
+    _toolType = Type;
 
 
-       _finalize = new QAction(tr("Finalize"), this);
-       _finalize->setEnabled(false);
-       connect(_finalize, SIGNAL(triggered()), this, SLOT(onFinalize()));
-       _actions.append(_finalize);
+    _finalize = new QAction(tr("Finalize"), this);
+    _finalize->setEnabled(false);
+    connect(_finalize, SIGNAL(triggered()), this, SLOT(onFinalize()));
+    _actions.append(_finalize);
 
-       _hideShowResult = new QAction(tr("Hide result"), this);
-       _hideShowResult->setEnabled(false);
-       connect(_hideShowResult, SIGNAL(triggered()), this, SLOT(onHideShowResult()));
-       _actions.append(_hideShowResult);
+    _hideShowResult = new QAction(tr("Hide result"), this);
+    _hideShowResult->setEnabled(false);
+    connect(_hideShowResult, SIGNAL(triggered()), this, SLOT(onHideShowResult()));
+    _actions.append(_hideShowResult);
 
-       QAction * separator = new QAction(this);
-       separator->setSeparator(true);
-       _actions.append(separator);
+    QAction * separator = new QAction(this);
+    separator->setSeparator(true);
+    _actions.append(separator);
 
-       _clear = new QAction(tr("Clear"), this);
-       _clear->setEnabled(false);
-       connect(_clear, SIGNAL(triggered()), this, SLOT(clear()));
-       _actions.append(_clear);
+    _clear = new QAction(tr("Clear"), this);
+    _clear->setEnabled(false);
+    connect(_clear, SIGNAL(triggered()), this, SLOT(clear()));
+    _actions.append(_clear);
 
 
 
-       _isValid = _scene && _view;
-   }
+    _isValid = _scene && _view;
+}
 
 //******************************************************************************
 
@@ -75,7 +75,9 @@ bool FilterTool::dispatch(QEvent *e, QGraphicsScene *scene)
     {
 
         QGraphicsSceneMouseEvent * event = static_cast<QGraphicsSceneMouseEvent*>(e);
-        if (event->button() == Qt::LeftButton && !_pressed)
+        if (event->button() == Qt::LeftButton &&
+                !_pressed &&
+                !(event->modifiers() & Qt::ControlModifier))
         {
             // check if _drawingsItem exists
             if (!_drawingsItem)
@@ -88,7 +90,7 @@ bool FilterTool::dispatch(QEvent *e, QGraphicsScene *scene)
                     _drawingsItem = new Core::DrawingsItem(r.width(), r.height(), QColor(Qt::transparent));
                     _drawingsItem->setPos(r.x(), r.y());
                     _drawingsItem->setZValue(_cursorShapeZValue-10);
-//                    _drawingsItem->setOpacity(_opacity);
+                    //                    _drawingsItem->setOpacity(_opacity);
                     // visible canvas
                     QGraphicsRectItem * canvas = new QGraphicsRectItem(QRectF(0.0,0.0,r.width(), r.height()), _drawingsItem);
                     canvas->setPen(QPen(Qt::white, 0));
@@ -129,21 +131,21 @@ bool FilterTool::dispatch(QEvent *e, QGraphicsScene *scene)
                 size *= _cursorShape->scale();
                 pos -= QPointF(0.5*size, 0.5*size);
 
-//                SD_TRACE(QString("rect : %1, %2, %3, %4")
-//                         .arg(pos.x())
-//                         .arg(pos.y())
-//                         .arg(size)
-//                         .arg(size));
+                //                SD_TRACE(QString("rect : %1, %2, %3, %4")
+                //                         .arg(pos.x())
+                //                         .arg(pos.y())
+                //                         .arg(size)
+                //                         .arg(size));
                 QRect r(pos.x(), pos.y(), size, size);
                 cv::Mat data = _dataProvider->getImageData(r);
                 if (!data.empty())
                 {
                     cv::Mat out = processData(data);
-//                    SD_TRACE(QString("out : %1, %2, %3, %4")
-//                             .arg(out.rows)
-//                             .arg(out.cols)
-//                             .arg(out.channels())
-//                             .arg(out.elemSize1()));
+                    //                    SD_TRACE(QString("out : %1, %2, %3, %4")
+                    //                             .arg(out.rows)
+                    //                             .arg(out.cols)
+                    //                             .arg(out.channels())
+                    //                             .arg(out.elemSize1()));
 
                     QPixmap p = QPixmap::fromImage(QImage(out.data,
                                                           out.cols,
@@ -155,8 +157,6 @@ bool FilterTool::dispatch(QEvent *e, QGraphicsScene *scene)
             }
 
         }
-
-
 
         if (_pressed && (event->buttons() & Qt::LeftButton)
                 && _drawingsItem && _cursorShape)
@@ -213,33 +213,36 @@ bool FilterTool::dispatch(QEvent *e, QWidget *viewport)
     else if (e->type() == QEvent::Wheel)
     {
         QWheelEvent * event = static_cast<QWheelEvent*>(e);
-        if (event->modifiers() & Qt::ControlModifier)
+        if (event->modifiers() & Qt::ControlModifier )
         {
-            // mouse has X units that covers 360 degrees. Zoom when 15 degrees is provided
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
-            QPoint numDegrees = event->angleDelta() / 8;
-#else
-            QPoint numDegrees(0,event->delta() / 8);
-#endif
-            double scale = _cursorShape->scale();
-            if (!numDegrees.isNull())
+            if (_cursorShape)
             {
-                if (numDegrees.y() >= 15)
-                { // make smaller
-                    scale *= 0.6667;
-                    scale = scale < 0.2 ? 0.2 : scale;
-                }
-                else if (numDegrees.y() <= -15)
-                { // make larger
-                    scale *= 1.5;
-                    scale = scale > 5.0 ? 5.0 : scale;
-                }
-//                emit sizeChanged(_size);
+                // mouse has X units that covers 360 degrees. Zoom when 15 degrees is provided
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+                QPoint numDegrees = event->angleDelta() / 8;
+#else
+                QPoint numDegrees(0,event->delta() / 8);
+#endif
+                double scale = _cursorShape->scale();
+                if (!numDegrees.isNull())
+                {
+                    if (numDegrees.y() >= 15)
+                    { // make smaller
+                        scale *= 0.6667;
+                        scale = scale < 0.2 ? 0.2 : scale;
+                    }
+                    else if (numDegrees.y() <= -15)
+                    { // make larger
+                        scale *= 1.5;
+                        scale = scale > 5.0 ? 5.0 : scale;
+                    }
+                    //                emit sizeChanged(_size);
 
-                _cursorShape->setScale(scale);
+                    _cursorShape->setScale(scale);
 
-                event->accept();
-                return true;
+                    event->accept();
+                    return true;
+                }
             }
         }
     }
@@ -252,29 +255,29 @@ bool FilterTool::dispatch(QEvent *e, QWidget *viewport)
 
 void FilterTool::createCursor()
 {
-    if (!_cursorShape)
-    {
-        QPixmap p = QPixmap(_size,_size);
-        p.fill(_drawingsItem ? _drawingsItem->getBackground() : Qt::transparent);
+//    if (!_cursorShape)
+//    {
+    QPixmap p = QPixmap(_size,_size);
+    p.fill(_drawingsItem ? _drawingsItem->getBackground() : Qt::transparent);
 
-        QGraphicsPixmapItem * item = new QGraphicsPixmapItem(p);
-        item->setTransformOriginPoint(0.5*_size,0.5*_size);
-        item->setZValue(_cursorShapeZValue);
-        item->setFlag(QGraphicsItem::ItemIgnoresTransformations);
-        item->setOpacity(_opacity);
+    QGraphicsPixmapItem * item = new QGraphicsPixmapItem(p);
+    item->setTransformOriginPoint(0.5*_size,0.5*_size);
+    item->setZValue(_cursorShapeZValue);
+    item->setFlag(QGraphicsItem::ItemIgnoresTransformations);
+    item->setOpacity(_opacity);
 
-        QGraphicsRectItem * br = new QGraphicsRectItem(item->boundingRect(), item);
-        br->setZValue(+1);
-        br->setPen(QPen(Qt::green, 0));
-        br->setBrush(Qt::transparent);
-        br->setFlag(QGraphicsItem::ItemIgnoresParentOpacity);
+    QGraphicsRectItem * br = new QGraphicsRectItem(item->boundingRect(), item);
+    br->setZValue(+1);
+    br->setPen(QPen(Qt::green, 0));
+    br->setBrush(Qt::transparent);
+    br->setFlag(QGraphicsItem::ItemIgnoresParentOpacity);
 
 
-        _cursorShape = item;
-        if (_cursorShapeScale>0)
-            _cursorShape->setScale(_cursorShapeScale);
-        _scene->addItem(_cursorShape);
-    }
+    _cursorShape = item;
+    if (_cursorShapeScale>0)
+        _cursorShape->setScale(_cursorShapeScale);
+    _scene->addItem(_cursorShape);
+//    }
 }
 
 //******************************************************************************
@@ -355,9 +358,9 @@ void FilterTool::drawAtPoint(const QPointF &pos)
         r2=r2.adjusted(-size*0.25, -size*0.25, size*0.25, size*0.25);
         _drawingsItem->update(r2);
     }
-//    else
-//    {
-//    }
+    //    else
+    //    {
+    //    }
 }
 
 //******************************************************************************

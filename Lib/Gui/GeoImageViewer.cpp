@@ -171,6 +171,15 @@ void GeoImageViewer::onImageOpened(Core::ImageDataProvider *imageDataProvider)
         return;
     }
 
+    // Create Geo Image Item from data provider
+    Core::GeoImageItem * item = createGeoImageItem(imageDataProvider);
+    if (!item)
+    {
+        delete imageDataProvider;
+        SD_ERR("Application failed to create new image layer");
+        return;
+    }
+
     if (_layers.isEmpty())
     {
         int w = imageDataProvider->getWidth();
@@ -178,20 +187,10 @@ void GeoImageViewer::onImageOpened(Core::ImageDataProvider *imageDataProvider)
         prepareSceneAndView(w, h);
     }
 
-    // Create Geo Image Item from data provider
-    Core::GeoImageItem * item = createGeoImageItem(imageDataProvider);
-
     // Create Geo image layer and add it to layers storage
     Core::GeoImageLayer * layer = createGeoImageLayer("Image", imageDataProvider);
 
     addLayer(layer, item);
-
-//    // configure renderer view :
-//    if (_rendererView)
-//    {
-//        _rendererView->clear();
-//        _rendererView->setup(item->getRenderer(), item->getConstDataProvider());
-//    }
 
     // init display item in Scene
     _zoomMinLevel = item->getZoomMinLevel();
@@ -240,7 +239,7 @@ void GeoImageViewer::onBaseLayerSelected(Core::BaseLayer * layer)
     ShapeViewer::onBaseLayerSelected(layer);
 
     // setup renderer view if layer is geo image layer
-    Core::GeoImageItem * imItem = getGeoImageItem(layer);
+    const Core::GeoImageItem * imItem = getGeoImageItem(layer);
     if (imItem)
     {
         if (_rendererView)
@@ -249,10 +248,10 @@ void GeoImageViewer::onBaseLayerSelected(Core::BaseLayer * layer)
             _rendererView->setup(imItem->getRendererConfiguration(), imItem->getConstDataProvider());
 
             // disconnect everything connected to a specific signal
-            _rendererView->disconnect(SIGNAL(renderConfigurationChanged(Core::ImageRendererConfiguration)));
+            _rendererView->disconnect(SIGNAL(renderConfigurationChanged(Core::ImageRendererConfiguration*)));
             // connect the signal with current GeoImageItem
-            connect(_rendererView, SIGNAL(renderConfigurationChanged(Core::ImageRendererConfiguration)),
-                    imItem, SLOT(onRendererConfigurationChanged(Core::ImageRendererConfiguration)));
+            connect(_rendererView, SIGNAL(renderConfigurationChanged(Core::ImageRendererConfiguration*)),
+                    imItem, SLOT(onRendererConfigurationChanged(Core::ImageRendererConfiguration*)));
         }
     }
 
@@ -274,7 +273,7 @@ void GeoImageViewer::onBaseLayerDestroyed(QObject * layerObj)
     {
         _rendererView->clear();
         // disconnect everything connected to a specific signal
-        _rendererView->disconnect(SIGNAL(renderConfigurationChanged()));
+        _rendererView->disconnect(SIGNAL(renderConfigurationChanged(Core::ImageRendererConfiguration*)));
     }
 
 }
@@ -445,11 +444,18 @@ void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
     if (!item)
     {
         SD_TRACE("GeoImageViewer::onFilteringFinished : item is null . something wrong");
+        delete provider;
         return;
     }
 
     QPointF pos = item->pos();
     Core::GeoImageItem * nItem = createGeoImageItem(provider, pos);
+    if (!nItem)
+    {
+        delete provider;
+        SD_ERR("Application failed to create new image layer");
+        return;
+    }
 
     // Create new layer :
     Core::GeoImageLayer * nLayer = new Core::GeoImageLayer(this);
@@ -483,7 +489,6 @@ void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
 void GeoImageViewer::setRendererView(AbstractRendererView *rendererView)
 {
     _rendererView = rendererView;
-//    connect(_rendererView, SIGNAL(renderConfigurationChanged()), this, SLOT(onRenderConfigurationChanged()));
 }
 
 //******************************************************************************
@@ -531,6 +536,13 @@ void GeoImageViewer::onCopyData(const QRectF &selection)
 
     // Create Geo Image Item from data provider
     Core::GeoImageItem * nItem = createGeoImageItem(nProvider, selection.topLeft());
+    if (!nItem)
+    {
+        delete nProvider;
+        SD_ERR("Application failed to create new image layer");
+        return;
+    }
+
 
     // Create new layer :
     Core::GeoImageLayer * nLayer = createGeoImageLayer("Floating Image", nProvider, intersection);
@@ -622,7 +634,7 @@ bool GeoImageViewer::configureTool(Tools::AbstractTool *tool, Core::BaseLayer *l
             return false;
         }
 
-        Core::GeoImageItem* item = getGeoImageItem(layer);
+        const Core::GeoImageItem* item = getGeoImageItem(layer);
         if (!item)
         {
             return false;
@@ -648,7 +660,15 @@ Core::GeoImageItem * GeoImageViewer::createGeoImageItem(Core::ImageDataProvider 
     Core::HistogramImageRenderer * renderer =  new Core::HistogramImageRenderer();
     // Create renderer conf:
     Core::HistogramRendererConfiguration * rconf = new Core::HistogramRendererConfiguration();
-    Core::HistogramImageRenderer::setupConfiguration(provider, rconf);
+    Core::HistogramRendererConfiguration::Mode mode = (provider->getNbBands() > 2) ? Core::HistogramRendererConfiguration::RGB :
+                                                                                     Core::HistogramRendererConfiguration::GRAY;
+    if (!Core::HistogramImageRenderer::setupConfiguration(provider, rconf, mode))
+    {
+        SD_TRACE("GeoImageViewer::createGeoImageItem : setupConfiguration failed");
+        delete rconf;
+        delete renderer;
+        return 0;
+    }
 
     // Create geo image item :
     Core::GeoImageItem * out = new Core::GeoImageItem(provider, renderer, rconf);
@@ -699,22 +719,22 @@ Core::GeoImageLayer * GeoImageViewer::createGeoImageLayer(const QString &type, C
 
 //******************************************************************************
 
-Core::GeoImageItem * GeoImageViewer::getGeoImageItem(Core::BaseLayer * layer)
+const Core::GeoImageItem * GeoImageViewer::getGeoImageItem(const Core::BaseLayer * layer) const
 {
-    Core::GeoImageLayer * image = qobject_cast<Core::GeoImageLayer*>(layer);
+    const Core::GeoImageLayer * image = qobject_cast<const Core::GeoImageLayer*>(layer);
     if (!image)
     {
         return 0;
     }
     // static cast is ensured with non null conversion of BaseLayer into GeoImageLayer
-    return static_cast<Core::GeoImageItem*>(_layerItemMap.value(image, 0));
+    return static_cast<const Core::GeoImageItem*>(_layerItemMap.value(image, 0));
 }
 
 //******************************************************************************
 
-const Core::ImageDataProvider * GeoImageViewer::getDataProvider(Core::BaseLayer * layer)
+const Core::ImageDataProvider * GeoImageViewer::getDataProvider(const Core::BaseLayer * layer) const
 {
-    Core::GeoImageItem* item = getGeoImageItem(layer);
+    const Core::GeoImageItem* item = getGeoImageItem(layer);
     if (!item)
     {
         return 0;
@@ -730,6 +750,32 @@ void GeoImageViewer::enableOptions(bool v)
     _settings.enableKeyNavigation=v;
     _settings.enableScroll=v;
     _enableTools = v;
+}
+
+//******************************************************************************
+
+QVector<double> GeoImageViewer::getPixelValues(const QPoint & point, bool *isComplex) const
+{
+    const Core::BaseLayer * layer = getCurrentLayer();
+    const Core::ImageDataProvider * dataProvider = getDataProvider(layer);
+    if (!dataProvider)
+    {
+//        SD_TRACE("GeoImageViewer::getPixelValues : no data provider");
+        return QVector<double>();
+    }
+    return dataProvider->getPixelValue(point, isComplex);
+
+}
+
+//******************************************************************************
+
+QPointF GeoImageViewer::computePointOnItem(const QPointF &scenePos)
+{
+//    QGraphicsItem * item = _scene.itemAt(scenePos, QTransform());
+//    if (item)
+//    {
+//    }
+    return ShapeViewer::computePointOnItem(scenePos);
 }
 
 //******************************************************************************

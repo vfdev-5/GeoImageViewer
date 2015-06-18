@@ -37,7 +37,7 @@ public:
         Settings() :
             TileSize(512),
             CacheSize(50),
-            MaxNbOfThreads(1)
+            MaxNbOfThreads(3)
         {}
     };
 
@@ -56,11 +56,11 @@ public:
 
     const ImageDataProvider * getConstDataProvider() const
     { return _dataProvider; }
-    ImageRendererConfiguration getRendererConfiguration() const;
+    const ImageRendererConfiguration * getRendererConfiguration() const;
 
 public slots:
     void updateItem(int zoomLevel, const QRectF & visiblePixelExtent);
-    void onRendererConfigurationChanged(Core::ImageRendererConfiguration conf);
+    void onRendererConfigurationChanged(Core::ImageRendererConfiguration *conf);
 
 protected slots:
     void onTileLoaded(QGraphicsPixmapItem*tile, QGraphicsItemGroup * tileGroup, const QString &key);

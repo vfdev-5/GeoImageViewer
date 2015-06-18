@@ -78,6 +78,9 @@ protected:
     QRectF getVisibleSceneRect();
     void viewportInfo();
 
+    virtual QVector<double> getPixelValues(const QPoint &, bool *isComplex=0) const
+    { return QVector<double>(); }
+
     QGraphicsScene _scene;
     QGraphicsView _view;
 

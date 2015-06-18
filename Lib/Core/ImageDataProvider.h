@@ -18,6 +18,7 @@
 #include "LibExport.h"
 
 class GDALDataset;
+class QMutex;
 
 namespace Core
 {
@@ -66,6 +67,7 @@ public:
 
     explicit ImageDataProvider(QObject *parent = 0);
     virtual cv::Mat getImageData(const QRect & srcPixelExtent=QRect(), int dstPixelWidth=0, int dstPixelHeight=0) const = 0 ;
+    QVector<double> getPixelValue(const QPoint & pixelCoords, bool * isComplex = 0) const;
 
     virtual QString fetchProjectionRef() const { return QString(); }
     virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const
@@ -96,6 +98,9 @@ public:
     virtual QString fetchProjectionRef() const;
     virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const;
     virtual QVector<double> fetchGeoTransform() const;
+
+protected:
+    QMutex * _mutex;
 
 };
 

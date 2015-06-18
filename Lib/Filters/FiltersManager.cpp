@@ -94,9 +94,9 @@ void FiltersManager::loadPlugins(const QString &path)
     QDir d(path);
     QStringList filters;
 #ifdef _DEBUG
-    filters << "*Plugin.d.dll" << "*Plugin.d.so" << "*Plugin.d.dylib";
+    filters << "*Plugin.d.dll" << "*Plugin.d.so";
 #else
-    filters << "*Plugin.dll" << "*Plugin.so" << "*Plugin.dylib";
+    filters << "*Plugin.dll" << "*Plugin.so";
 #endif
 
     foreach (QString fileName, d.entryList(filters, QDir::Files))
