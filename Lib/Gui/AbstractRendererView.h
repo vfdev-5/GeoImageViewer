@@ -25,17 +25,17 @@ class GIV_DLL_EXPORT AbstractRendererView : public QWidget
 public:
     AbstractRendererView(QWidget * parent = 0) :
         QWidget(parent)
-    {    }
+    {}
 
     virtual ~AbstractRendererView() {}
-    virtual void setup(const Core::ImageRendererConfiguration & renderer, const Core::ImageDataProvider * provider) = 0;
+    virtual void setup(const Core::ImageRendererConfiguration * renderer, const Core::ImageDataProvider * provider) = 0;
 
 public slots:
     virtual void clear() = 0;
     virtual void revert() = 0;
 
 signals:
-    void renderConfigurationChanged(Core::ImageRendererConfiguration);
+    void renderConfigurationChanged(Core::ImageRendererConfiguration *);
 
 protected slots:
 

@@ -61,9 +61,10 @@ protected:
     void addLayer(Core::BaseLayer*, QGraphicsItem *item);
     bool removeItem(Core::BaseLayer* layer);
 
-    Core::BaseLayer* createEmptyLayer(const QString &name, const QRect & extent);
+    virtual QPointF computePointOnItem(const QPointF &scenePos);
 
-    Core::BaseLayer* getCurrentLayer();
+    Core::BaseLayer* createEmptyLayer(const QString &name, const QRect & extent);
+    Core::BaseLayer *getCurrentLayer() const;
 
     Tools::ToolsManager * _toolsManager;
     Tools::AbstractTool * _currentTool;
@@ -71,7 +72,7 @@ protected:
 
     bool _enableTools;
 
-    QHash<Core::BaseLayer*, QGraphicsItem*> _layerItemMap;
+    QHash<const Core::BaseLayer*, QGraphicsItem*> _layerItemMap;
     QList<Core::BaseLayer*> _layers;
 
     LayersView * _layersView;

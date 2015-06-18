@@ -296,6 +296,11 @@ bool BaseViewer::navigationOnKeys(QEvent *e)
         {
             sceneCenter += QPointF(0.0,step);
         }
+        else
+        {
+            return false;
+        }
+
         centerOnAtZoom(_zoomLevel, sceneCenter);
         event->accept();
         return true;

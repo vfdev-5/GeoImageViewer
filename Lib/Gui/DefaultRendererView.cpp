@@ -41,20 +41,22 @@ void DefaultRendererView::clear()
 
 void DefaultRendererView::revert()
 {
-    // !!!! NEED TO PROCEED AS A NEW CONF IS APPLIED !!!!
-//    _renderer->setupConfiguration(_dataProvider);
-
-    setup(_initialConf, _dataProvider);
-    emit renderConfigurationChanged(_initialConf);
-
+    setup(&_initialConf, _dataProvider);
+    emit renderConfigurationChanged(&_initialConf);
 }
 
 //******************************************************************************
 
-void DefaultRendererView::setup(const Core::ImageRendererConfiguration &conf, const Core::ImageDataProvider * provider)
+void DefaultRendererView::setup(const Core::ImageRendererConfiguration *conf, const Core::ImageDataProvider * provider)
 {
-    _conf = conf;
-    _initialConf = conf;
+    if (!provider || !conf)
+    {
+        SD_TRACE("HistogramRendererView::setup : provider or conf is null");
+        return;
+    }
+
+    _conf = *conf;
+    _initialConf = _conf;
     _dataProvider=provider;
 
     clear();
@@ -73,13 +75,6 @@ void DefaultRendererView::setup(const Core::ImageRendererConfiguration &conf, co
     setupBandConfiguration(0);
 
 }
-
-//******************************************************************************
-
-//void DefaultRendererView::applyNewRendererConfiguration()
-//{
-////    _renderer->setConfiguration(_conf);
-//}
 
 //******************************************************************************
 
@@ -107,7 +102,7 @@ void DefaultRendererView::on__band_activated(int index)
 void DefaultRendererView::on__red_activated(int index)
 {
     _conf.toRGBMapping[0]=index;
-    emit renderConfigurationChanged(_conf);
+    emit renderConfigurationChanged(&_conf);
 }
 
 //******************************************************************************
@@ -115,7 +110,7 @@ void DefaultRendererView::on__red_activated(int index)
 void DefaultRendererView::on__green_activated(int index)
 {
     _conf.toRGBMapping[1]=index;
-    emit renderConfigurationChanged(_conf);
+    emit renderConfigurationChanged(&_conf);
 }
 
 //******************************************************************************
@@ -123,7 +118,7 @@ void DefaultRendererView::on__green_activated(int index)
 void DefaultRendererView::on__blue_activated(int index)
 {
     _conf.toRGBMapping[2]=index;
-    emit renderConfigurationChanged(_conf);
+    emit renderConfigurationChanged(&_conf);
 }
 
 //******************************************************************************
@@ -132,7 +127,7 @@ void DefaultRendererView::on__min_editingFinished()
 {
     int index = ui->_band->currentIndex();
     _conf.minValues[index]=ui->_min->value();
-    emit renderConfigurationChanged(_conf);
+    emit renderConfigurationChanged(&_conf);
 }
 
 //******************************************************************************
@@ -141,7 +136,7 @@ void DefaultRendererView::on__max_editingFinished()
 {
     int index = ui->_band->currentIndex();
     _conf.maxValues[index]=ui->_max->value();
-    emit renderConfigurationChanged(_conf);
+    emit renderConfigurationChanged(&_conf);
 }
 
 //******************************************************************************

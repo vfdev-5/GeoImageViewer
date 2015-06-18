@@ -88,7 +88,7 @@ QString ImageOpener::handleLocalFile(const QUrl &url)
     if (!QFileInfo(filepath).exists())
     {
         SD_ERR(tr("File %1 is not found").arg(filepath));
-        return QString();
+        return false;
     }
 
     QString fileToOpen=filepath;
@@ -101,13 +101,13 @@ QString ImageOpener::handleLocalFile(const QUrl &url)
             Gui::SubdatasetDialog dialog(subsetDesriptions);
             if (!dialog.exec())
             {
-                return QString();
+                return false;
             }
             else
             {
                 int index = dialog.getSelectionIndex();
                 if (index < 0 || index >= subsetNames.size())
-                    return QString();
+                    return false;
                 fileToOpen = subsetNames[index];
             }
         }

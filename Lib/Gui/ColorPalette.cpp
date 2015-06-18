@@ -39,16 +39,13 @@ QGradientStops computeValuesFromStops(const QGradientStops & stops, double hxmin
 
 /*!
 
-        \class ColorManipulationWidget
+        \class ColorPalette
         \ingroup Gui
-        \brief This class implements the histogram color manipulation widget. This is
-        used to enhance color contrast and visualization using image histogram, pseudo-colors,
-        color transfer function...
+        \brief graphical representation of gradient color palette with slider
 
-
-        \class ColorManipulationWidget::Slider
+        \class Slider
         \ingroup Gui
-        \brief This class implements graphical representation of the color palette slider
+        \brief graphical representation of the color palette slider
 
  */
 

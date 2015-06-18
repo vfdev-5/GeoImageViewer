@@ -34,32 +34,14 @@ public:
     ImageRenderer(QObject * parent = 0);
     virtual cv::Mat render(const cv::Mat & rawData, const ImageRendererConfiguration * conf, bool isBGRA=false);
 
-//    ImageRendererConfiguration getConfiguration() const
-//    { return _conf; }
-//    void setConfiguration(const ImageRendererConfiguration &conf);
-
     static bool setupConfiguration(const ImageDataProvider *dataProvider, ImageRendererConfiguration * conf);
 
-//signals:
-//    void configurationAboutToChange();
 protected:
     bool checkBeforeRender(int nbBands, const ImageRendererConfiguration * conf);
-//    ImageRendererConfiguration _conf;
-
 
 };
 
 //******************************************************************************
-
-//inline bool ImageRenderer::checkBeforeRender(int nbBands)
-//{
-//    if (nbBands != _conf.minValues.size() ||
-//            nbBands != _conf.maxValues.size())
-//        return false;
-//    if (_conf.toRGBMapping.size() != 3)
-//        return false;
-//    return true;
-//}
 
 inline bool ImageRenderer::checkBeforeRender(int nbBands, const ImageRendererConfiguration * conf)
 {

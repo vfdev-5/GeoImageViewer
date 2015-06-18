@@ -26,8 +26,8 @@ BrushTool::BrushTool(QGraphicsScene* scene, QGraphicsView * view, QObject *paren
     _cursorShape(0),
     _scene(scene),
     _view(view)
-//    _erase(false),
-//    _mode(QPainter::CompositionMode_SourceOver)
+  //    _erase(false),
+  //    _mode(QPainter::CompositionMode_SourceOver)
 {
     setObjectName("brush");
     _name=tr("Brush");
@@ -112,29 +112,32 @@ bool BrushTool::dispatch(QEvent *e, QWidget *viewport)
         QWheelEvent * event = static_cast<QWheelEvent*>(e);
         if (event->modifiers() & Qt::ControlModifier)
         {
-            // mouse has X units that covers 360 degrees. Zoom when 15 degrees is provided
-#if (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
-            QPoint numDegrees = event->angleDelta() / 8;
-#else
-            QPoint numDegrees(0,event->delta() / 8);
-#endif
-            if (!numDegrees.isNull())
+            if (_cursorShape)
             {
-                if (numDegrees.y() >= 15)
-                { // make smaller
-                    _size *= 0.6667;
-                    _size = _size < 1.0 ? 1.0 : _size;
-                }
-                else if (numDegrees.y() <= -15)
-                { // make larger
-                    _size *= 1.5;
-                    _size = _size > 250.0 ? 250.0 : _size;
-                }
-                emit sizeChanged(_size);
+                // mouse has X units that covers 360 degrees. Zoom when 15 degrees is provided
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+                QPoint numDegrees = event->angleDelta() / 8;
+#else
+                QPoint numDegrees(0,event->delta() / 8);
+#endif
+                if (!numDegrees.isNull())
+                {
+                    if (numDegrees.y() >= 15)
+                    { // make smaller
+                        _size *= 0.6667;
+                        _size = _size < 1.0 ? 1.0 : _size;
+                    }
+                    else if (numDegrees.y() <= -15)
+                    { // make larger
+                        _size *= 1.5;
+                        _size = _size > 250.0 ? 250.0 : _size;
+                    }
+                    emit sizeChanged(_size);
 
-                _cursorShape->setScale(_size);
-                event->accept();
-                return true;
+                    _cursorShape->setScale(_size);
+                    event->accept();
+                    return true;
+                }
             }
         }
     }
@@ -158,21 +161,21 @@ void BrushTool::destroyCursor()
 
 void BrushTool::createCursor()
 {
-    if (!_cursorShape)
+//    if (!_cursorShape)
+//    {
+    if (!_erase && _ucolor != _color)
     {
-        if (!_erase && _ucolor != _color)
-        {
-            _ucolor = _color;
-        }
-        QGraphicsEllipseItem * item = new QGraphicsEllipseItem(QRectF(-0.5,-0.5, 1.0, 1.0));
-        item->setPen(QPen(_ucolor, 0));
-        item->setBrush(_ucolor);
-        item->setScale(_size);
-        item->setZValue(1000);
-        item->setFlag(QGraphicsItem::ItemIgnoresTransformations);
-        _cursorShape = item;
-        _scene->addItem(_cursorShape);
+        _ucolor = _color;
     }
+    QGraphicsEllipseItem * item = new QGraphicsEllipseItem(QRectF(-0.5,-0.5, 1.0, 1.0));
+    item->setPen(QPen(_ucolor, 0));
+    item->setBrush(_ucolor);
+    item->setScale(_size);
+    item->setZValue(1000);
+    item->setFlag(QGraphicsItem::ItemIgnoresTransformations);
+    _cursorShape = item;
+    _scene->addItem(_cursorShape);
+    //    }
 }
 
 //******************************************************************************

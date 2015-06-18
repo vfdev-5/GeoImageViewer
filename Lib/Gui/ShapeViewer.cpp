@@ -3,6 +3,7 @@
 #include <QGraphicsItem>
 #include <QLabel>
 #include <QGraphicsSceneMouseEvent>
+#include <qmath.h>
 
 // Project
 #include "ShapeViewer.h"
@@ -251,9 +252,31 @@ bool ShapeViewer::eventFilter(QObject * o, QEvent * e)
             if (_pointInfo->isVisible())
             {
                 QGraphicsSceneMouseEvent * event = static_cast<QGraphicsSceneMouseEvent*>(e);
-                _pointInfo->setText(QString("Pixel coordinates : %1, %2")
-                                    .arg(event->scenePos().x())
-                                    .arg(event->scenePos().y()));
+//                QPointF pt = computePointOnItem(event->scenePos());
+//                if (pt.x() >= 0.0 || pt.y() >= 0.0)
+                {
+                    QPointF pt = event->scenePos();
+                    QString info = QString("Pixel coordinates : %1, %2")
+                            .arg(pt.x())
+                            .arg(pt.y());
+                    bool isComplex = false;
+                    QVector<double> vals = getPixelValues(QPoint(qFloor(pt.x()), qFloor(pt.y())) , &isComplex);
+                    if (!vals.isEmpty())
+                    {
+                        info += " | Pixel value : ";
+                        if (isComplex)
+                            info += "Complex ";
+                        info += "( ";
+                        for (int i=0; i<vals.size();i++)
+                        {
+                            double v = vals[i];
+                            info += QString("%1 ").arg(v);
+                        }
+                        info += ")";
+                    }
+                    _pointInfo->setText(info);
+
+                }
             }
         }
     }
@@ -273,7 +296,7 @@ bool ShapeViewer::eventFilter(QObject * o, QEvent * e)
 
 //******************************************************************************
 
-Core::BaseLayer* ShapeViewer::getCurrentLayer()
+Core::BaseLayer *ShapeViewer::getCurrentLayer() const
 {
     if (_layersView)
         return _layersView->getCurrentLayer();
@@ -383,6 +406,17 @@ bool ShapeViewer::removeItem(Core::BaseLayer *layer)
     delete item;
 
     return true;
+}
+
+//******************************************************************************
+
+QPointF ShapeViewer::computePointOnItem(const QPointF &scenePos)
+{
+//    QGraphicsItem * item = _scene.itemAt(scenePos, QTransform());
+//    if (item)
+//    {
+//    }
+    return QPointF(-1.0, -1.0);
 }
 
 //******************************************************************************

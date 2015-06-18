@@ -68,8 +68,8 @@ protected:
     void writeGeoImageLayer(Core::BaseLayer* layer);
     void filterGeoImageLayer(Core::BaseLayer*);
 
-    const Core::ImageDataProvider *getDataProvider(Core::BaseLayer * layer);
-    Core::GeoImageItem * getGeoImageItem(Core::BaseLayer * layer);
+    const Core::ImageDataProvider *getDataProvider(const Core::BaseLayer * layer) const;
+    const Core::GeoImageItem * getGeoImageItem(const Core::BaseLayer * layer) const;
     Core::GeoImageItem * createGeoImageItem(Core::ImageDataProvider *, const QPointF &pos=QPointF());
     Core::GeoImageLayer * createGeoImageLayer(const QString & type, Core::ImageDataProvider * provider, const QRect &userPixelExtent = QRect());
 //    Core::GeoImageLayer * createEmptyGeoImageLayer(const QString & name, const QRect &extent);
@@ -82,6 +82,9 @@ protected:
 
     virtual bool onSceneDragAndDrop(const QList<QUrl> & urls);
     void enableOptions(bool v);
+
+    virtual QVector<double> getPixelValues(const QPoint &point, bool * isComplex = 0) const;
+    virtual QPointF computePointOnItem(const QPointF &scenePos);
 
     Core::ImageOpener * _imageOpener;
     Core::ImageWriter * _imageWriter;

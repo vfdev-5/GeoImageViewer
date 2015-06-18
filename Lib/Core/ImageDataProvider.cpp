@@ -11,6 +11,7 @@
 #include <QString>
 #include <QFileInfo>
 #include <qmath.h>
+#include <QMutex>
 
 // Project
 #include "LayerUtils.h"
@@ -98,11 +99,44 @@ cv::Mat ImageDataProvider::computeMask(const cv::Mat &data, float noDataValue)
 }
 
 //******************************************************************************
+/*!
+ * \brief ImageDataProvider::getPixelValue
+ * \param pixelCoords
+ * \param isComplex in/out parameter which is setup within the method to indicate data type
+ * \return QVector<double> of pixel values : (band1 value, band2 value, band3 value...) for non-complex imagery
+ * and (band1 Re value, band1 Im value, band1 Abs value, band1 Phase value, band2 Re value, ... ) for complex imagery
+ */
+QVector<double> ImageDataProvider::getPixelValue(const QPoint &pixelCoords, bool *isComplex) const
+{
+    QVector<double> out;
+
+    if (!_pixelExtent.contains(pixelCoords))
+        return out;
+
+    if (isComplex)
+    {
+        *isComplex = _inputIsComplex;
+    }
+
+    cv::Mat m = getImageData(QRect(pixelCoords,QSize(1,1)),1,1);
+
+    float * data = reinterpret_cast<float*>(m.data);
+    for (int i=0; i<m.channels();i++)
+    {
+        out << data[i];
+    }
+
+    return out;
+}
+
+
+//******************************************************************************
 //******************************************************************************
 
 GDALDataProvider::GDALDataProvider(QObject *parent) :
     ImageDataProvider(parent),
-    _dataset(0)
+    _dataset(0),
+    _mutex(new QMutex())
 {
 }
 
@@ -112,6 +146,8 @@ GDALDataProvider::~GDALDataProvider()
 {
     if (_dataset)
         GDALClose(_dataset);
+
+    delete _mutex;
 }
 
 //******************************************************************************
@@ -276,6 +312,10 @@ cv::Mat GDALDataProvider::getImageData(const QRect & srcPixelExtent, int dstPixe
 
 //    int desiredNbOfSamples=srcImgExtent.width()*srcImgExtent.height();
 
+    // GDAL dataset access should be limited to only one thread per IO
+    // Otherwise : GeoTiff sends : ERROR 1: TIFFReadEncodedTile() failed | ERROR 1: IReadBlock failed at X offset 0, Y offset 8 |  ERROR 1: GetBlockRef failed at X block offset 0, Y block offset 8
+    _mutex->lock();
+
     for (int i=0; i<nbBands; i++)
     {
 //        GDALRasterBand * band = _dataset->GetRasterBand(i+1)->GetRasterSampleOverview(desiredNbOfSamples);
@@ -375,6 +415,8 @@ cv::Mat GDALDataProvider::getImageData(const QRect & srcPixelExtent, int dstPixe
             }
         }
     }
+
+    _mutex->unlock();
 
     return out;
 }

@@ -51,6 +51,20 @@ QWidget * createPolygonWidget(const QPolygonF & p )
     return w;
 }
 
+QWidget * createVectorDWidget(const QVector<double> & v)
+{
+    QString vStr = "( ";
+    foreach (double el, v)
+    {
+        vStr.append(QString("%1, ").arg(el));
+    }
+    vStr.remove(vStr.size()-2,2);
+    vStr.append(" )");
+    QLabel * l = new QLabel(vStr);
+    l->setWordWrap(true);
+    return l;
+}
+
 
 //******************************************************************************
 
@@ -288,6 +302,10 @@ QWidget * PropertyEditor::readableWidget(const QVariant &value)
     else if (value.type() == QMetaType::QPolygonF)
     {
         return createPolygonWidget(value.value<QPolygonF>());
+    }
+    else if (value.canConvert< QVector<double> >())
+    {
+        return createVectorDWidget(value.value< QVector<double> >());
     }
 //    else if (!value.value<QAction*>())
 //    {

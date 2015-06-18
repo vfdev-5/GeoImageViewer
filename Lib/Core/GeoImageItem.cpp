@@ -102,19 +102,19 @@ void GeoImageItem::paint(QPainter * /*p*/, const QStyleOptionGraphicsItem * /*o*
 
 //*************************************************************************
 
-ImageRendererConfiguration GeoImageItem::getRendererConfiguration() const
+const ImageRendererConfiguration *GeoImageItem::getRendererConfiguration() const
 {
-    return *_rconf;
+    return _rconf;
 }
 
 //*************************************************************************
 
-void GeoImageItem::onRendererConfigurationChanged(Core::ImageRendererConfiguration conf)
+void GeoImageItem::onRendererConfigurationChanged(Core::ImageRendererConfiguration * conf)
 {
     // Avoid concurrent access :
     clearCache();
     // set conf:
-    *_rconf = conf;
+    *_rconf = *conf;
     // reload tiles
     updateItem(_currentZoomLevel, _currentVisiblePixelExtent);
 }
@@ -492,9 +492,9 @@ void TilesLoadTask::run()
 
                 // Do work:
                 // GDAL dataset access should be limited to only one thread per IO
-                _mutex.lock();
+//                _mutex.lock();
                 cv::Mat data = _item->_dataProvider->getImageData(t.tileExtent, t.tileSize);
-                _mutex.unlock();
+//                _mutex.unlock();
                 if (data.empty())
                     continue;
 

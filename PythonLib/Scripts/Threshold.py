@@ -743,7 +743,7 @@ def stackThresholding(image, n=15, sigma=0.7, uMin=None, uMax=None):
     with a step starting from minimum of the image values until
     mean value of the image minus std
     All thresholded images are summed with weights distributed as gaussian with mean = 0 and given sigma
-    Return segemented image
+    Return segmented image
     """
     ImageCommon.assertIsNPArray(image)
 
