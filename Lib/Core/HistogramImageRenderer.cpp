@@ -183,7 +183,7 @@ void setupGrayModeConf(const ImageDataProvider *provider, HistogramRendererConfi
         if (qAbs(provider->getMaxValues()[i] - provider->getMinValues()[i]) > 1e-8)
         {
             startValue=(histConf->qMinValues[i] - provider->getMinValues()[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
-            endValue=(provider->getMaxValues()[i] - histConf->qMaxValues[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
+            endValue=(histConf->qMaxValues[i] - provider->getMinValues()[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
         }
         if (qAbs(endValue) < 1e-8)
             endValue = 1.0;
@@ -208,7 +208,7 @@ void setupRGBModeConf(const ImageDataProvider *provider, HistogramRendererConfig
         if (qAbs(provider->getMaxValues()[i] - provider->getMinValues()[i]) > 1e-8)
         {
             startValue=(histConf->qMinValues[i] - provider->getMinValues()[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
-            endValue=(provider->getMaxValues()[i] - histConf->qMaxValues[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
+            endValue=(histConf->qMaxValues[i]- provider->getMinValues()[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
         }
         if (qAbs(endValue) < 1e-8)
             endValue = 1.0;

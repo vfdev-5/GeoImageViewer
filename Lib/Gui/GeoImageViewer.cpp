@@ -660,8 +660,13 @@ Core::GeoImageItem * GeoImageViewer::createGeoImageItem(Core::ImageDataProvider 
     Core::HistogramImageRenderer * renderer =  new Core::HistogramImageRenderer();
     // Create renderer conf:
     Core::HistogramRendererConfiguration * rconf = new Core::HistogramRendererConfiguration();
-    Core::HistogramRendererConfiguration::Mode mode = (provider->getNbBands() > 2) ? Core::HistogramRendererConfiguration::RGB :
-                                                                                     Core::HistogramRendererConfiguration::GRAY;
+    // Setup default mode :
+    Core::HistogramRendererConfiguration::Mode mode = Core::HistogramRendererConfiguration::GRAY;
+    if (provider->getNbBands() > 2 && !provider->inputIsComplex())
+    {
+        mode = Core::HistogramRendererConfiguration::RGB;
+    }
+
     if (!Core::HistogramImageRenderer::setupConfiguration(provider, rconf, mode))
     {
         SD_TRACE("GeoImageViewer::createGeoImageItem : setupConfiguration failed");

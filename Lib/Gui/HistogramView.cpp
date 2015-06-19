@@ -49,6 +49,22 @@ QGraphicsItemGroup * createAxesGroup(const QPen & pen)
     return axes;
 }
 
+QGraphicsSimpleTextItem * createText(const QString & text)
+{
+    QGraphicsSimpleTextItem * textItem = new QGraphicsSimpleTextItem;
+    textItem->setPen(QPen(Qt::black, 0.0));
+    textItem->setRotation(90.0);
+    textItem->setText(text);
+    textItem->setFlag(QGraphicsItem::ItemIgnoresTransformations);
+
+    QFont f;
+    f.setPixelSize(10);
+    f.setStyleHint(QFont::System);
+    f.setWeight(QFont::Light);
+    textItem->setFont(f);
+    return textItem;
+}
+
 inline double normalized(double x, double xmin, double xmax)
 {
     return (x - xmin)/(xmax - xmin);
@@ -82,10 +98,7 @@ inline void copyPositions(const QGradientStops & src, QGradientStops & dst)
 
     \class HistogramView
     \ingroup Gui
-    \brief This class implements the histogram color manipulation widget. This is
-        used to enhance color contrast and visualization using image histogram, pseudo-colors,
-        color transfer function...
-
+    \brief This class implements the histogram visualization widget.
  */
 
 //*************************************************************************
@@ -96,45 +109,12 @@ inline void copyPositions(const QGradientStops & src, QGradientStops & dst)
 HistogramView::HistogramView(QWidget *parent) :
     QWidget(parent),
     _ui(new Ui_HistogramView),
-    _colorPalette(0),
-    _removeSliderAction(tr("Remove slider"), this),
-    _addSliderAction(tr("Add slider"), this),
-    _revertSliderAction(tr("Center color"), this),
-    _indexOfActionedSlider(-1),
     _currentHistogram(0)
 {
     _ui->setupUi(this);
 
-    // MAKE ALL BANDS OPTION INVISIBLE
-//    _ui->_isAllBands->setVisible(false);
-    // MAKE ALL BANDS OPTION INVISIBLE
-
     //    connect(_ui->_isPartial, SIGNAL(clicked(bool)), this, SLOT(onDisplayPartialHist(bool)));
     //    connect(_ui->_isComplete, SIGNAL(clicked(bool)), this, SLOT(onDisplayCompleteHist(bool)));
-    //    connect(_ui->_histList, SIGNAL(activated(int)), this, SLOT(onHistListIndexChanged(int)));
-    //    connect(_ui->_discreteColors, SIGNAL(clicked(bool)), this, SLOT(onDiscreteColorsClicked(bool)));
-    //	connect(_ui->_revert, SIGNAL(clicked()), this, SLOT(resetToDefault()));
-    //    connect(_ui->_transferFunction, SIGNAL(activated(QString)), this, SLOT(onTransferFunctionChanged(QString)));
-    //    connect(_ui->_isAllBands, SIGNAL(clicked(bool)), this, SLOT(onIsAllBandsClicked(bool)));
-
-    //    // setup timer:
-    //    _updateDelayTimer.setSingleShot(true);
-    //    connect(&_updateDelayTimer, SIGNAL(timeout()), this, SLOT(onUpdateTimerTimeout()));
-
-
-    // setup context menu:
-    setupMenu();
-
-    // setup color picker
-    _colorPicker.setWindowFlags(Qt::Popup);
-    connect(&_colorPicker, SIGNAL(colorPicked(QColor)), this, SLOT(onColorPicked(QColor)));
-
-    //    // setup value editor
-    //    _valueEditor.setWindowFlags(Qt::Popup);
-    //    _valueEditor.installEventFilter(this);
-    //    _valueEditor.setAlignment(Qt::AlignRight);
-    //    connect(&_valueEditor, SIGNAL(returnPressed()), this, SLOT(onValueEdited()));
-
 
     // Set scene size:
     _histogramScene.setSceneRect(-_settings.margin,
@@ -142,14 +122,6 @@ HistogramView::HistogramView(QWidget *parent) :
                                  1.0+2.0*_settings.margin,
                                  1.0+2.0*_settings.margin);
     _histogramScene.installEventFilter(this);
-
-    _settings.histogramTransform =
-            QTransform::fromScale(1.0,_settings.histOverPaletteRatio);
-
-    _settings.colorPaletteTransform =
-            QTransform::fromScale(1.0, 1.0 -_settings.histOverPaletteRatio) *
-            QTransform::fromTranslate(0.0, _histogramScene.height()*_settings.histOverPaletteRatio);
-
 
     // Draw items:
     // clear();
@@ -160,8 +132,10 @@ HistogramView::HistogramView(QWidget *parent) :
     _ui->_histogramView->setRenderHint(QPainter::Antialiasing);
 
 
-    //    // set transfer function names:
-    //    setTransferFunctionNames(Core::HistogramRendererConfiguration::getAvailableTransferFunctionNames());
+    if (_settings.showMinMaxValues)
+    {
+        _settings.histogramTransform = QTransform::fromScale(1.0, 0.80);
+    }
 
 }
 
@@ -183,9 +157,9 @@ HistogramView::~HistogramView()
 void HistogramView::clear()
 {
     _histograms.clear();
+    _allBandsHistogram.graphicsItem=0;
+
     _histogramScene.clear();
-    _colorPalette = 0;
-    _sliderLines.clear();
     _currentHistogram = 0;
 
     drawAxes();
@@ -251,7 +225,7 @@ void HistogramView::clear()
 //{
 //    _allBandsHistogram.bandId=-1;
 //    double xmin(1e10), xmax(-1e10), xmin2(xmin), xmax2(xmax);
-//    foreach (HistogramDataView h, _histograms)
+//    foreach (HistogramItem h, _histograms)
 //    {
 //        if (h.xmin < xmin) xmin = h.xmin;
 //        if (h.xmax > xmax) xmax = h.xmax;
@@ -273,26 +247,6 @@ void HistogramView::clear()
 //    _histogramScene.addItem(_allBandsHistogram.graphicsItem);
 
 //}
-
-//*************************************************************************
-
-/*!
-    Method to setup context menu
-*/
-void HistogramView::setupMenu()
-{
-    _removeSliderAction.setVisible(false);
-    _addSliderAction.setVisible(false);
-    _revertSliderAction.setVisible(false);
-    _menu.addAction(&_removeSliderAction);
-    _menu.addAction(&_addSliderAction);
-    _menu.addAction(&_revertSliderAction);
-    // connect actions:
-    connect(&_removeSliderAction, SIGNAL(triggered()), this, SLOT(onRemoveSlider()));
-    connect(&_addSliderAction, SIGNAL(triggered()), this, SLOT(onAddSlider()));
-    connect(&_revertSliderAction, SIGNAL(triggered()), this, SLOT(onRevertSlider()));
-
-}
 
 ////*************************************************************************
 ///*!
@@ -346,52 +300,6 @@ void HistogramView::setupMenu()
 //    drawHistogram();
 //}
 
-////*************************************************************************
-///*!
-// * \brief HistogramView::applyNewRendererConfiguration
-// */
-////void HistogramView::applyNewRendererConfiguration()
-////{
-////    Core::HistogramImageRenderer* hRenderer = qobject_cast<Core::HistogramImageRenderer*>(_renderer);
-////    if (!hRenderer)
-////    {
-////        SD_TRACE("HistogramView::setup : Failed to cast renderer into HistogramLayerRenderer");
-////        return;
-////    }
-
-////    // RGB mapping configuration
-////    if (_mode == RGB)
-////    {
-////        Core::ImageRendererConfiguration conf = hRenderer->getConfiguration();
-////        conf.toRGBMapping[0] = _ui->_redChannel->value()-1;
-////        conf.toRGBMapping[1] = _ui->_greenChannel->value()-1;
-////        conf.toRGBMapping[2] = _ui->_blueChannel->value()-1;
-////        hRenderer->setConfiguration(conf);
-////    }
-
-//    // Histogram configuration
-////    int index = _currentHistogram->bandId;
-////    Core::HistogramRendererConfiguration histConf = hRenderer->getHistConfiguration();
-////    if (index > -1)
-////    {
-////        histConf.isDiscreteValues[index] = _currentHistogram->isDiscrete;
-////        histConf.normHistStops[index] = computeStopsFromValues(_currentHistogram->outputStops, _currentHistogram->xmin, _currentHistogram->xmax);
-////        histConf.transferFunctions[index] = Core::HistogramRendererConfiguration::getTransferFunctionByName(_currentHistogram->transferFunctionName);
-////    }
-////    else
-////    { // all bands -> update all histograms and histConf
-////        for (int i=0;i<_histograms.size();i++)
-////        {
-////            copyPositions(_currentHistogram->outputStops,_histograms[i].outputStops);
-////            histConf.isDiscreteValues[i]=_histograms[i].isDiscrete;
-////            histConf.normHistStops[i]=computeStopsFromValues(_histograms[i].outputStops, _histograms[i].xmin, _histograms[i].xmax);
-////            histConf.transferFunctions[i]=Core::HistogramRendererConfiguration::getTransferFunctionByName(_histograms[i].transferFunctionName);
-////        }
-////    }
-////    hRenderer->setHistConfiguration(histConf);
-////}
-
-
 //*************************************************************************
 
 /*!
@@ -399,12 +307,11 @@ void HistogramView::setupMenu()
  * \param GradientStops are normalized color stops for the ColorPalette
  * \param QVector<double> data is normalized histogram values
 */
-void HistogramView::addHistogram(const QGradientStops & normStops, const QVector<double> & data)
+void HistogramView::addHistogram(const QVector<double> &data, double xmin, double xmax)
 {
     int index = _histograms.size();
     _histograms.resize(index+1);
-
-    setHistogram(index, normStops, data);
+    setHistogram(index, data, xmin, xmax);
 }
 
 //*************************************************************************
@@ -412,19 +319,29 @@ void HistogramView::addHistogram(const QGradientStops & normStops, const QVector
 /*!
     Method to set histogram data at index.
 */
-bool HistogramView::setHistogram(int index, const QGradientStops & normStops, const QVector<double> & data)
+bool HistogramView::setHistogram(int index, const QVector<double> & data, double xmin, double xmax)
 {
     if (index < 0 || index >= _histograms.size())
     {
         return false;
     }
-
-    _histograms[index].isDiscrete=false;
-    _histograms[index].outputStops=normStops;
-
     // draw histogram bars :
     _histograms[index].graphicsItem = createHistogramGraphicsItem(data, _settings.dataPen);
     _histograms[index].graphicsItem->setVisible(false);
+    _histograms[index].xmax = xmax;
+    _histograms[index].xmin = xmin;
+    // draw xmin/xmax text :
+    if (_settings.showMinMaxValues)
+    {
+        double d = 0.025;
+        QGraphicsSimpleTextItem * text1 = createText(QString::number(xmin));
+        text1->setPos(QPointF(0.0+d, 1.0+d));
+        _histograms[index].graphicsItem->addToGroup(text1);
+        QGraphicsSimpleTextItem * text2 = createText(QString::number(xmax));
+        _histograms[index].graphicsItem->addToGroup(text2);
+        text2->setPos(QPointF(1.0+d, 1.0+d));
+    }
+
     _histogramScene.addItem(_histograms[index].graphicsItem);
     return true;
 }
@@ -467,43 +384,95 @@ bool HistogramView::setHistogram(int index, const QGradientStops & normStops, co
 
 //*************************************************************************
 /*!
-    Method to draw histogram in gray or rgb mode :
+    Method to draw histogram in gray mode
 */
+#define CheckIndex(index) (index < 0 || index >= _histograms.size())
+
 void HistogramView::drawSingleHistogram(int index)
 {
 
-    if (index < 0 || index >= _histograms.size())
+    if (CheckIndex(index))
     {
         SD_TRACE("HistogramView::drawSingleHistogram : index is out of bounds");
         return;
     }
 
+    if (_currentHistogram == &_histograms[index])
+    {
+        return;
+    }
+
     // make invisible current histogram:
     if (_currentHistogram && _currentHistogram->graphicsItem)
+    {
         _currentHistogram->graphicsItem->setVisible(false);
+    }
 
     _currentHistogram = &_histograms[index];
 
     drawHistogramGraphicsItem(_currentHistogram, _settings.dataPen);
-
-//    // setup transfer function and isDiscrete coulours :
-//    _ui->_discreteColors->setChecked(_currentHistogram->isDiscrete);
-//    int i = _ui->_transferFunction->findText(_currentHistogram->transferFunctionName);
-//    if (i < 0)
-//    {
-//        i = 0;
-//        _currentHistogram->transferFunctionName=_ui->_transferFunction->itemText(i);
-//    }
-//    _ui->_transferFunction->setCurrentIndex(i);
-
-    // draw color palette, sliders, etc in 100% view mode
-    drawColorPalette(_currentHistogram->outputStops, _currentHistogram->vxmin, _currentHistogram->vxmax, _currentHistogram->isDiscrete);
 
     // default choice is 95% of histogram to display
 //    _ui->_isPartial->setChecked(true);
 //    onDisplayPartialHist(true);
 
 }
+
+//*************************************************************************
+/*!
+    Method to draw histogram in rgb mode (all 3 histograms)
+*/
+
+void HistogramView::drawRgbHistogram(int r, int g, int b)
+{
+
+    if (CheckIndex(r) || CheckIndex(g) || CheckIndex(b))
+    {
+        SD_TRACE("HistogramView::drawRbgHistogram : index is out of bounds");
+        return;
+    }
+
+    // make invisible current histogram:
+    if (_currentHistogram &&
+            _currentHistogram->graphicsItem &&
+            _currentHistogram != &_allBandsHistogram)
+    {
+        _currentHistogram->graphicsItem->setVisible(false);
+    }
+
+    _currentHistogram = &_allBandsHistogram;
+
+    // remove children from allBandsHistogram:
+    if (_allBandsHistogram.graphicsItem)
+    {
+        foreach (QGraphicsItem * item, _allBandsHistogram.graphicsItem->childItems())
+        {
+            _allBandsHistogram.graphicsItem->removeFromGroup(item);
+            item->setVisible(false);
+        }
+    } else {
+        _allBandsHistogram.graphicsItem = new QGraphicsItemGroup();
+        _histogramScene.addItem(_allBandsHistogram.graphicsItem);
+    }
+
+
+        // draw all histograms:
+    QColor dataColors[] = {QColor(255,0,0,81),
+                           QColor(0,255,0,81),
+                           QColor(0,0,255,81)};
+    int indices[] = {r,g,b};
+    for (int i=0;i<_histograms.size();i++)
+    {
+        HistogramItem & h = _histograms[indices[i]];
+        drawHistogramGraphicsItem(&h, QPen(dataColors[i], 0.0));
+        _allBandsHistogram.graphicsItem->addToGroup(h.graphicsItem);
+    }
+}
+
+
+
+
+
 
 ////*************************************************************************
 
@@ -584,170 +553,6 @@ void HistogramView::drawSingleHistogram(int index)
 //{
 //    emit renderConfigurationChanged(_conf);
 //}
-
-//*************************************************************************
-
-/*!
-    Method to update histogram data: stops and outputstops
-*/
-void HistogramView::updateHistogramData(int index, double xpos, const QColor &c, bool notificationDelayed)
-{
-//    if (!_currentHistogram)
-//        return;
-//    if (index < 0)
-//    {
-//        _currentHistogram->outputStops=_colorPalette->getPalette();
-//    }
-//    else if (index >= 0 && xpos > -12344)
-//    {
-//        _currentHistogram->outputStops[index].first = xpos;
-//    }
-//    else if (index >= 0 && c.isValid())
-//    {
-//        _currentHistogram->outputStops[index].second = c;
-//    }
-
-//    // notify about change:
-//    if (notificationDelayed)
-//        _updateDelayTimer.start(_settings.updateDelayMaxTime);
-//    else
-//    {
-//        emit renderConfigurationChanged(_conf);
-//    }
-}
-
-////*************************************************************************
-
-///*!
-//    Slot to respond on slider position changed
-//*/
-//void HistogramView::onSliderPositionChanged(int index, double position)
-//{
-//    if (index < 0 || index > _sliderLines.size() - 1 || !_currentHistogram)
-//        return;
-
-//    QGraphicsLineItem * sliderLine = _sliderLines[index];
-//    sliderLine->setTransform(_settings.histogramTransform);
-//    double npos=normalized(position, _currentHistogram->vxmin, _currentHistogram->vxmax);
-//    sliderLine->setTransform(QTransform::fromTranslate(npos, 0), true);
-
-//    // update histogram data
-//    updateHistogramData(index, position, QColor(), true);
-
-//}
-
-//*************************************************************************
-
-/*!
-    Slot to handle add slider action
-*/
-void HistogramView::onAddSlider()
-{
-    QPointF position = _addSliderAction.data().toPointF();
-    if (position.isNull())
-        return;
-
-    int index=-1;
-
-    if (_colorPalette->addSlider(position, &index))
-    {
-        QGraphicsLineItem * sliderLine = createSliderLine();
-        _histogramScene.addItem(sliderLine);
-        sliderLine->setTransform(_settings.histogramTransform);
-        sliderLine->setTransform(QTransform::fromTranslate(position.x(), 0), true);
-        sliderLine->setZValue(1.0);
-        _sliderLines.insert(index, sliderLine);
-    }
-
-    // update histogram data
-    updateHistogramData();
-
-}
-
-//*************************************************************************
-
-/*!
-    Slot to handle add slider action
-*/
-void HistogramView::onRemoveSlider()
-{
-    int index = _indexOfActionedSlider;
-    _indexOfActionedSlider=-1;
-    if (index < 0 || index > _sliderLines.size() - 1)
-        return;
-
-    if (_colorPalette->removeSliderAtIndex(index))
-    {
-        QGraphicsLineItem * sliderLine = _sliderLines[index];
-        _sliderLines.removeAt(index);
-        _histogramScene.removeItem(sliderLine);
-    }
-
-
-    // update histogram data
-    updateHistogramData();
-
-}
-
-//*************************************************************************
-
-/*!
-    Slot to handle color pick action
-*/
-void HistogramView::onColorPicked(QColor c)
-{
-    int index = _indexOfActionedSlider;
-    _indexOfActionedSlider=-1;
-    if (index < 0 || index > _sliderLines.size() - 1)
-        return;
-
-    _colorPalette->setColorOfSliderAtIndex(index, c);
-    _colorPicker.hide();
-
-    // update histogram data
-    updateHistogramData(index, -12345, c);
-
-}
-
-//*************************************************************************
-
-/*!
-    Slot to handle value modification by user
-*/
-void HistogramView::onValueEdited()
-{
-    bool ok=false;
-    double newvalue = _valueEditor.text().toDouble(&ok);
-    if (ok)
-    {
-        int index = _indexOfActionedSlider;
-        _indexOfActionedSlider=-1;
-        if (index < 0 || index > _sliderLines.size() - 1)
-            return;
-        _colorPalette->setSliderValueAtIndex(index, newvalue);
-        _valueEditor.hide();
-        _colorPalette->highlightSliderTextAtIndex(index, false);
-
-    }
-}
-
-//*************************************************************************
-
-/*!
-    Slot to handle slider revert action
-*/
-void HistogramView::onRevertSlider()
-{
-    int index = _indexOfActionedSlider;
-    _indexOfActionedSlider=-1;
-    if (index < 0 || index > _sliderLines.size() - 1)
-        return;
-
-    _colorPalette->resetColorOfSliderAtIndex(index);
-
-    updateHistogramData();
-
-}
 
 ////*************************************************************************
 
@@ -853,31 +658,31 @@ void HistogramView::onRevertSlider()
 
 //}
 
-////*************************************************************************
+//*************************************************************************
 
-///*!
-//    on Show event
-//*/
-//void HistogramView::showEvent(QShowEvent * event)
-//{
-//    if (event->type() == QEvent::Show)
-//    {
-//        _ui->_histogramView->fitInView(_histogramScene.sceneRect());
-//    }
-//}
+/*!
+    on Show event
+*/
+void HistogramView::showEvent(QShowEvent * event)
+{
+    if (event->type() == QEvent::Show)
+    {
+        _ui->_histogramView->fitInView(_histogramScene.sceneRect());
+    }
+}
 
-////*************************************************************************
+//*************************************************************************
 
-///*!
-//    on Resize event
-//*/
-//void HistogramView::resizeEvent(QResizeEvent * event)
-//{
-//    if (event->type() == QEvent::Resize)
-//    {
-//        _ui->_histogramView->fitInView(_histogramScene.sceneRect());
-//    }
-//}
+/*!
+    on Resize event
+*/
+void HistogramView::resizeEvent(QResizeEvent * event)
+{
+    if (event->type() == QEvent::Resize)
+    {
+        _ui->_histogramView->fitInView(_histogramScene.sceneRect());
+    }
+}
 
 ////*************************************************************************
 
@@ -922,7 +727,7 @@ void HistogramView::onRevertSlider()
 //    if (_currentHistogram && _currentHistogram->graphicsItem)
 //        _currentHistogram->graphicsItem->setVisible(false);
 
-////    HistogramDataView & h = _histograms[index];
+////    HistogramItem & h = _histograms[index];
 //    _currentHistogram = &_histograms[index];
 
 //    drawHistogramGraphicsItem(_currentHistogram, _settings.dataPen);
@@ -961,7 +766,7 @@ void HistogramView::onRevertSlider()
 //            << QColor(0,0,255,81);
 //    for (int i=0;i<_histograms.size();i++)
 //    {
-//        HistogramDataView & h = _histograms[i];
+//        HistogramItem & h = _histograms[i];
 //        drawHistogramGraphicsItem(&h, QPen(dataColors[i], 0.0));
 
 //        // set stops of the band histogram equal to the stops of allBands;
@@ -976,7 +781,6 @@ void HistogramView::onRevertSlider()
 //    _ui->_isPartial->setChecked(true);
 //    onDisplayPartialHist(true);
 
-
 //}
 
 //*************************************************************************
@@ -989,14 +793,15 @@ QGraphicsItemGroup * HistogramView::createHistogramGraphicsItem(const QVector<do
     // Draw histogram image : OX is [0.0; 1.0] / OY is [0.0, 1.0]
     QGraphicsItemGroup *group = new QGraphicsItemGroup();
     int histSize = data.size();
+    double d = 0.005;
     for (int i=0; i<histSize; i++)
     {
         double value = data[i];
         QGraphicsLineItem * l = new QGraphicsLineItem(
-                    i*1.0/histSize,
-                    1.0 - value,
-                    i*1.0/histSize,
-                    1.0
+                    i*1.0/histSize + d,
+                    1.0 - value - d,
+                    (i+1)*1.0/histSize + d,
+                    1.0 - d
                     );
         l->setPen(dataPen);
         group->addToGroup(l);
@@ -1024,7 +829,7 @@ QPen getHGIPen(QGraphicsItemGroup * hgi)
 
 }
 
-void HistogramView::drawHistogramGraphicsItem(HistogramDataView * h, const QPen & dataPen)
+void HistogramView::drawHistogramGraphicsItem(HistogramItem * h, const QPen & dataPen)
 {
     h->graphicsItem->setVisible(true);
     if (dataPen != getHGIPen(h->graphicsItem))
@@ -1038,42 +843,8 @@ void HistogramView::drawHistogramGraphicsItem(HistogramDataView * h, const QPen 
     }
 
     // intialize histogram bars transform and visible min max as 100 %
-    h->vxmax = 1.0;
-    h->vxmin = 0.0;
     h->graphicsItem->setTransform(_settings.histogramTransform);
 
-}
-
-//*************************************************************************
-
-/*!
-    Method to draw a color palette with n sliders from histogram info
-    The map between line and slider is done with index in the _sliderLines and the index in the ColorPalette
-*/
-void HistogramView::drawColorPalette(const QGradientStops & houtputStops, double hvxmin, double hvxmax, bool isDiscrete)
-{
-    // remove previous slider lines :
-    foreach (QGraphicsLineItem * line, _sliderLines)
-    {
-        _histogramScene.removeItem(line);
-    }
-    _sliderLines.clear();
-
-    // draw default/saved slider lines:
-    for (int i=0;i<houtputStops.size();i++)
-    {
-        QGraphicsLineItem * sliderLine = createSliderLine();
-        _histogramScene.addItem(sliderLine);
-        sliderLine->setTransform(_settings.histogramTransform);
-        double xpos=normalized(houtputStops[i].first, hvxmin, hvxmax);
-        sliderLine->setTransform(QTransform::fromTranslate(xpos, 0), true);
-        sliderLine->setZValue(1.0);
-        _sliderLines << sliderLine;
-    }
-
-    _colorPalette->setupPalette(houtputStops, hvxmin, hvxmax, isDiscrete);
-
-//    connect(_colorPalette, SIGNAL(sliderPositionChanged(int,double)), this, SLOT(onSliderPositionChanged(int,double)));
 }
 
 //*************************************************************************
@@ -1088,21 +859,6 @@ void HistogramView::drawAxes()
     _histogramScene.addItem(axes);
     axes->setTransform(_settings.histogramTransform);
 
-    createColorPalette();
-
-}
-
-//*************************************************************************
-
-/*!
-    Method to create color palette graphics item
-*/
-void HistogramView::createColorPalette()
-{
-    // draw color palette box
-    _colorPalette = new ColorPalette;
-    _histogramScene.addItem(_colorPalette);
-    _colorPalette->setTransform(_settings.colorPaletteTransform);
 }
 
 //*************************************************************************
@@ -1145,7 +901,7 @@ void HistogramView::createColorPalette()
 //                    e->accept();
 //                    return true;
 //                }
-//                }
+//                }xmin
 //            }
 //            else if (_colorPalette->itemIsPalette(itemUnderMouse) && _mode == GRAY)
 //            { // if clicked on color palette rectangle

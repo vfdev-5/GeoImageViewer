@@ -24,65 +24,16 @@ class HistogramView : public QWidget
 {
     Q_OBJECT
 
-
-    struct Data
-    {
-        // histogram data description
-        double xmin, xmax; // Global histogram min/max
-        double xmin2, xmax2; // 95% quantiles
-        int bandId;
-        // slider positions (real image values) & isDiscrete
-        QGradientStops outputStops;
-        bool isDiscrete;
-        Data() :
-            xmin(-12345),
-            xmax(-12345),
-            xmin2(-12345),
-            xmax2(-12345),
-            bandId(-1),
-            isDiscrete(false)
-        {}
-    };
-    struct GraphicsItem
+    struct HistogramItem
     {
         // graphics item info
         QGraphicsItemGroup * graphicsItem;
-        double vxmin;
-        double vxmax;
-        GraphicsItem() :
-           graphicsItem(0),
-           vxmin(-12345),
-           vxmax(-12345)
-        {}
-    };
+        double xmin, xmax;
 
-    struct HistogramDataView
-    {
-        // histogram data description
-//        double xmin, xmax; // Global histogram min/max
-//        double xmin2, xmax2; // 95% quantiles
-//        int bandId;
-
-        // graphics item info
-        QGraphicsItemGroup * graphicsItem;
-        double vxmin;
-        double vxmax;
-
-        // slider positions (real image values) & transfer function & isDiscrete
-        QGradientStops outputStops;
-//        QString transferFunctionName;
-        bool isDiscrete;
-
-        HistogramDataView() :
-//            xmin(-12345),
-//            xmax(-12345),
-//            xmin2(-12345),
-//            xmax2(-12345),
-//            bandId(-1),
+        HistogramItem() :
             graphicsItem(0),
-            vxmin(-12345),
-            vxmax(-12345),
-            isDiscrete(false)
+            xmin(0),
+            xmax(255)
         {
         }
     };
@@ -93,46 +44,33 @@ public:
 
     struct Settings
     {
-        double margin;
-        double histOverPaletteRatio;
-        QPen axisPen;
-        QPen dataPen;
+        const double margin;
+        const QPen axisPen;
+        const QPen dataPen;
         QTransform histogramTransform;
-        QTransform colorPaletteTransform;
-        int updateDelayMaxTime;
+        const bool showMinMaxValues;
         Settings() :
             margin(0.025),
             axisPen(Qt::black, 0.0),
             dataPen(Qt::gray, 0.0),
-            histOverPaletteRatio(0.75),
-            updateDelayMaxTime(250)
+            showMinMaxValues(true)
         {}
+
     };
 
-
-    void addHistogram(const QGradientStops &normStops, const QVector<double> &data);
-    bool setHistogram(int index, const QGradientStops & normHistStops, const QVector<double> & data);
+    void addHistogram(const QVector<double> &data, double xmin, double xmax);
+    bool setHistogram(int index, const QVector<double> & data, double xmin, double xmax);
 
     void drawSingleHistogram(int index);
-    void drawRGBHistogram(int r, int g, int b) {}
+    void drawRgbHistogram(int r=0, int g=1, int b=2);
 
-//    void addHistogram(int id, const QString & name, const QVector<double> &data);
-//    void drawHistogram();
 
 public slots:
     void clear();
 //    void resetToDefault();
-//    void onSliderPositionChanged(int index, double position);
 
 
 protected slots:
-    // Slider management
-    void onRemoveSlider();
-    void onAddSlider();
-    void onRevertSlider();
-    void onColorPicked(QColor);
-    void onValueEdited();
-
 //    void onDisplayCompleteHist(bool checked);
 //    void onDisplayPartialHist(bool checked);
 //    void onHistListIndexChanged(int);
@@ -145,21 +83,16 @@ protected slots:
 protected:
 //    void setTransferFunctionNames(const QStringList & transferFunctionNames);
 
-    void updateHistogramData(int index=-1, double xpos = -13245, const QColor &c = QColor(), bool notificationDelayed=false);
 //    void drawAllHistograms();
     void drawAxes();
-    void createColorPalette();
-    void drawHistogramGraphicsItem(HistogramDataView *h, const QPen &dataPen);
-    void drawColorPalette(const QGradientStops & houtputStops, double vxmin, double vxmax, bool isDiscrete);
+    void drawHistogramGraphicsItem(HistogramItem *h, const QPen &dataPen);
 
 //    void transformAllItems(double newMin, double newMax);
 
-//    void showEvent(QShowEvent * event);
-//    void resizeEvent(QResizeEvent * event);
+    void showEvent(QShowEvent * event);
+    void resizeEvent(QResizeEvent * event);
 
 //    bool eventFilter(QObject *, QEvent *);
-    void setupMenu();
-
 
     QGraphicsItemGroup * createHistogramGraphicsItem(const QVector<double> & data, const QPen &dataPen);
 
@@ -169,32 +102,12 @@ protected:
 
     Ui_HistogramView *_ui;
 
-//    QVector<HistogramDataView> _histograms;
-
-
-    QVector<HistogramDataView> _histograms;
-
-    HistogramDataView * _currentHistogram;
-    HistogramDataView _allBandsHistogram;
+    QVector<HistogramItem> _histograms;
+    HistogramItem * _currentHistogram;
+    HistogramItem _allBandsHistogram;
 
     QGraphicsScene _histogramScene;
     Settings _settings;
-
-    ColorPalette * _colorPalette;
-    QList<QGraphicsLineItem*> _sliderLines;
-
-    int _indexOfActionedSlider;
-
-    QMenu _menu;
-    QAction _removeSliderAction;
-    QAction _addSliderAction;
-    QAction _revertSliderAction;
-
-    ColorPickerFrame _colorPicker;
-    QLineEdit _valueEditor;
-
-//    Mode _mode;
-    QTimer _updateDelayTimer;
 
 };
 

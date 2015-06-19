@@ -6,8 +6,6 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/ml/ml.hpp>
 
-// Lmfit
-#include <lmcurve.h>
 
 // Project
 #include "HistogramThresholdFilterPlugin.h"

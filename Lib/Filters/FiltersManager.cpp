@@ -7,12 +7,14 @@
 
 // Project
 #include "FiltersManager.h"
+#include "BlurFilter.h"
+#include "PowerFilter.h"
 #include "Core/Global.h"
 #include "Core/ImageDataProvider.h"
 #include "Core/FloatingDataProvider.h"
 #include "Core/LayerUtils.h"
-#include "BlurFilter.h"
-#include "PowerFilter.h"
+#include "Core/PluginLoader.h"
+
 
 namespace Filters
 {
@@ -91,21 +93,14 @@ void FiltersManager::insertFilter(AbstractFilter *filter)
 
 void FiltersManager::loadPlugins(const QString &path)
 {
-    QDir d(path);
-    QStringList filters;
-#ifdef _DEBUG
-    filters << "*Plugin.d.dll" << "*Plugin.d.so";
-#else
-    filters << "*Plugin.dll" << "*Plugin.so";
-#endif
 
-    foreach (QString fileName, d.entryList(filters, QDir::Files))
+    foreach (Core::Plugin pair, Core::PluginLoader::loadAll(path))
     {
-        QPluginLoader loader(d.absoluteFilePath(fileName));
-        QObject * plugin = loader.instance();
+        QString fileName = pair.first;
+        QObject * plugin = pair.second;
         if (!plugin || !loadPlugin(plugin))
         {
-            SD_TRACE(loader.errorString());
+//            SD_TRACE(loader.errorString());
             SD_TRACE("Failed to load plugin : " + fileName);
         }
     }

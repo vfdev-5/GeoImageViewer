@@ -46,12 +46,18 @@ protected slots:
     void on__redChannel_editingFinished();
     void on__greenChannel_editingFinished();
     void on__blueChannel_editingFinished();
-    void on__isGrayMode_toggled();
-    void on__isRgbMode_toggled();
+    void on__grayChannel_editingFinished();
+    void on__isGrayMode_clicked(bool checked);
+    void on__isRgbMode_clicked(bool checked);
 
 protected:
+    void setupGrayModeView();
+    void setupRgbModeView();
 
-    void setRGBModeEnabled(bool value);
+    void setGrayHistogram(int index);
+    void setRgbHistogram();
+
+    void setRgbModeEnabled(bool value);
 
     Ui_HistogramRendererView * _ui;
 

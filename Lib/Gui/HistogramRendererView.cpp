@@ -74,6 +74,13 @@ namespace Gui
 //    }
 //}
 
+void setupStopsEndColor(QGradientStops & stops, const QColor &color)
+{
+    QGradientStop & stop = stops.last();
+    stop.second = color;
+}
+
+
 void configureAChannel(QSpinBox * spinbox, int currentValue, int minValue, int maxValue)
 {
     spinbox->setMinimum(minValue);
@@ -337,11 +344,16 @@ void HistogramRendererView::setup(const Core::ImageRendererConfiguration *conf, 
     _initialConf = _conf;
     _dataProvider = provider;
 
-
-
-
     int nbBands = _dataProvider->getNbBands();
+
+    // Setup spinboxes:
     configureAChannel(_ui->_grayChannel, _conf.toRGBMapping[0]+1, 1, nbBands);
+    configureAChannel(_ui->_redChannel  , _conf.toRGBMapping[0]+1, 1, nbBands);
+    configureAChannel(_ui->_greenChannel, _conf.toRGBMapping[1]+1, 1, nbBands);
+    configureAChannel(_ui->_blueChannel , _conf.toRGBMapping[2]+1, 1, nbBands);
+    // Enable UI :
+    _ui->_toRGBMapping->setEnabled(true);
+    setRgbModeEnabled(nbBands > 1);
 
     // create histogram views
     // 1) 1 band layer -> mode=GRAY, 1 histogram
@@ -349,41 +361,70 @@ void HistogramRendererView::setup(const Core::ImageRendererConfiguration *conf, 
     // 3) Non-complex N bands layer -> { mode=RGB, 3 histograms | mode=GRAY, 1 of N histograms }
     if (_conf.mode == Core::HistogramRendererConfiguration::RGB)
     {
-        configureAChannel(_ui->_redChannel  , _conf.toRGBMapping[0]+1, 1, nbBands);
-        configureAChannel(_ui->_greenChannel, _conf.toRGBMapping[1]+1, 1, nbBands);
-        configureAChannel(_ui->_blueChannel , _conf.toRGBMapping[2]+1, 1, nbBands);
 
-        for (int i=0; i<3; i++)
-        {
-            int index = _conf.toRGBMapping[i];
-            _ui->_histogramView->addHistogram(_conf.normHistStops[index],
-                                              _dataProvider->getBandHistograms()[index]);
-        }
-
+        //        for (int i=0; i<3; i++)
+        //        {
+        //            int index = _conf.toRGBMapping[i];
+        //            _ui->_histogramView->addHistogram(_conf.normHistStops[index],
+        //                                              _dataProvider->getBandHistograms()[index]);
+        //        }
+        _ui->_isRgbMode->setChecked(true);
+        setupRgbModeView();
+        _ui->_histogramView->drawRgbHistogram(_ui->_redChannel->value()-1,
+                                              _ui->_greenChannel->value()-1,
+                                              _ui->_blueChannel->value()-1);
     }
     else
     {
-        for (int i=0; i<nbBands;i++)
-        {
-            _ui->_histogramView->addHistogram(_conf.normHistStops[i],
-                                              _dataProvider->getBandHistograms()[i]);
-        }
-
+        _ui->_isGrayMode->setChecked(true);
+        setupGrayModeView();
+        _ui->_histogramView->drawSingleHistogram(_ui->_grayChannel->value()-1);
     }
-
-    // Enable UI :
-    _ui->_toRGBMapping->setEnabled(true);
-    setRGBModeEnabled(nbBands > 1);
-
-
-
 
 
 }
 
 //*************************************************************************
 
-void HistogramRendererView::setRGBModeEnabled(bool value)
+void HistogramRendererView::setupGrayModeView()
+{
+    _ui->_histogramView->clear();
+    int nbBands = _dataProvider->getNbBands();
+    for (int i=0;i<nbBands;i++)
+    {
+        _ui->_histogramView->addHistogram(_dataProvider->getBandHistograms()[i],
+                                          _dataProvider->getMinValues()[i],
+                                          _dataProvider->getMaxValues()[i]);
+    }
+
+}
+
+//*************************************************************************
+
+void HistogramRendererView::setupRgbModeView()
+{
+    _ui->_histogramView->clear();
+    // setup end stops colors:
+    int indices[] = {_ui->_redChannel->value()-1,
+                     _ui->_greenChannel->value()-1,
+                     _ui->_blueChannel->value()-1};
+    QColor colors[] = {QColor(Qt::red),
+                       QColor(Qt::green),
+                       QColor(Qt::blue)};
+
+    for (int i=0; i<3; i++)
+    {
+        QGradientStops stops = _conf.normHistStops[indices[i]];
+        setupStopsEndColor(stops, colors[i]);
+        _ui->_histogramView->addHistogram(_dataProvider->getBandHistograms()[indices[i]],
+                                          _dataProvider->getMinValues()[indices[i]],
+                                          _dataProvider->getMaxValues()[indices[i]]);
+    }
+}
+
+//*************************************************************************
+
+void HistogramRendererView::setRgbModeEnabled(bool value)
 {
     _ui->_isRgbMode->setEnabled(value);
     _ui->_redChannel->setEnabled(value);
@@ -393,37 +434,95 @@ void HistogramRendererView::setRGBModeEnabled(bool value)
 
 //*************************************************************************
 
-void HistogramRendererView::on__isGrayMode_toggled()
+void HistogramRendererView::on__isGrayMode_clicked(bool checked)
 {
-    SD_TRACE("on__isGrayMode_toggled");
+    SD_TRACE("on__isGrayMode_clicked");
+    if (checked)
+    {
+        setupGrayModeView();
+        setGrayHistogram(_ui->_grayChannel->value()-1);
+    }
 }
 
 //*************************************************************************
 
-void HistogramRendererView::on__isRgbMode_toggled()
+void HistogramRendererView::setGrayHistogram(int index)
 {
-    SD_TRACE("on__isRgbMode_toggled");
+    _ui->_histogramView->drawSingleHistogram(index);
+    // setup rendering configuration
+    _conf.toRGBMapping[0]=index;
+    _conf.toRGBMapping[1]=index;
+    _conf.toRGBMapping[2]=index;
+    emit renderConfigurationChanged(&_conf);
+}
+
+//*************************************************************************
+
+void HistogramRendererView::on__isRgbMode_clicked(bool checked)
+{
+    SD_TRACE("on__isRgbMode_clicked");
+
+    if (checked)
+    {
+        // need to setup histogram data:
+        setupRgbModeView();
+        setRgbHistogram();
+    }
+}
+
+//*************************************************************************
+
+void HistogramRendererView::setRgbHistogram()
+{
+    _ui->_histogramView->drawRgbHistogram();
+    // setup rendering configuration
+    _conf.toRGBMapping[0]=_ui->_redChannel->value()-1;
+    _conf.toRGBMapping[1]=_ui->_greenChannel->value()-1;
+    _conf.toRGBMapping[2]=_ui->_blueChannel->value()-1;
+    emit renderConfigurationChanged(&_conf);
 }
 
 //*************************************************************************
 
 void HistogramRendererView::on__redChannel_editingFinished()
 {
-    int newValue = _ui->_redChannel->value()-1;
+    if (_ui->_isRgbMode->isChecked())
+    {
+        setupRgbModeView();
+        setRgbHistogram();
+    }
 }
 
 //*************************************************************************
 
 void HistogramRendererView::on__greenChannel_editingFinished()
 {
-
+    if (_ui->_isRgbMode->isChecked())
+    {
+        setupRgbModeView();
+        setRgbHistogram();
+    }
 }
 
 //*************************************************************************
 
 void HistogramRendererView::on__blueChannel_editingFinished()
 {
+    if (_ui->_isRgbMode->isChecked())
+    {
+        setupRgbModeView();
+        setRgbHistogram();
+    }
+}
 
+//*************************************************************************
+
+void HistogramRendererView::on__grayChannel_editingFinished()
+{
+    if (_ui->_isGrayMode->isChecked())
+    {
+        setGrayHistogram(_ui->_grayChannel->value()-1);
+    }
 }
 
 //*************************************************************************

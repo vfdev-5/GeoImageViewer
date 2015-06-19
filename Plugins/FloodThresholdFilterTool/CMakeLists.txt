@@ -17,7 +17,7 @@ include(Qt)
 ## include & link to project library
 include_directories(${CMAKE_SOURCE_DIR}/Lib)
 include_directories(${CMAKE_BINARY_DIR}/Lib)
-link_directories(${CMAKE_BINARY_DIR}/lib)
+link_directories(${CMAKE_BINARY_DIR}/Lib)
 link_libraries(optimized "GIVLib" debug "GIVLib.d")
 
 
