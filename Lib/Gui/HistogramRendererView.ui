@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>374</width>
-    <height>491</height>
+    <width>456</width>
+    <height>523</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -224,7 +224,7 @@
     </layout>
    </item>
    <item row="0" column="0" colspan="3">
-    <widget class="Gui::HistogramView" name="_histogramView" native="true">
+    <widget class="Gui::ColorManipulationView" name="_histogramView" native="true">
      <property name="minimumSize">
       <size>
        <width>256</width>
@@ -237,9 +237,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>Gui::HistogramView</class>
+   <class>Gui::ColorManipulationView</class>
    <extends>QWidget</extends>
-   <header>Gui/HistogramView.h</header>
+   <header>Gui/colormanipulationview.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -394,8 +394,6 @@ inline void renderPixel(float * srcPtr, uchar * dstPtr, const QVector<int> & map
     dstPtr[2]=0;
 
 
-
-
 #ifdef _DEBUG
     // red
     index = mapping[0];

@@ -152,7 +152,7 @@ protected:
     void run();
     QMutex _mutex;
     QList<TileToLoad> _tilesToLoad;
-    GeoImageItem * _item;
+    const GeoImageItem * _item;
     bool _canceled;
 
 

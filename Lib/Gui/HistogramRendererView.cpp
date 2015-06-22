@@ -19,67 +19,11 @@ namespace Gui
 
 //*************************************************************************
 
-//QGraphicsLineItem * createSliderLine()
-//{
-//    QGraphicsLineItem * line = new QGraphicsLineItem(
-//                0.0,0.0,
-//                0.0,1.0
-//                );
-//    line->setPen(QPen(QBrush(Qt::white), 0.0, Qt::DashLine));
-//    line->setZValue(2.0);
-//    return line;
-//}
-
-//QGraphicsItemGroup * createAxesGroup(const QPen & pen)
-//{
-//    QGraphicsItemGroup * axes = new QGraphicsItemGroup();
-//    QGraphicsLineItem * axisX = new QGraphicsLineItem(
-//                0.0, 1.0, 1.0, 1.0
-//                );
-//    axisX->setPen(pen);
-//    axes->addToGroup(axisX);
-
-//    QGraphicsLineItem * axisY = new QGraphicsLineItem(
-//                0.0, 0.0, 0.0, 1.0
-//                );
-//    axisY->setPen(pen);
-//    axes->addToGroup(axisY);
-//    return axes;
-//}
-
-//inline double normalized(double x, double xmin, double xmax)
-//{
-//    return (x - xmin)/(xmax - xmin);
-//}
-
-//inline double unnormalized(double x, double xmin, double xmax)
-//{
-//    return x*(xmax - xmin) + xmin;
-//}
-
-//inline void updateToPartialMode(QGraphicsItem * hgi, double oldMin, double oldMax, double newMin, double newMax)
-//{
-//    hgi->setTransform(
-//                QTransform::fromTranslate(-normalized(newMin, oldMin, oldMax),0) *
-//                QTransform::fromScale((oldMax - oldMin)/(newMax - newMin),1)
-//                );
-//}
-
-//inline void copyPositions(const QGradientStops & src, QGradientStops & dst)
-//{
-//    if (src.size() != dst.size()) return;
-//    for(int i=0;i<src.size();i++)
-//    {
-//        dst[i].first = src[i].first;
-//    }
-//}
-
 void setupStopsEndColor(QGradientStops & stops, const QColor &color)
 {
     QGradientStop & stop = stops.last();
     stop.second = color;
 }
-
 
 void configureAChannel(QSpinBox * spinbox, int currentValue, int minValue, int maxValue)
 {
@@ -113,6 +57,10 @@ HistogramRendererView::HistogramRendererView(QWidget *parent) :
 
     // Draw items:
     clear();
+
+
+    connect(_ui->_histogramView, SIGNAL(configurationChanged(QGradientStops)),
+            this, SLOT(onConfigurationChanged(QGradientStops)));
 
 }
 
@@ -390,9 +338,23 @@ void HistogramRendererView::setupGrayModeView()
 {
     _ui->_histogramView->clear();
     int nbBands = _dataProvider->getNbBands();
+
+    // setup stops:
+    if (_conf.mode == Core::HistogramRendererConfiguration::RGB)
+    {
+        if (Core::HistogramImageRenderer::setupConfiguration(_dataProvider,
+                                                             &_conf,
+                                                             Core::HistogramRendererConfiguration::GRAY))
+        {
+            SD_TRACE("HistogramRendererView::setupGrayModeView : failed to setup configuration");
+            return;
+        }
+    }
+
     for (int i=0;i<nbBands;i++)
     {
-        _ui->_histogramView->addHistogram(_dataProvider->getBandHistograms()[i],
+        _ui->_histogramView->addHistogram(_conf.normHistStops[i],
+                                          _dataProvider->getBandHistograms()[i],
                                           _dataProvider->getMinValues()[i],
                                           _dataProvider->getMaxValues()[i]);
     }
@@ -412,13 +374,27 @@ void HistogramRendererView::setupRgbModeView()
                        QColor(Qt::green),
                        QColor(Qt::blue)};
 
+
+    // setup stops:
+    if (_conf.mode == Core::HistogramRendererConfiguration::GRAY)
+    {
+        if (Core::HistogramImageRenderer::setupConfiguration(_dataProvider,
+                                                             &_conf,
+                                                             Core::HistogramRendererConfiguration::RGB))
+        {
+            SD_TRACE("HistogramRendererView::setupGrayModeView : failed to setup configuration");
+            return;
+        }
+    }
+
     for (int i=0; i<3; i++)
     {
         QGradientStops stops = _conf.normHistStops[indices[i]];
         setupStopsEndColor(stops, colors[i]);
-        _ui->_histogramView->addHistogram(_dataProvider->getBandHistograms()[indices[i]],
-                                          _dataProvider->getMinValues()[indices[i]],
-                                          _dataProvider->getMaxValues()[indices[i]]);
+        _ui->_histogramView->addHistogram(stops,
+                _dataProvider->getBandHistograms()[indices[i]],
+                _dataProvider->getMinValues()[indices[i]],
+                _dataProvider->getMaxValues()[indices[i]]);
     }
 }
 
@@ -522,6 +498,18 @@ void HistogramRendererView::on__grayChannel_editingFinished()
     if (_ui->_isGrayMode->isChecked())
     {
         setGrayHistogram(_ui->_grayChannel->value()-1);
+    }
+}
+
+//*************************************************************************
+
+void HistogramRendererView::onConfigurationChanged(const QGradientStops & newstops)
+{
+    if (_ui->_isGrayMode->isChecked())
+    {
+        int index = _ui->_grayChannel->value()-1;
+        _conf.normHistStops[index] = newstops;
+        emit renderConfigurationChanged(&_conf);
     }
 }
 

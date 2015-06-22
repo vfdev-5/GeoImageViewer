@@ -50,14 +50,16 @@ public:
     virtual QRectF boundingRect() const;
     virtual void paint(QPainter * p, const QStyleOptionGraphicsItem *o, QWidget * w);
 
-    void setupPalette(const QGradientStops & values, double valueMin, double valueMax, bool isDiscrete);
-    void setMinMaxRanges(double xmin, double xmax);
+    void setupPalette(const QGradientStops & normValues, double valueMin, double valueMax, bool isDiscrete);
+//    void setMinMaxRanges(double xmin, double xmax);
+
     QPair<double, double> getMinMaxRanges() const
     { return QPair<double, double>(_xmin, _xmax); }
 
 
     QGradientStops getPalette() const;
     double getValue(int index) const;
+    double getNormValue(int index) const;
 
     bool itemIsSlider(QGraphicsItem* item) const
     { return _sliders.contains(reinterpret_cast<Slider*>(item)); }
@@ -99,6 +101,7 @@ protected:
 
 signals:
     void sliderPositionChanged(int index, double position);
+    void mouseReleaseOnSlider(int index, double position);
 
 private:
 
@@ -124,7 +127,7 @@ public:
     explicit Slider(ColorPalette *parent = 0) :
         QGraphicsPolygonItem(parent),
         _parent(parent),
-        _size(5.0),
+        _size(6.0),
         _motionRangeMin(0.),
         _motionRangeMax(1.),
         _fixedValue(0.5)
@@ -171,6 +174,7 @@ public:
     void highlightText(bool value)
     { value ? _text->setPen(QPen(Qt::red, 0.0)) : _text->setPen(QPen(Qt::black, 0.0)); }
 
+    virtual QRectF boundingRect() const;
     virtual QPainterPath shape() const;
     virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 protected:

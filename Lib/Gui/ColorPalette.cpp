@@ -83,16 +83,19 @@ QColor computeColorAtPosition(double position, const QGradientStop & leftStop, c
 //*************************************************************************
 
 /*!
-    Method to setup palette. stops and values should have same size
+    Method to setup palette
+    \param values are gradient stops on the color palette. Values can be normalized between 0.0 and 1.0
+    \param valueMin is real that corresponds to normalized 0.0 value
+    \param valueMax is real that corresponds to normalized 1.0 value
 */
-void ColorPalette::setupPalette(const QGradientStops & values, double valueMin, double valueMax, bool isDiscrete)
+void ColorPalette::setupPalette(const QGradientStops & normValues, double valueMin, double valueMax, bool isDiscrete)
 {
     if(_palette)
         delete _palette;
 
     _xmin = valueMin;
     _xmax = valueMax;
-    _stops = computeStopsFromValues(values, valueMin, valueMax);
+    _stops = normValues;
     _isDiscrete = isDiscrete;
 
     _palette = new QLinearGradient(QPointF(0.0, 0.0), QPointF(1.0, 0.0));
@@ -119,7 +122,7 @@ void ColorPalette::setupPalette(const QGradientStops & values, double valueMin, 
 //*************************************************************************
 
 /*!
-    Method to compute slider value
+    Method to compute the real value of the slider \param index
 */
 double ColorPalette::getValue(int index) const
 {
@@ -131,13 +134,28 @@ double ColorPalette::getValue(int index) const
 //*************************************************************************
 
 /*!
-    Method to get slider values with colors
+    Method to compute slider value
+*/
+double ColorPalette::getNormValue(int index) const
+{
+    if (index < 0 || index > _stops.size()-1)
+        return -12345;
+    return _stops[index].first;
+}
+
+
+//*************************************************************************
+
+/*!
+    Method to get slider normalized values with colors
 */
 QGradientStops ColorPalette::getPalette() const
 {
     if (!_palette)
         return QGradientStops();
-    return computeValuesFromStops(_stops, _xmin, _xmax);
+//    return computeValuesFromStops(_stops, _xmin, _xmax);
+    return _stops;
+
 }
 
 //*************************************************************************
@@ -277,34 +295,34 @@ void ColorPalette::modifyStop(int index, const QGradientStop & stop)
 
 //*************************************************************************
 
-/*!
-    Method to set new min/max limits and recompute inner slider positions
-*/
-void ColorPalette::setMinMaxRanges(double xmin, double xmax)
-{
-    double oldXMin(_xmin), oldXMax(_xmax);
-    for (int i=0;i<_sliders.size();i++)
-    {
-        Slider * s = _sliders[i];
+///*!
+//    Method to set new min/max limits and recompute inner slider positions
+//*/
+//void ColorPalette::setMinMaxRanges(double xmin, double xmax)
+//{
+//    double oldXMin(_xmin), oldXMax(_xmax);
+//    for (int i=0;i<_sliders.size();i++)
+//    {
+//        Slider * s = _sliders[i];
 
-        QPointF pos = s->pos();
-        double x = (oldXMin - xmin)/(xmax - xmin) + pos.x()*(oldXMax - oldXMin)/(xmax - xmin);
-        x = (x > 1.0) ? 1.0 : (x < 0.0) ? 0.0 : x;
-        pos.setX(x);
+//        QPointF pos = s->pos();
+//        double x = (oldXMin - xmin)/(xmax - xmin) + pos.x()*(oldXMax - oldXMin)/(xmax - xmin);
+//        x = (x > 1.0) ? 1.0 : (x < 0.0) ? 0.0 : x;
+//        pos.setX(x);
 
-        s->setFlag(ItemSendsGeometryChanges, false);
-        s->setPos(pos);
-        s->setFlag(ItemSendsGeometryChanges, true);
+//        s->setFlag(ItemSendsGeometryChanges, false);
+//        s->setPos(pos);
+//        s->setFlag(ItemSendsGeometryChanges, true);
 
-        // update gradient:
-        QGradientStop & currentStop = _stops[i];
-        currentStop.first = s->x();
-    }
-    updateAllStops();
-    _xmin = xmin;
-    _xmax = xmax;
+//        // update gradient:
+//        QGradientStop & currentStop = _stops[i];
+//        currentStop.first = s->x();
+//    }
+//    updateAllStops();
+//    _xmin = xmin;
+//    _xmax = xmax;
 
-}
+//}
 
 //*************************************************************************
 
@@ -403,7 +421,7 @@ bool ColorPalette::removeSliderAtIndex(int index)
 //*************************************************************************
 
 /*!
-    Method to set new value of slider at index
+    Method to set new (normalized) value of slider at index
 */
 void ColorPalette::setSliderValueAtIndex(int index, double value)
 {
@@ -414,7 +432,8 @@ void ColorPalette::setSliderValueAtIndex(int index, double value)
     }
     Slider * s=_sliders[index];
     QPointF pos = s->pos();
-    double x = (value-_xmin)/(_xmax - _xmin);
+//    double x = (value-_xmin)/(_xmax - _xmin);
+    double x = value;
     x = (x > 1.0) ? 1.0 : (x < 0.0) ? 0.0 : x;
     pos.setX(x);
     s->setPos(pos);
@@ -575,7 +594,8 @@ void ColorPalette::preventCollisionsAndUpdateGradient(Slider *slider, QPointF * 
     slider->setText(QString("%1").arg(csPos->x()*(_xmax-_xmin) + _xmin));
 
     // notify about the change
-    emit sliderPositionChanged(sliderIndex, csPos->x()*(_xmax-_xmin) + _xmin);
+//    emit sliderPositionChanged(sliderIndex, csPos->x()*(_xmax-_xmin) + _xmin);
+    emit sliderPositionChanged(sliderIndex, csPos->x());
 
 }
 
@@ -644,19 +664,38 @@ void Slider::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
 //    std::cout << "Tr : " << tr.m11() << ", " << tr.m22() << std::endl;
 //    std::cout << "Widget : " << widget->width() << ", " << widget->height() << std::endl;
 
-    _brect.setX(_poly.boundingRect().x() * _size / tr.m11());
-    _brect.setY(_poly.boundingRect().y() * _size / tr.m22());
-    _brect.setWidth(_poly.boundingRect().width() * _size / tr.m11());
-    _brect.setHeight(_poly.boundingRect().height() * _size / tr.m22());
+    QRectF r = _poly.boundingRect();
+    double f = 0.1;
+    r.adjust(-f*r.width(), 0.0, f*r.width(), 5.0*f*r.height());
+    _brect.setX(r.x() * _size / tr.m11());
+    _brect.setY(r.y() * _size / tr.m22());
+    _brect.setWidth(r.width() * _size / tr.m11());
+    _brect.setHeight(r.height() * _size / tr.m22());
+
+//    painter->setBrush(QColor(0,255,0,127));
+//    painter->setPen(QPen(QColor(Qt::black), 0.0));
+//    painter->drawRect(boundingRect());
 
 //    painter->setBrush(QColor(255,0,0,127));
-//    painter->drawRect(boundingRect());
+//    painter->setPen(QPen(QColor(Qt::black), 0.0));
+//    painter->drawRect(_brect);
+
 
     QTransform ntr = QTransform::fromScale(_size, _size) * QTransform::fromTranslate(tr.m31(), tr.m32());
     painter->setTransform(ntr);
 
     QGraphicsPolygonItem::paint(painter, option, widget);
 
+}
+
+//*************************************************************************
+
+/*!
+    \overload
+*/
+QRectF Slider::boundingRect() const
+{
+    return _brect;
 }
 
 //*************************************************************************
