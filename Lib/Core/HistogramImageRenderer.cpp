@@ -12,6 +12,8 @@ QVector<TransferFunction*> HistogramRendererConfiguration::availableTransferFunc
         << new TransferFunction("Square", &pow2)
         << new TransferFunction("Log", &log);
 
+//******************************************************************************
+
 QStringList HistogramRendererConfiguration::getAvailableTransferFunctionNames()
 {
     QStringList list;
@@ -22,6 +24,8 @@ QStringList HistogramRendererConfiguration::getAvailableTransferFunctionNames()
     return list;
 }
 
+//******************************************************************************
+
 TransferFunction * HistogramRendererConfiguration::getTransferFunctionByName(const QString &name)
 {
     foreach(TransferFunction * tf, availableTransferFunctions)
@@ -31,6 +35,19 @@ TransferFunction * HistogramRendererConfiguration::getTransferFunctionByName(con
     return 0;
 }
 
+//******************************************************************************
+
+void HistogramRendererConfiguration::copy(ImageRendererConfiguration *output)
+{
+    if (!output || output == this)
+        return;
+    HistogramRendererConfiguration * hconf = static_cast<HistogramRendererConfiguration*>(output);
+    if (!hconf)
+        return;
+    *hconf = *this;
+}
+
+//******************************************************************************
 
 inline double clamp(double value, double vmin=0.0, double vmax=1.0)
 {

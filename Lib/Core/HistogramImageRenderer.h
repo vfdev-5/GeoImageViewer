@@ -30,18 +30,11 @@ struct GIV_DLL_EXPORT HistogramRendererConfiguration : public ImageRendererConfi
     QVector<TransferFunction*> transferFunctions;
     QVector<QGradientStops> normHistStops; //!< gradient stops are normalized due to transferFunctions
 
-//    // RGB mode parameters:
-//    QVector<QGradientStops> normRGBHistStops; //!< gradient stops are normalized due to transferFunctions
-//    QVector< QPair<double, double> > normRGBHistStops; //!< gradient stops are normalized due to transferFunctions
-//    TransferFunction * rgbTransferFunction; //!< One transfer function for all selected bands
-//    bool isRGBDiscreteValue; //!< One option 'isDiscrete' for all selected bands
-
-
     HistogramRendererConfiguration() :
         mode(GRAY)
-//        rgbTransferFunction(0),
-//        isRGBDiscreteValue(false)
     {}
+
+    virtual void copy(ImageRendererConfiguration * output);
 
     static QStringList getAvailableTransferFunctionNames();
     static TransferFunction* getTransferFunctionByName(const QString & name);

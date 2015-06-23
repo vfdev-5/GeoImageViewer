@@ -23,6 +23,14 @@ struct GIV_DLL_EXPORT ImageRendererConfiguration {
     QVector<int> toRGBMapping; //!< RGB to Bands mapping. Key is RGB and value is image band
     QVector<double> minValues;
     QVector<double> maxValues;
+
+    virtual void copy(ImageRendererConfiguration * output)
+    {
+        if (!output || output == this)
+            return;
+        *output = *this;
+    }
+
 };
 
 class GIV_DLL_EXPORT ImageRenderer : public QObject

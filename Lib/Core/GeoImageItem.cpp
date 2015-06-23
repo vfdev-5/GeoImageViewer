@@ -115,10 +115,7 @@ void GeoImageItem::onRendererConfigurationChanged(Core::ImageRendererConfigurati
     // Avoid concurrent access :
     clearCache();
     // set conf:
-    *_rconf = *conf;
-
-    // DEBUG
-    HistogramRendererConfiguration * hconf = static_cast<HistogramRendererConfiguration*>(_rconf);
+    conf->copy(_rconf);
 
     // reload tiles
     updateItem(_currentZoomLevel, _currentVisiblePixelExtent);
@@ -507,9 +504,6 @@ void TilesLoadTask::run()
 #ifdef RENDERER_TIMER_ON
                 StartTimer("render");
 #endif
-                // DEBUG
-                HistogramRendererConfiguration * hconf = static_cast<HistogramRendererConfiguration*>(_item->_rconf);
-
                 r = _item->_renderer->render(data, _item->_rconf, true);
 #ifdef RENDERER_TIMER_ON
                 StopTimer();
