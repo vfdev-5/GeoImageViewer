@@ -83,6 +83,7 @@ ColorManipulationView::ColorManipulationView(QWidget *parent) :
     _removeSlider(tr("Remove slider"), this),
     _addSlider(tr("Add slider"), this),
     _revertSlider(tr("Center color"), this),
+    _zoomFitSliders(tr("Fit sliders"), this),
     _indexOfActionedSlider(-1)
 {
 
@@ -224,6 +225,7 @@ void ColorManipulationView::setupViewContextMenu()
     _removeSlider.setVisible(false);
     _addSlider.setVisible(false);
     _revertSlider.setVisible(false);
+    _zoomFitSliders.setVisible(false);
 
     this->addAction(&_removeSlider);
     this->addAction(&_addSlider);
@@ -233,6 +235,7 @@ void ColorManipulationView::setupViewContextMenu()
     connect(&_removeSlider, SIGNAL(triggered()), this, SLOT(onRemoveSlider()));
     connect(&_addSlider, SIGNAL(triggered()), this, SLOT(onAddSlider()));
     connect(&_revertSlider, SIGNAL(triggered()), this, SLOT(onRevertSlider()));
+    connect(&_zoomFitSliders, SIGNAL(triggered()), this, SLOT(onFitSliders()));
 
 }
 
@@ -288,52 +291,6 @@ void ColorManipulationView::setupViewContextMenu()
 //    drawHistogram();
 //}
 
-////*************************************************************************
-///*!
-// * \brief ColorManipulationView::applyNewRendererConfiguration
-// */
-////void ColorManipulationView::applyNewRendererConfiguration()
-////{
-////    Core::HistogramImageRenderer* hRenderer = qobject_cast<Core::HistogramImageRenderer*>(_renderer);
-////    if (!hRenderer)
-////    {
-////        SD_TRACE("ColorManipulationView::setup : Failed to cast renderer into HistogramLayerRenderer");
-////        return;
-////    }
-
-////    // RGB mapping configuration
-////    if (_mode == RGB)
-////    {
-////        Core::ImageRendererConfiguration conf = hRenderer->getConfiguration();
-////        conf.toRGBMapping[0] = _ui->_redChannel->value()-1;
-////        conf.toRGBMapping[1] = _ui->_greenChannel->value()-1;
-////        conf.toRGBMapping[2] = _ui->_blueChannel->value()-1;
-////        hRenderer->setConfiguration(conf);
-////    }
-
-//    // Histogram configuration
-////    int index = _currentHistogram->bandId;
-////    Core::HistogramRendererConfiguration histConf = hRenderer->getHistConfiguration();
-////    if (index > -1)
-////    {
-////        histConf.isDiscreteValues[index] = _currentHistogram->isDiscrete;
-////        histConf.normHistStops[index] = computeStopsFromValues(_currentHistogram->outputStops, _currentHistogram->xmin, _currentHistogram->xmax);
-////        histConf.transferFunctions[index] = Core::HistogramRendererConfiguration::getTransferFunctionByName(_currentHistogram->transferFunctionName);
-////    }
-////    else
-////    { // all bands -> update all histograms and histConf
-////        for (int i=0;i<_histograms.size();i++)
-////        {
-////            copyPositions(_currentHistogram->outputStops,_histograms[i].outputStops);
-////            histConf.isDiscreteValues[i]=_histograms[i].isDiscrete;
-////            histConf.normHistStops[i]=computeStopsFromValues(_histograms[i].outputStops, _histograms[i].xmin, _histograms[i].xmax);
-////            histConf.transferFunctions[i]=Core::HistogramRendererConfiguration::getTransferFunctionByName(_histograms[i].transferFunctionName);
-////        }
-////    }
-////    hRenderer->setHistConfiguration(histConf);
-////}
-
-
 //*************************************************************************
 
 /*!
@@ -375,50 +332,15 @@ bool ColorManipulationView::setHistogram(int index, const QGradientStops & normS
     return true;
 }
 
-
-////*************************************************************************
-
-///*!
-//    Method to add histogram data. For single band display, add only one histogram. For RGB display, add exactly 3 histograms.
-//*/
-//void ColorManipulationView::addHistogram(int id, const QString &name, const QVector<double> & data)
-//{
-//    _ui->_histList->addItem(name, id);
-
-//    int index = _histograms.size();
-//    _histograms.resize(index+1);
-//    _histograms[index].bandId=id;
-//    _histograms[index].xmin=_conf.minValues[id];
-//    _histograms[index].xmax=_conf.maxValues[id];
-//    _histograms[index].xmin2=_conf.qMinValues[id];
-//    _histograms[index].xmax2=_conf.qMaxValues[id];
-//    _histograms[index].transferFunctionName=_conf.transferFunctions[id]->getName();
-//    _histograms[index].isDiscrete=_conf.isDiscreteValues[id];
-
-//    if (_conf.mode == Core::HistogramRendererConfiguration::GRAY)
-//    {
-//        _histograms[index].outputStops=computeValuesFromStops(_conf.normHistStops[id], _histograms[index].xmin, _histograms[index].xmax);
-//    }
-//    else if (_conf.mode == Core::HistogramRendererConfiguration::RGB)
-//    {
-//        _histograms[index].outputStops=computeValuesFromStops(_conf.normRGBHistStops[id], _histograms[index].xmin, _histograms[index].xmax);
-//    }
-
-//    // draw histogram bars :
-//    _histograms[index].graphicsItem = createHistogramGraphicsItem(data, _settings.dataPen);
-//    _histograms[index].graphicsItem->setVisible(false);
-//    _histogramScene.addItem(_histograms[index].graphicsItem);
-
-//}
-
 //*************************************************************************
 /*!
     Method to draw histogram in gray or rgb mode :
 */
+#define CheckIndex(index) (index < 0 || index >= _histograms.size())
 void ColorManipulationView::drawSingleHistogram(int index)
 {
 
-    if (index < 0 || index >= _histograms.size())
+    if (CheckIndex(index))
     {
         SD_TRACE("ColorManipulationView::drawSingleHistogram : index is out of bounds");
         return;
@@ -435,13 +357,30 @@ void ColorManipulationView::drawSingleHistogram(int index)
     zoomInterval(h->outputStops.first().first, h->outputStops.last().first);
 }
 
-////*************************************************************************
+//*************************************************************************
 
-///*!
-//    Method to draw histogram in gray or rgb mode :
-//*/
-//void ColorManipulationView::drawHistogram()
-//{
+/*!
+    Method to draw histogram in rgb mode :
+*/
+void ColorManipulationView::drawRgbHistogram(int r, int g, int b)
+{
+
+    if (CheckIndex(r) || CheckIndex(g) || CheckIndex(b))
+    {
+        SD_TRACE("ColorManipulationView::drawRbgHistogram : index is out of bounds");
+        return;
+    }
+
+    HistogramView::drawRgbHistogram(r,g,b);
+
+    // draw color palette, sliders, etc
+    CMVHistogramItem * h = static_cast<CMVHistogramItem*>(_currentHistogram);
+    if (!h)
+        return;
+
+    drawColorPalette(h->outputStops, h->xmin, h->xmax, h->isDiscrete);
+    zoomInterval(h->outputStops.first().first, h->outputStops.last().first);
+
 
 //    // Check if there is only one histogram added in the list:
 //    if (_histograms.size() == 1)
@@ -482,28 +421,7 @@ void ColorManipulationView::drawSingleHistogram(int index)
 
 //    drawHistogram(0);
 
-//}
-
-////*************************************************************************
-
-///*!
-//    Method to set transfer function names
-//*/
-//void ColorManipulationView::setTransferFunctionNames(const QStringList &transferFunctionNames)
-//{
-//    _ui->_transferFunction->clear();
-//    foreach (QString tf, transferFunctionNames)
-//    {
-//        _ui->_transferFunction->addItem(tf);
-//    }
-
-//    // set visible if specified at least one transfer function
-//    if (!_ui->_transferFunction->isVisible())
-//    {
-//        _ui->_transferFunction->setVisible(true);
-//        _ui->_transferFunctionLabel->setVisible(true);
-//    }
-//}
+}
 
 ////*************************************************************************
 
@@ -520,14 +438,13 @@ void ColorManipulationView::drawSingleHistogram(int index)
 /*!
     Method to update histogram data: stops and outputstops
 */
-void ColorManipulationView::updateHistogramData(int index, double xpos, const QColor &c, bool notificationDelayed)
+void ColorManipulationView::updateHistogramItem(int index, double xpos, const QColor &c, bool notificationDelayed)
 {
 
     if (!_currentHistogram)
         return;
 
     CMVHistogramItem * h = static_cast<CMVHistogramItem*>(_currentHistogram);
-
     if (!h)
         return;
 
@@ -547,14 +464,14 @@ void ColorManipulationView::updateHistogramData(int index, double xpos, const QC
     // notify about change:
     if (!notificationDelayed)
     {
-        emit configurationChanged(h->outputStops);
+        emit stopsChanged(h->outputStops);
     }
 }
 
 //*************************************************************************
 
 /*!
-    Slot to respond on slider position changed
+    Slot to respond on slider position change
 */
 void ColorManipulationView::onSliderPositionChanged(int index, double position)
 {
@@ -568,7 +485,22 @@ void ColorManipulationView::onSliderPositionChanged(int index, double position)
     sliderLine->setTransform(QTransform::fromTranslate(npos, 0), true);
 
     // update histogram data
-    updateHistogramData(index, position, QColor(), true);
+    updateHistogramItem(index, position, QColor(), true);
+
+}
+
+//*************************************************************************
+
+/*!
+    Slot to respond on slider position change
+*/
+void ColorManipulationView::onSliderMouseRelease(int index, double position)
+{
+    if (index < 0 || index > _sliderLines.size() - 1 || !_currentHistogram)
+        return;
+
+    // update histogram data
+    updateHistogramItem(index, position);
 
 }
 
@@ -596,7 +528,7 @@ void ColorManipulationView::onAddSlider()
     }
 
     // update histogram data
-    updateHistogramData();
+    updateHistogramItem();
 
 }
 
@@ -620,7 +552,7 @@ void ColorManipulationView::onRemoveSlider()
     }
 
     // update histogram data
-    updateHistogramData();
+    updateHistogramItem();
 
 }
 
@@ -640,7 +572,7 @@ void ColorManipulationView::onColorPicked(QColor c)
     _colorPicker.hide();
 
     // update histogram data
-    updateHistogramData(index, -12345, c);
+    updateHistogramItem(index, -12345, c);
 
 }
 
@@ -651,6 +583,7 @@ void ColorManipulationView::onColorPicked(QColor c)
 */
 void ColorManipulationView::onValueEdited()
 {
+
     bool ok=false;
     double newvalue = _valueEditor.text().toDouble(&ok);
     if (ok)
@@ -665,6 +598,12 @@ void ColorManipulationView::onValueEdited()
         _valueEditor.hide();
         _colorPalette->highlightSliderTextAtIndex(index, false);
 
+        // notify about the change. Slider position change slot does not notify
+        CMVHistogramItem * h = static_cast<CMVHistogramItem*>(_currentHistogram);
+        if (h)
+        {
+            emit stopsChanged(h->outputStops);
+        }
     }
 }
 
@@ -682,79 +621,36 @@ void ColorManipulationView::onRevertSlider()
 
     _colorPalette->resetColorOfSliderAtIndex(index);
 
-    updateHistogramData();
+    updateHistogramItem();
 
 }
 
-////*************************************************************************
+//*************************************************************************
 
-///*!
-//    Slot to handle isComplete radio button clicked
-//*/
-//void ColorManipulationView::onDisplayCompleteHist(bool checked)
-//{
-//    if (!_currentHistogram || !checked)
-//        return;
+/*!
+    Slot to handle zoom 'fit sliders'
+*/
+void ColorManipulationView::onFitSliders()
+{
+    CMVHistogramItem * h = static_cast<CMVHistogramItem*>(_currentHistogram);
+    if (!h)
+        return;
+    zoomInterval(h->outputStops.first().first, h->outputStops.last().first);
+}
 
-//    double newMin, newMax;
-//    newMin = _currentHistogram->xmin;
-//    newMax = _currentHistogram->xmax;
+//*************************************************************************
 
-//    transformAllItems(newMin, newMax);
-//}
-
-////*************************************************************************
-
-///*!
-//    Slot to handle the action that displays the histogram fitted to slider positions
-//*/
-//void ColorManipulationView::onDisplayPartialHist(bool checked)
-//{
-//    if (!_currentHistogram || !checked)
-//        return;
-
-//    double newMin, newMax;
-//    newMin = _currentHistogram->outputStops.first().first;
-//    newMax = _currentHistogram->outputStops.last().first;
-
-//    transformAllItems(newMin, newMax);
-//}
-
-////*************************************************************************
-
-///*!
-//    Slot to handle histogram list current index changed
-//*/
-//void ColorManipulationView::onHistListIndexChanged(int i)
-//{
-//    drawHistogram(i);
-//}
-
-////*************************************************************************
-
-///*!
-//    Slot to handle histogram list current index changed
-//*/
-//void ColorManipulationView::onTransferFunctionChanged(QString tf)
-//{
-//    if (!_currentHistogram || _currentHistogram->transferFunctionName == tf)
-//        return;
-
-//    _currentHistogram->transferFunctionName = tf;
-//    emit renderConfigurationChanged(_conf);
-//}
-
-////*************************************************************************
-
-///*!
-//    Slot to handle discrete colors option of the histogram
-//*/
-//void ColorManipulationView::onDiscreteColorsClicked(bool checked)
-//{
-//    _colorPalette->setIsDiscrete(checked);
-//    _currentHistogram->isDiscrete = _colorPalette->isDiscrete();
-//    emit renderConfigurationChanged(_conf);
-//}
+/*!
+    Slot to handle discrete colors option of the histogram
+*/
+void ColorManipulationView::onDiscreteColorsClicked(bool checked)
+{
+    _colorPalette->setIsDiscrete(checked);
+    CMVHistogramItem * h = static_cast<CMVHistogramItem*>(_currentHistogram);
+    if (!h)
+        return;
+    h->isDiscrete = _colorPalette->isDiscrete();
+}
 
 ////*************************************************************************
 
@@ -946,6 +842,7 @@ void ColorManipulationView::drawColorPalette(const QGradientStops & houtputStops
 
     _colorPalette->setupPalette(houtputStops, xmin, xmax, isDiscrete);
     connect(_colorPalette, SIGNAL(sliderPositionChanged(int,double)), this, SLOT(onSliderPositionChanged(int,double)));
+    connect(_colorPalette, SIGNAL(sliderMouseRelease(int,double)), this, SLOT(onSliderMouseRelease(int,double)));
 }
 
 //*************************************************************************
@@ -1001,6 +898,8 @@ void ColorManipulationView::onContextMenuRequested(QPoint p)
         else
         {
             _menu.addActions(_ui->_histogramView->actions());
+            _zoomFitSliders.setVisible(true);
+            _menu.addAction(&_zoomFitSliders);
             HistogramView::onContextMenuRequested(p);
             return;
         }

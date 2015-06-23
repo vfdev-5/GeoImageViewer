@@ -42,8 +42,9 @@ public:
 
 
 public:
-    enum { Type = UserType + 1 };
-    virtual int type() const { return Type; }
+    enum { Type = UserType + 1001 };
+    int type() const
+    { return Type; }
 
     explicit ColorPalette(QGraphicsItem * parent = 0);
 
@@ -62,7 +63,9 @@ public:
     double getNormValue(int index) const;
 
     bool itemIsSlider(QGraphicsItem* item) const
-    { return _sliders.contains(reinterpret_cast<Slider*>(item)); }
+//    { return _sliders.contains(reinterpret_cast<Slider*>(item)); }
+//    { return _sliders.contains(static_cast<Slider*>(item)); }
+    { return _sliders.contains(qgraphicsitem_cast<Slider*>(item)); }
 
     bool itemIsPalette(QGraphicsItem* item) const
     { return _colorPaletteRect == item; }
@@ -76,7 +79,8 @@ public:
     { return _sliders.size(); }
 
     int getSliderIndex(QGraphicsItem* slider) const
-    { return _sliders.indexOf(reinterpret_cast<Slider*>(slider)); }
+//    { return _sliders.indexOf(reinterpret_cast<Slider*>(slider)); }
+    { return _sliders.indexOf(qgraphicsitem_cast<Slider*>(slider)); }
 
     bool removeSliderAtIndex(int sliderIndex);
     bool addSlider(const QPointF & position, int *index = 0);
@@ -98,10 +102,12 @@ protected:
     void modifyStop(int index, const QGradientStop & stop);
     void updateAllStops();
 
+    bool sceneEventFilter(QGraphicsItem * watched, QEvent * event);
+
 
 signals:
     void sliderPositionChanged(int index, double position);
-    void mouseReleaseOnSlider(int index, double position);
+    void sliderMouseRelease(int index, double position);
 
 private:
 
@@ -117,6 +123,9 @@ private:
     double _xmax;
 
     bool _isDiscrete;
+
+    bool _sliderPressed;
+    bool _sliderMoving;
 };
 
 //*************************************************************************
@@ -158,6 +167,10 @@ public:
         f.setWeight(QFont::Light);
         _text->setFont(f);
     }
+
+    enum { Type = UserType + 1002 };
+    int type() const
+    { return Type; }
 
     void setupProperties(double rangeMin, double rangeMax, double fixedValue)
     {

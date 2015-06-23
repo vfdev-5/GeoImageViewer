@@ -27,8 +27,6 @@ MainWindow::MainWindow(QWidget *parent) :
     // Setup UI :
     ui->setupUi(this);
 
-    setCentralWidget(&_viewer);
-
     createDockWidget(&_tools, Qt::LeftDockWidgetArea);
     _viewer.setToolsView(&_tools);
 
@@ -43,6 +41,8 @@ MainWindow::MainWindow(QWidget *parent) :
     createDockWidget(&_contrast, Qt::RightDockWidgetArea);
     _viewer.setRendererView(&_contrast);
 #endif
+
+    setCentralWidget(&_viewer);
 
     // insert filter actions :
     foreach (Filters::AbstractFilter * f, Filters::FiltersManager::get()->getFilters())
@@ -91,9 +91,11 @@ void MainWindow::onOpenImageActionTriggered()
 
 QDockWidget * MainWindow::createDockWidget(QWidget *w, Qt::DockWidgetArea where)
 {
+//    w->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     QDockWidget * dock = new QDockWidget(w->windowTitle(), this);
     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     dock->setWidget(w);
+    dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
     addDockWidget(where, dock);
     return dock;
 }

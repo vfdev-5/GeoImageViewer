@@ -61,7 +61,9 @@ ColorPalette::ColorPalette(QGraphicsItem * parent) :
     _palette(0),
     _xmin(0.0),
     _xmax(1.0),
-    _isDiscrete(false)
+    _isDiscrete(false),
+    _sliderPressed(false),
+    _sliderMoving(false)
 {
     _colorPaletteRect->setRect(0.0, 0.0, 1.0, _settings.paletteHeightRatio);
     _colorPaletteRect->setPen(QPen(Qt::black, 0.0));
@@ -183,6 +185,38 @@ void ColorPalette::updateAllStops()
     }
     _palette->setStops(nstops);
     _colorPaletteRect->setBrush(*_palette);
+}
+
+//*************************************************************************
+
+bool ColorPalette::sceneEventFilter(QGraphicsItem * watched, QEvent * event)
+{
+    if (itemIsSlider(watched))
+    {
+        if (event->type() == QEvent::GraphicsSceneMousePress)
+        {
+//            SD_TRACE("Mouse press on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
+            _sliderPressed = true;
+
+        }
+        else if (event->type() == QEvent::GraphicsSceneMouseMove && _sliderPressed)
+        {
+            _sliderMoving = true;
+        }
+        else if (event->type() == QEvent::GraphicsSceneMouseRelease && _sliderPressed)
+        {
+//            SD_TRACE("Mouse release on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
+            if (_sliderMoving)
+            {
+//                SD_TRACE("After moving : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
+                int index = getSliderIndex(watched);
+                emit sliderMouseRelease(index, watched->pos().x());
+            }
+            _sliderMoving = false;
+            _sliderPressed = false;
+        }
+    }
+    return QGraphicsItem::sceneEventFilter(watched, event);
 }
 
 //*************************************************************************
@@ -343,6 +377,7 @@ Slider * ColorPalette::createSlider(double xpos, const QColor & color, int count
     slider->setFlag(ItemSendsGeometryChanges,false);
     slider->setPos(xpos,_settings.paletteHeightRatio);
     slider->setFlag(ItemSendsGeometryChanges,true);
+    slider->installSceneEventFilter(this);
     return slider;
 }
 
@@ -594,7 +629,6 @@ void ColorPalette::preventCollisionsAndUpdateGradient(Slider *slider, QPointF * 
     slider->setText(QString("%1").arg(csPos->x()*(_xmax-_xmin) + _xmin));
 
     // notify about the change
-//    emit sliderPositionChanged(sliderIndex, csPos->x()*(_xmax-_xmin) + _xmin);
     emit sliderPositionChanged(sliderIndex, csPos->x());
 
 }

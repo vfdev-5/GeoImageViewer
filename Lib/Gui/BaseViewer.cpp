@@ -64,6 +64,10 @@ BaseViewer::BaseViewer(const QString &initialText, QWidget *parent) :
     layout->addWidget(_pointInfo);
     _pointInfo->setVisible(false);
 
+
+    // setup size policy to be maximum
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
     _scene.installEventFilter(this);
 
     // Init scene

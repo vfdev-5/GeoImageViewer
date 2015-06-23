@@ -37,6 +37,9 @@ public:
     void setNameFilter(const QStringList & filter)
     { _filter = filter; }
 
+    QObject * getObject()
+    { return _object; }
+
 
 protected:
 
@@ -63,7 +66,7 @@ private:
 
 //    QSignalMapper _mapper;
 
-    QWidget * _frame;
+//    QWidget * _frame;
     QScrollArea * _scrollArea;
 
 };

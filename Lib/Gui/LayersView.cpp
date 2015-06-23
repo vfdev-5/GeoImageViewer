@@ -82,9 +82,12 @@ void LayersView::onRemoveLayer()
     Core::BaseLayer * layer = _itemLayerMap.value(item, 0);
 
     // reset editor info if removed layer is current
-    QListWidgetItem * sItem = ui->_layers->selectedItems().first();
-    if (sItem == item)
+    if (ui->_editor->getObject() == layer)
+    {
+//    QListWidgetItem * sItem = ui->_layers->selectedItems().first();
+//    if (sItem == item)
         ui->_editor->setup(0);
+    }
 
     if (layer)
     {
@@ -93,7 +96,6 @@ void LayersView::onRemoveLayer()
         delete layer;
         // signal is sent to ShapeViewer that layer is destroyed and a slot is called
     }
-
 }
 
 //******************************************************************************

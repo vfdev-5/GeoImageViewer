@@ -45,7 +45,7 @@ public:
     virtual ~GeoImageItem();
 
     enum { Type = UserType + 2 };
-    virtual int type() const { return Type; }
+    int type() const { return Type; }
 
     virtual QRectF boundingRect() const;
     virtual void paint(QPainter * p, const QStyleOptionGraphicsItem *o, QWidget * w);

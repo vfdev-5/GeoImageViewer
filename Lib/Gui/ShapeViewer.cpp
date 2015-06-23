@@ -40,6 +40,11 @@ ShapeViewer::ShapeViewer(const QString &initialText, QWidget *parent) :
 {
     // init ToolsManager
     _toolsManager = Tools::ToolsManager::get();
+    _currentTool = _toolsManager->getTool("navigation");
+    if (!_currentTool)
+    {
+        SD_ERR("Application internal error. No tools found");
+    }
 }
 
 //******************************************************************************

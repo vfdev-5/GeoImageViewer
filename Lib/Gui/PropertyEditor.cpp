@@ -85,7 +85,7 @@ QWidget * createVectorDWidget(const QVector<double> & v)
 
 PropertyEditor::PropertyEditor(QWidget *parent) :
     QWidget(parent),
-    _frame(0),
+//    _frame(0),
     _object(0)
 {
     _scrollArea = new QScrollArea(this);
@@ -100,17 +100,23 @@ void PropertyEditor::setup(QObject * object)
 {
 
     // remove the layout and construct new one:
-    if (_frame)
+    QWidget * frame = _scrollArea->takeWidget();
+    if (frame)
     {
-        delete _frame;
+        delete frame;
     }
-    _frame = new QWidget();
-    QFormLayout * layout = new QFormLayout(_frame);
 
     if (!object)
     {
+        _scrollArea->hide();
         return;
     }
+
+    frame = new QWidget();
+    QFormLayout * layout = new QFormLayout(frame);
+    layout->setRowWrapPolicy(QFormLayout::WrapAllRows);
+    layout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+
 
     // disconnect previous connections
 //    if (_object)
@@ -144,7 +150,8 @@ void PropertyEditor::setup(QObject * object)
             }
 
             label[0] = label[0].toUpper();
-            label += " : ";
+            label = "<b>"+label;
+            label += " :</b>";
 
 //            QMetaMethod notifySignal = property.notifySignal();
 //            if (notifySignal.isValid())
@@ -170,10 +177,13 @@ void PropertyEditor::setup(QObject * object)
         }
     }
 
-    _scrollArea->setWidget(_frame);
+    if (!_scrollArea->isVisible())
+        _scrollArea->show();
 
-    if (!_frame->isVisible())
-        _frame->show();
+    _scrollArea->setWidget(frame);
+
+    if (!frame->isVisible())
+        frame->show();
 
 }
 
@@ -289,6 +299,7 @@ QWidget * PropertyEditor::readableWidget(const QVariant &value)
     {
         QLabel * l = new QLabel(value.toString());
         l->setWordWrap(true);
+
         return l;
     }
     else if (value.type() == QMetaType::QRect)

@@ -49,8 +49,9 @@ protected slots:
     void on__grayChannel_editingFinished();
     void on__isGrayMode_clicked(bool checked);
     void on__isRgbMode_clicked(bool checked);
+    void on__discreteColors_clicked(bool checked);
 
-    void onConfigurationChanged(const QGradientStops &);
+    void onStopsChanged(const QGradientStops &);
 
 protected:
     void setupGrayModeView();

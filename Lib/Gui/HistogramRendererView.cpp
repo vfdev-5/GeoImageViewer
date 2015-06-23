@@ -59,8 +59,10 @@ HistogramRendererView::HistogramRendererView(QWidget *parent) :
     clear();
 
 
-    connect(_ui->_histogramView, SIGNAL(configurationChanged(QGradientStops)),
-            this, SLOT(onConfigurationChanged(QGradientStops)));
+    connect(_ui->_histogramView, SIGNAL(stopsChanged(QGradientStops)),
+            this, SLOT(onStopsChanged(QGradientStops)));
+    connect(_ui->_discreteColors, SIGNAL(clicked(bool)),
+            _ui->_histogramView, SLOT(onDiscreteColorsClicked(bool)));
 
 }
 
@@ -154,23 +156,14 @@ HistogramRendererView::~HistogramRendererView()
 */
 void HistogramRendererView::clear()
 {
-
     // Make frame 'toRGBMapping'
     _ui->_toRGBMapping->setEnabled(false);
-
-    _ui->_isPartial->setEnabled(false);
-    _ui->_isComplete->setEnabled(false);
-
-    _ui->_histList->clear();
-    _ui->_histList->setEnabled(false);
 
     _ui->_discreteColors->setEnabled(false);
     _ui->_discreteColors->setChecked(false);
 
     _ui->_revert->setEnabled(false);
     _ui->_transferFunction->setEnabled(false);
-
-    _ui->_isAllBands->setEnabled(false);
 
     _ui->_histogramView->clear();
 }
@@ -300,22 +293,13 @@ void HistogramRendererView::setup(const Core::ImageRendererConfiguration *conf, 
     configureAChannel(_ui->_greenChannel, _conf.toRGBMapping[1]+1, 1, nbBands);
     configureAChannel(_ui->_blueChannel , _conf.toRGBMapping[2]+1, 1, nbBands);
     // Enable UI :
+    _ui->_revert->setEnabled(true);
     _ui->_toRGBMapping->setEnabled(true);
     setRgbModeEnabled(nbBands > 1);
 
-    // create histogram views
-    // 1) 1 band layer -> mode=GRAY, 1 histogram
-    // 2) Complex M bands layer -> mode=GRAY, 1 of 4*M histograms
-    // 3) Non-complex N bands layer -> { mode=RGB, 3 histograms | mode=GRAY, 1 of N histograms }
     if (_conf.mode == Core::HistogramRendererConfiguration::RGB)
     {
 
-        //        for (int i=0; i<3; i++)
-        //        {
-        //            int index = _conf.toRGBMapping[i];
-        //            _ui->_histogramView->addHistogram(_conf.normHistStops[index],
-        //                                              _dataProvider->getBandHistograms()[index]);
-        //        }
         _ui->_isRgbMode->setChecked(true);
         setupRgbModeView();
         _ui->_histogramView->drawRgbHistogram(_ui->_redChannel->value()-1,
@@ -336,6 +320,8 @@ void HistogramRendererView::setup(const Core::ImageRendererConfiguration *conf, 
 
 void HistogramRendererView::setupGrayModeView()
 {
+    _ui->_discreteColors->setEnabled(true);
+
     _ui->_histogramView->clear();
     int nbBands = _dataProvider->getNbBands();
 
@@ -365,6 +351,8 @@ void HistogramRendererView::setupGrayModeView()
 
 void HistogramRendererView::setupRgbModeView()
 {
+    _ui->_discreteColors->setEnabled(false);
+
     _ui->_histogramView->clear();
     // setup end stops colors:
     int indices[] = {_ui->_redChannel->value()-1,
@@ -448,6 +436,19 @@ void HistogramRendererView::on__isRgbMode_clicked(bool checked)
 
 //*************************************************************************
 
+void HistogramRendererView::on__discreteColors_clicked(bool checked)
+{
+    SD_TRACE("on__discreteColors_clicked");
+    if (_ui->_isGrayMode->isChecked())
+    {
+        int index = _ui->_grayChannel->value()-1;
+        _conf.isDiscreteValues[index] = checked;
+        emit renderConfigurationChanged(&_conf);
+    }
+}
+
+//*************************************************************************
+
 void HistogramRendererView::setRgbHistogram()
 {
     _ui->_histogramView->drawRgbHistogram();
@@ -503,7 +504,7 @@ void HistogramRendererView::on__grayChannel_editingFinished()
 
 //*************************************************************************
 
-void HistogramRendererView::onConfigurationChanged(const QGradientStops & newstops)
+void HistogramRendererView::onStopsChanged(const QGradientStops & newstops)
 {
     if (_ui->_isGrayMode->isChecked())
     {

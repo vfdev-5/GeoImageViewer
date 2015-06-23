@@ -46,15 +46,16 @@ public:
     bool setHistogram(int index, const QGradientStops & normHistStops, const QVector<double> & data, double xmin, double xmax);
 
     void drawSingleHistogram(int index);
-
+    void drawRgbHistogram(int r=0, int g=1, int b=2);
 
 signals:
-    void configurationChanged(QGradientStops);
+    void stopsChanged(QGradientStops stops);
 
 public slots:
     void clear();
     void onSliderPositionChanged(int index, double position);
-
+    void onSliderMouseRelease(int index, double position);
+    void onDiscreteColorsClicked(bool checked);
 
 protected slots:
     // Slider management
@@ -63,15 +64,7 @@ protected slots:
     void onRevertSlider();
     void onColorPicked(QColor);
     void onValueEdited();
-
-//    void onDisplayCompleteHist(bool checked);
-//    void onDisplayPartialHist(bool checked);
-//    void onHistListIndexChanged(int);
-//    void onUpdateTimerTimeout();
-
-//    void onDiscreteColorsClicked(bool checked);
-//    void onTransferFunctionChanged(QString);
-//    void onIsAllBandsClicked(bool checked);
+    void onFitSliders();
 
     virtual void onContextMenuRequested(QPoint p);
 
@@ -82,7 +75,6 @@ protected:
     {
         // slider positions (normalized values) & isDiscrete
         QGradientStops outputStops;
-//        QString transferFunctionName;
         bool isDiscrete;
 
         CMVHistogramItem() :
@@ -92,9 +84,8 @@ protected:
         }
 
     };
-//    void setTransferFunctionNames(const QStringList & transferFunctionNames);
 
-    void updateHistogramData(int index=-1, double xpos = -13245, const QColor &c = QColor(), bool notificationDelayed=false);
+    void updateHistogramItem(int index=-1, double xpos = -13245, const QColor &c = QColor(), bool notificationDelayed=false);
     void createColorPalette();
     void drawColorPalette(const QGradientStops & houtputStops, double xmin, double xmax, bool isDiscrete);
 
@@ -110,14 +101,12 @@ protected:
     QAction _removeSlider;
     QAction _addSlider;
     QAction _revertSlider;
+    QAction _zoomFitSliders;
 
     ColorPickerFrame _colorPicker;
     QLineEdit _valueEditor;
 
-//    Mode _mode;
-//    QTimer _updateDelayTimer;
     CMVSettings _cmvSettings;
-
 };
 
 //*************************************************************************

@@ -63,10 +63,6 @@ GeoImageViewer::GeoImageViewer(QWidget *parent) :
     connect(_imageWriter, SIGNAL(imageWriteFinished(bool)), this, SLOT(onImageWriteFinished(bool)));
     connect(_imageWriter, SIGNAL(writeProgressValueChanged(int)), this, SLOT(onProgressValueChanged(int)));
 
-
-
-    setMinimumSize(QSize(450, 450));
-
     // Create SelectionTool :
     Tools::SelectionTool * selection = new Tools::SelectionTool();
     _toolsManager->insertTool(selection);

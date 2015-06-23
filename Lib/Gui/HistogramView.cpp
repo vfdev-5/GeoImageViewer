@@ -227,10 +227,10 @@ void HistogramView::drawSingleHistogram(int index)
 }
 
 //*************************************************************************
+
 /*!
     Method to draw histogram in rgb mode (all 3 histograms)
 */
-
 void HistogramView::drawRgbHistogram(int r, int g, int b)
 {
 
@@ -247,8 +247,6 @@ void HistogramView::drawRgbHistogram(int r, int g, int b)
     {
         _currentHistogram->graphicsItem->setVisible(false);
     }
-
-    _currentHistogram = _allBandsHistogram;
 
     // remove children from allBandsHistogram:
     if (_allBandsHistogram && _allBandsHistogram->graphicsItem)
@@ -268,6 +266,7 @@ void HistogramView::drawRgbHistogram(int r, int g, int b)
         _histogramScene.addItem(_allBandsHistogram->graphicsItem);
     }
 
+    _currentHistogram = _allBandsHistogram;
 
         // draw all histograms:
     QColor dataColors[] = {QColor(255,0,0,81),
@@ -289,8 +288,7 @@ void HistogramView::drawRgbHistogram(int r, int g, int b)
 */
 void HistogramView::showEvent(QShowEvent *)
 {
-//        _ui->_histogramView->fitInView(_histogramScene.sceneRect());
-        _ui->_histogramView->fitInView(_visibleZone);
+    _ui->_histogramView->fitInView(_visibleZone);
 }
 
 //*************************************************************************
@@ -300,7 +298,6 @@ void HistogramView::showEvent(QShowEvent *)
 */
 void HistogramView::resizeEvent(QResizeEvent *)
 {
-//    _ui->_histogramView->fitInView(_histogramScene.sceneRect());
     _ui->_histogramView->fitInView(_visibleZone);
 }
 
@@ -318,14 +315,12 @@ QGraphicsItemGroup * HistogramView::createHistogramGraphicsItem(const QVector<do
     for (int i=0; i<histSize; i++)
     {
         double value = data[i];
-//        QGraphicsRectItem * l = new QGraphicsRectItem(
         QGraphicsLineItem * l = new QGraphicsLineItem(
                     i*1.0/histSize + d,
                     1.0 - value - d,
                     i*1.0/histSize + d,
                     1.0 - d
                     );
-//        l->setBrush(dataPen.brush());
         l->setPen(dataPen);
         group->addToGroup(l);
     }
@@ -432,7 +427,10 @@ void HistogramView::setupViewContextMenu()
 
 void HistogramView::onContextMenuRequested(QPoint p)
 {
-    _menu.popup(_ui->_histogramView->mapToGlobal(p));
+    if (_histograms.size() > 0)
+    {
+        _menu.popup(_ui->_histogramView->mapToGlobal(p));
+    }
 }
 
 //*************************************************************************
