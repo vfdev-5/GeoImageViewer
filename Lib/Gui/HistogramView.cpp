@@ -117,10 +117,7 @@ HistogramView::~HistogramView()
  */
 void HistogramView::clearHistogramItems()
 {
-    foreach (HistogramItem * item, _histograms)
-    {
-        delete item;
-    }
+    qDeleteAll(_histograms.begin(), _histograms.end());
     _histograms.clear();
 
     delete _allBandsHistogram;
@@ -248,20 +245,21 @@ void HistogramView::drawRgbHistogram(int r, int g, int b)
         _currentHistogram->graphicsItem->setVisible(false);
     }
 
-    // remove children from allBandsHistogram:
-    if (_allBandsHistogram && _allBandsHistogram->graphicsItem)
-    {
+    if (!_allBandsHistogram)
+    {// if does not exist -> create as default HistogramItem
+        _allBandsHistogram = new HistogramItem();
+    }
+
+    if (_allBandsHistogram->graphicsItem)
+    {// remove children from allBandsHistogram:
         foreach (QGraphicsItem * item, _allBandsHistogram->graphicsItem->childItems())
         {
             _allBandsHistogram->graphicsItem->removeFromGroup(item);
             item->setVisible(false);
         }
-    } else {
-        if (_allBandsHistogram)
-        {
-            delete _allBandsHistogram;
-        }
-        _allBandsHistogram = new HistogramItem();
+    }
+    else
+    {
         _allBandsHistogram->graphicsItem = new QGraphicsItemGroup();
         _histogramScene.addItem(_allBandsHistogram->graphicsItem);
     }

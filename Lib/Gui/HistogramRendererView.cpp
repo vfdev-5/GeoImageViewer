@@ -59,8 +59,8 @@ HistogramRendererView::HistogramRendererView(QWidget *parent) :
     clear();
 
 
-    connect(_ui->_histogramView, SIGNAL(stopsChanged(QGradientStops)),
-            this, SLOT(onStopsChanged(QGradientStops)));
+    connect(_ui->_histogramView, SIGNAL(stopsChanged(int, QGradientStops)),
+            this, SLOT(onStopsChanged(int, QGradientStops)));
     connect(_ui->_discreteColors, SIGNAL(clicked(bool)),
             _ui->_histogramView, SLOT(onDiscreteColorsClicked(bool)));
 
@@ -328,7 +328,7 @@ void HistogramRendererView::setupGrayModeView()
     // setup stops:
     if (_conf.mode == Core::HistogramRendererConfiguration::RGB)
     {
-        if (Core::HistogramImageRenderer::setupConfiguration(_dataProvider,
+        if (!Core::HistogramImageRenderer::setupConfiguration(_dataProvider,
                                                              &_conf,
                                                              Core::HistogramRendererConfiguration::GRAY))
         {
@@ -366,7 +366,7 @@ void HistogramRendererView::setupRgbModeView()
     // setup stops:
     if (_conf.mode == Core::HistogramRendererConfiguration::GRAY)
     {
-        if (Core::HistogramImageRenderer::setupConfiguration(_dataProvider,
+        if (!Core::HistogramImageRenderer::setupConfiguration(_dataProvider,
                                                              &_conf,
                                                              Core::HistogramRendererConfiguration::RGB))
         {
@@ -504,13 +504,20 @@ void HistogramRendererView::on__grayChannel_editingFinished()
 
 //*************************************************************************
 
-void HistogramRendererView::onStopsChanged(const QGradientStops & newstops)
+void HistogramRendererView::onStopsChanged(int hIndex, const QGradientStops & newstops)
 {
     if (_ui->_isGrayMode->isChecked())
     {
         int index = _ui->_grayChannel->value()-1;
+//        index == hIndex;
         _conf.normHistStops[index] = newstops;
         emit renderConfigurationChanged(&_conf);
+    }
+    else if (_ui->_isRgbMode->isChecked())
+    {
+        int r = _ui->_redChannel->value()-1;
+//        _conf.normHistStops[r] =
+
     }
 }
 

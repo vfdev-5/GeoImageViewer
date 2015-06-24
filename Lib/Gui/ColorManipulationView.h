@@ -13,7 +13,6 @@
 #include "Core/LibExport.h"
 #include "HistogramView.h"
 #include "ColorPalette.h"
-#include "ColorPickerFrame.h"
 
 namespace Gui
 {
@@ -49,7 +48,7 @@ public:
     void drawRgbHistogram(int r=0, int g=1, int b=2);
 
 signals:
-    void stopsChanged(QGradientStops stops);
+    void stopsChanged(int hIndex, QGradientStops stops);
 
 public slots:
     void clear();
@@ -62,8 +61,7 @@ protected slots:
     void onRemoveSlider();
     void onAddSlider();
     void onRevertSlider();
-    void onColorPicked(QColor);
-    void onValueEdited();
+//    void onValueEdited();
     void onFitSliders();
 
     virtual void onContextMenuRequested(QPoint p);
@@ -82,29 +80,31 @@ protected:
             isDiscrete(false)
         {
         }
-
     };
 
+
     void updateHistogramItem(int index=-1, double xpos = -13245, const QColor &c = QColor(), bool notificationDelayed=false);
-    void createColorPalette();
-    void drawColorPalette(const QGradientStops & houtputStops, double xmin, double xmax, bool isDiscrete);
+    ColorPalette *createColorPalette(const QTransform & transform = QTransform());
+    void setupColorPalette(ColorPalette* palette, const QGradientStops & houtputStops, double xmin, double xmax, bool isDiscrete);
 
     bool eventFilter(QObject *, QEvent *);
-    void valueEditorEvents(QEvent *);
+//    void valueEditorEvents(QEvent *);
     void setupViewContextMenu();
 
-    ColorPalette * _colorPalette;
-    QList<QGraphicsLineItem*> _sliderLines;
 
+//    ColorPalette * _colorPalette;
+//    QList<QGraphicsLineItem*> _sliderLines;
+    QList<ColorPalette*> _colorPalettes;
+    ColorPalette* _currentColorPalette;
     int _indexOfActionedSlider;
 
     QAction _removeSlider;
     QAction _addSlider;
     QAction _revertSlider;
+
     QAction _zoomFitSliders;
 
-    ColorPickerFrame _colorPicker;
-    QLineEdit _valueEditor;
+//    QLineEdit _valueEditor;
 
     CMVSettings _cmvSettings;
 };

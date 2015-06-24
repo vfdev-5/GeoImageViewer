@@ -51,18 +51,20 @@ QMouseEvent storeMouseEvent(QMouseEvent* event)
 
 BaseViewer::BaseViewer(const QString &initialText, QWidget *parent) :
     QWidget(parent),
+    _ui(new Ui_BaseViewer),
     _zoomLevel(0),
     _zoomMinLevel(-5),
     _zoomMaxLevel(5),
     _initialText(initialText),
-    _pointInfo(new QLabel()),
+//    _pointInfo(new QLabel()),
     _handScrolling(false),
     _lastMouseEvent(QEvent::None, QPointF(), QPointF(), QPointF(), Qt::NoButton, 0, 0)
 {
-    QVBoxLayout * layout = new QVBoxLayout(this);
-    layout->addWidget(&_view);
-    layout->addWidget(_pointInfo);
-    _pointInfo->setVisible(false);
+    _ui->setupUi(this);//    QVBoxLayout * layout = new QVBoxLayout(this);
+//    layout->addWidget(&_view);
+//    layout->
+//    layout->addWidget(_pointInfo);
+//    _pointInfo->setVisible(false);
 
 
     // setup size policy to be maximum
@@ -74,17 +76,17 @@ BaseViewer::BaseViewer(const QString &initialText, QWidget *parent) :
     clear();
 
     // setup view
-    _view.setScene(&_scene);
-    _view.installEventFilter(this);
+    _ui->_view->setScene(&_scene);
+    _ui->_view->installEventFilter(this);
     // hardware acceleration
-    _view.setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
-    _view.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-    _view.setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    _view.setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    _ui->_view->setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
+    _ui->_view->setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+    _ui->_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    _ui->_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    _view.setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-    _view.setAcceptDrops(true);
-    _view.viewport()->installEventFilter(this);
+    _ui->_view->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+    _ui->_view->setAcceptDrops(true);
+    _ui->_view->viewport()->installEventFilter(this);
 
     // setup menu
     setupViewContextMenu();
@@ -96,6 +98,13 @@ BaseViewer::BaseViewer(const QString &initialText, QWidget *parent) :
     _progressDialog->setAutoReset(true);
     connect(_progressDialog, SIGNAL(canceled()), this, SLOT(onProgressCanceled()));
 
+}
+
+//******************************************************************************
+
+BaseViewer::~BaseViewer()
+{
+    delete _ui;
 }
 
 //******************************************************************************
@@ -122,12 +131,12 @@ void BaseViewer::clear()
         _initialTextItem->setOpacity(0.3);
     }
 
-    _view.setBackgroundBrush(QBrush(Qt::white));
+    _ui->_view->setBackgroundBrush(QBrush(Qt::white));
 
     // reset zoom level
     _zoomLevel = 0;
     double scale = qPow(2.0, _zoomLevel);
-    _view.setTransform(QTransform::fromScale(scale,scale));
+    _ui->_view->setTransform(QTransform::fromScale(scale,scale));
 
 }
 
@@ -172,8 +181,8 @@ void BaseViewer::onZoomActionTriggered()
         if (_zoomLevel+1<=_zoomMaxLevel)
         {
             centerOnAtZoom(_zoomLevel+1,
-                           _view.mapToScene(
-                               _view.mapFromGlobal(_menu.pos())
+                           _ui->_view->mapToScene(
+                               _ui->_view->mapFromGlobal(_menu.pos())
                                ));
         }
     }
@@ -182,8 +191,8 @@ void BaseViewer::onZoomActionTriggered()
         if (_zoomLevel-1>=_zoomMinLevel)
         {
             centerOnAtZoom(_zoomLevel-1,
-                           _view.mapToScene(
-                               _view.mapFromGlobal(_menu.pos())
+                           _ui->_view->mapToScene(
+                               _ui->_view->mapFromGlobal(_menu.pos())
                                ));
         }
     }
@@ -194,7 +203,7 @@ void BaseViewer::onZoomActionTriggered()
 void BaseViewer::onContextMenuRequested(QPoint p)
 {
     SD_TRACE("onContextMenuRequested : " + QString::number(_menu.actions().size()));
-    _menu.popup(_view.mapToGlobal(p));
+    _menu.popup(_ui->_view->mapToGlobal(p));
 }
 
 //******************************************************************************
@@ -214,7 +223,7 @@ bool BaseViewer::eventFilter(QObject * o, QEvent * e)
     {
         return true;
     }
-    else if (o == &_view)
+    else if (o == _ui->_view)
     {
         if (_settings.enableKeyNavigation &&
                 navigationOnKeys(e))
@@ -230,7 +239,7 @@ bool BaseViewer::eventFilter(QObject * o, QEvent * e)
         }
     }
 
-    if (o == _view.viewport())
+    if (o == _ui->_view->viewport())
     {
         // zoom on wheel should in viewport than graphicsview due to scroll wheel action in graphicsview
         if (_settings.enableZoom &&
@@ -323,7 +332,7 @@ bool BaseViewer::scrollOnMouse(QEvent *e)
     if (e->type() == QEvent::MouseButtonPress)
     {
         _handScrolling = true;
-        _view.viewport()->setCursor(Qt::ClosedHandCursor);
+        _ui->_view->viewport()->setCursor(Qt::ClosedHandCursor);
         _lastMouseEvent = storeMouseEvent(static_cast<QMouseEvent*>(e));
         return true;
     }
@@ -332,10 +341,10 @@ bool BaseViewer::scrollOnMouse(QEvent *e)
         if (_handScrolling)
         {
             QMouseEvent * event = static_cast<QMouseEvent*>(e);
-            QScrollBar *hBar = _view.horizontalScrollBar();
-            QScrollBar *vBar = _view.verticalScrollBar();
+            QScrollBar *hBar = _ui->_view->horizontalScrollBar();
+            QScrollBar *vBar = _ui->_view->verticalScrollBar();
             QPoint delta = event->pos() - _lastMouseEvent.pos();
-            hBar->setValue(hBar->value() + (_view.isRightToLeft() ? delta.x() : -delta.x()));
+            hBar->setValue(hBar->value() + (_ui->_view->isRightToLeft() ? delta.x() : -delta.x()));
             vBar->setValue(vBar->value() - delta.y());
             _lastMouseEvent = storeMouseEvent(event);
             return true;
@@ -344,7 +353,7 @@ bool BaseViewer::scrollOnMouse(QEvent *e)
     else if (e->type() == QEvent::MouseButtonRelease)
     {
         _handScrolling = false;
-        _view.viewport()->setCursor(_cursor);
+        _ui->_view->viewport()->setCursor(_cursor);
         centerOnAtZoom(_zoomLevel);
         return true;
     }
@@ -392,12 +401,12 @@ void BaseViewer::centerOnAtZoom(int zoomLevel, const QPointF &scenePoint)
     {
         _zoomLevel=zoomLevel;
         double scale = qPow(2.0, zoomLevel);
-        _view.setTransform(QTransform::fromScale(scale,scale));
+        _ui->_view->setTransform(QTransform::fromScale(scale,scale));
     }
 
     if (!scenePoint.isNull())
     {
-        _view.centerOn(scenePoint);
+        _ui->_view->centerOn(scenePoint);
     }
 
 #ifdef _DEBUG
@@ -410,22 +419,22 @@ void BaseViewer::centerOnAtZoom(int zoomLevel, const QPointF &scenePoint)
 
 void BaseViewer::setupViewContextMenu()
 {
-    _view.setContextMenuPolicy(Qt::CustomContextMenu);
+    _ui->_view->setContextMenuPolicy(Qt::CustomContextMenu);
     // Zoom in :
-    _zoomIn = new QAction(tr("Zoom in"), &_view);
+    _zoomIn = new QAction(tr("Zoom in"), _ui->_view);
     _zoomIn->setEnabled(_settings.enableZoom);
     connect(_zoomIn, SIGNAL(triggered()), this, SLOT(onZoomActionTriggered()));
-    _view.addAction(_zoomIn);
+    _ui->_view->addAction(_zoomIn);
 
     // Zoom out :
-    _zoomOut = new QAction(tr("Zoom out"), &_view);
+    _zoomOut = new QAction(tr("Zoom out"), _ui->_view);
     _zoomOut->setEnabled(_settings.enableZoom);
     connect(_zoomOut, SIGNAL(triggered()), this, SLOT(onZoomActionTriggered()));
-    _view.addAction(_zoomOut);
+    _ui->_view->addAction(_zoomOut);
 
     // menu
-    _menu.addActions(_view.actions());
-    connect(&_view, SIGNAL(customContextMenuRequested(QPoint)),
+    _menu.addActions(_ui->_view->actions());
+    connect(_ui->_view, SIGNAL(customContextMenuRequested(QPoint)),
             this, SLOT(onContextMenuRequested(QPoint)));
 }
 
@@ -442,8 +451,8 @@ void BaseViewer::setZoomEnabled(bool enabled)
 
 QRectF BaseViewer::getVisibleSceneRect()
 {
-    QRect wr = _view.viewport()->rect();
-    return _view.mapToScene(wr).boundingRect();
+    QRect wr = _ui->_view->viewport()->rect();
+    return _ui->_view->mapToScene(wr).boundingRect();
 }
 
 //******************************************************************************
@@ -452,22 +461,22 @@ void BaseViewer::viewportInfo()
 {
 #ifdef SHOW_VIEWPORT_INFO
     // display visible scene zone
-    QRect wr = _view.viewport()->rect();
+    QRect wr = _ui->_view->viewport()->rect();
     SD_TRACE(QString("view rect : (%1, %2) | %3, %4")
              .arg(wr.x())
              .arg(wr.y())
              .arg(wr.width())
              .arg(wr.height()));
 
-    QRectF r = _view.mapToScene(wr).boundingRect();
+    QRectF r = _ui->_view->mapToScene(wr).boundingRect();
     SD_TRACE(QString("visible scene rect : (%1, %2) | %3, %4")
              .arg(r.x())
              .arg(r.y())
              .arg(r.width())
              .arg(r.height()));
 
-    double sx = _view.matrix().m11();
-    double sy = _view.matrix().m22();
+    double sx = _ui->_view->matrix().m11();
+    double sy = _ui->_view->matrix().m22();
     SD_TRACE(QString("view scale : %1, %2").arg(sx).arg(sy));
 #endif
 
@@ -477,14 +486,14 @@ void BaseViewer::viewportInfo()
 
 void BaseViewer::showPointInfo(bool v)
 {
-    _pointInfo->setVisible(v);
+    _ui->_pointInfo->setVisible(v);
 }
 
 //******************************************************************************
 
 void BaseViewer::setCurrentCursor(const QCursor & c)
 {
-    _view.viewport()->setCursor(c);
+    _ui->_view->viewport()->setCursor(c);
     _cursor = c;
 }
 

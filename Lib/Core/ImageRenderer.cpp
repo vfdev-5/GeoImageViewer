@@ -105,7 +105,7 @@ QVector<int> computeToRGBMapping(const ImageDataProvider *provider)
             toRGBMapping.insert(2, 0);
         }
         else if (provider->getNbBands() > 2 )
-        { // Image with more the 2 not complex bands is interpreted as RGB image
+        { // Image with more than 2  not complex bands is interpreted as RGB image
             toRGBMapping.insert(0, 0);
             toRGBMapping.insert(1, 1);
             toRGBMapping.insert(2, 2);

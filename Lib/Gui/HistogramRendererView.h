@@ -51,7 +51,7 @@ protected slots:
     void on__isRgbMode_clicked(bool checked);
     void on__discreteColors_clicked(bool checked);
 
-    void onStopsChanged(const QGradientStops &);
+    void onStopsChanged(int hIndex, const QGradientStops &);
 
 protected:
     void setupGrayModeView();

@@ -2,6 +2,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsSceneMoveEvent>
 #include <QColorDialog>
+#include <QMenu>
 
 // Project
 #include "ColorPalette.h"
@@ -14,6 +15,16 @@ namespace Gui
 //*************************************************************************
 
 double tinyDelta=1e-9;
+
+inline double normalized(double x, double xmin, double xmax)
+{
+    return (x - xmin)/(xmax - xmin);
+}
+
+inline double unnormalized(double x, double xmin, double xmax)
+{
+    return x*(xmax - xmin) + xmin;
+}
 
 QGradientStops computeStopsFromValues(const QGradientStops & values, double hxmin, double hxmax)
 {
@@ -33,6 +44,19 @@ QGradientStops computeValuesFromStops(const QGradientStops & stops, double hxmin
         values << QGradientStop(stop.first*(hxmax-hxmin) + hxmin, stop.second);
     }
     return values;
+}
+
+QColor computeColorAtPosition(double position, const QGradientStop & leftStop, const QGradientStop & rightStop)
+{ // Compute as linear interpolation between color of two stops
+
+    double x = (position - leftStop.first)/(rightStop.first - leftStop.first);
+
+    QColor output(
+                leftStop.second.red()*(1-x) + x*rightStop.second.red(),
+                leftStop.second.green()*(1-x) + x*rightStop.second.green(),
+                leftStop.second.blue()*(1-x) + x*rightStop.second.blue()
+                );
+    return output;
 }
 
 //*************************************************************************
@@ -55,31 +79,37 @@ QGradientStops computeValuesFromStops(const QGradientStops & stops, double hxmin
     Constructor
 */
 ColorPalette::ColorPalette(QGraphicsItem * parent) :
-    QGraphicsItem(parent),
-    QObject(0),
+//    QGraphicsItem(parent),
+//    QObject(0),
+    QGraphicsObject(parent),
     _colorPaletteRect(new QGraphicsRectItem(this)),
     _palette(0),
     _xmin(0.0),
     _xmax(1.0),
     _isDiscrete(false),
     _sliderPressed(false),
-    _sliderMoving(false)
+    _sliderMoving(false),
+    _groupUpdate(true),
+    _removeSlider(tr("Remove slider"), this),
+    _addSlider(tr("Add slider"), this),
+    _revertSlider(tr("Center color"), this),
+    _actionedSlider(0)
 {
     _colorPaletteRect->setRect(0.0, 0.0, 1.0, _settings.paletteHeightRatio);
     _colorPaletteRect->setPen(QPen(Qt::black, 0.0));
-}
 
-QColor computeColorAtPosition(double position, const QGradientStop & leftStop, const QGradientStop & rightStop)
-{ // Compute as linear interpolation between color of two stops
+    connect(&_menu, SIGNAL(triggered(QAction*)), this, SLOT(onMenuTriggered(QAction*)));
 
-    double x = (position - leftStop.first)/(rightStop.first - leftStop.first);
+    // setup color picker
+    _colorPicker.setWindowFlags(Qt::Popup);
+    connect(&_colorPicker, SIGNAL(colorPicked(QColor)), this, SLOT(onColorPicked(QColor)));
 
-    QColor output(
-                leftStop.second.red()*(1-x) + x*rightStop.second.red(),
-                leftStop.second.green()*(1-x) + x*rightStop.second.green(),
-                leftStop.second.blue()*(1-x) + x*rightStop.second.blue()
-                );
-    return output;
+    // setup value editor
+    _valueEditor.setWindowFlags(Qt::Popup);
+    _valueEditor.installEventFilter(this);
+    _valueEditor.setAlignment(Qt::AlignRight);
+    connect(&_valueEditor, SIGNAL(returnPressed()), this, SLOT(onValueEdited()));
+
 }
 
 //*************************************************************************
@@ -107,6 +137,7 @@ void ColorPalette::setupPalette(const QGradientStops & normValues, double valueM
     foreach (Slider * s, _sliders)
     {
         scene()->removeItem(s);
+        delete s;
     }
     _sliders.clear();
 
@@ -120,6 +151,29 @@ void ColorPalette::setupPalette(const QGradientStops & normValues, double valueM
     _colorPaletteRect->installSceneEventFilter(this);
 
 }
+
+//*************************************************************************
+
+/*!
+    Method to setup slider groups
+    \param sliderIndexGroupMap is a map from slider indices (keys) to groups indices (values)
+*/
+void ColorPalette::setupSliderGroups(const QMap<int, int> &sliderIndexGroupMap, int nbOfGroups)
+{
+    _groups.resize(nbOfGroups);
+    foreach (int key, sliderIndexGroupMap.keys())
+    {
+        if (key < 0 || key >= _sliders.size())
+        {
+            SD_TRACE("ColorPalette::setupSliderGroups : key index is out of bounds");
+            continue;
+        }
+        _groupsMap.insert(_sliders[key], sliderIndexGroupMap[key]);
+        _groups[sliderIndexGroupMap[key]].append(_sliders[key]);
+    }
+
+}
+
 
 //*************************************************************************
 
@@ -189,13 +243,54 @@ void ColorPalette::updateAllStops()
 
 //*************************************************************************
 
+bool ColorPalette::eventFilter(QObject * object, QEvent * event)
+{
+    if (&_valueEditor == object)
+    {
+        valueEditorEvents(event);
+    }
+    return QGraphicsObject::eventFilter(object, event);
+}
+
+//*************************************************************************
+
+/*!
+ * Handle value editor key and mouse events
+*/
+void ColorPalette::valueEditorEvents(QEvent * event)
+{
+    if (event->type() == QEvent::KeyPress)
+    { // Hide valueEditor when user presses escape key
+        QKeyEvent * ke = static_cast<QKeyEvent*>(event);
+        if (ke->key() == Qt::Key_Escape && _valueEditor.isVisible())
+        {
+            _valueEditor.hide();
+            highlightSliderTextAtIndex(getSliderIndex(_actionedSlider), false);
+            _actionedSlider=0;
+        }
+    }
+    else if (event->type() == QEvent::MouseButtonPress)
+    { // Hide valueEditor when user clicks somewhere else
+        QMouseEvent * me = static_cast<QMouseEvent*>(event);
+        if (!_valueEditor.rect().contains(me->pos()))
+        {
+            _valueEditor.hide();
+            highlightSliderTextAtIndex(getSliderIndex(_actionedSlider), false);
+            _actionedSlider=0;
+        }
+    }
+}
+
+//*************************************************************************
+
 bool ColorPalette::sceneEventFilter(QGraphicsItem * watched, QEvent * event)
 {
-    if (itemIsSlider(watched))
+    if (qgraphicsitem_cast<Slider*>(watched))
     {
+        Slider * slider = qgraphicsitem_cast<Slider*>(watched);
         if (event->type() == QEvent::GraphicsSceneMousePress)
         {
-//            SD_TRACE("Mouse press on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
+            SD_TRACE("Mouse press on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
             _sliderPressed = true;
 
         }
@@ -205,18 +300,171 @@ bool ColorPalette::sceneEventFilter(QGraphicsItem * watched, QEvent * event)
         }
         else if (event->type() == QEvent::GraphicsSceneMouseRelease && _sliderPressed)
         {
-//            SD_TRACE("Mouse release on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
+            SD_TRACE("Mouse release on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
             if (_sliderMoving)
             {
-//                SD_TRACE("After moving : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
-                int index = getSliderIndex(watched);
-                emit sliderMouseRelease(index, watched->pos().x());
+                SD_TRACE("After moving : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
+//                int index = getSliderIndex(slider);
+//                emit sliderMouseRelease(index, watched->pos().x());
             }
             _sliderMoving = false;
             _sliderPressed = false;
         }
+        else if (event->type() == QEvent::GraphicsSceneMouseDoubleClick)
+        {
+            QGraphicsSceneMouseEvent* e = static_cast<QGraphicsSceneMouseEvent*>(event);
+            switch (e->button())
+            {
+            case Qt::LeftButton:
+            { // open color picker
+                _colorPicker.move(e->screenPos());
+                _colorPicker.show();
+//                QPoint p = mapToGlobal(QPoint(0,0));
+//                if (_colorPicker.x() + _colorPicker.width() > p.x() + this->width())
+//                {
+//                    _colorPicker.move(e->screenPos() - QPoint(_colorPicker.width(),0));
+//                }
+                _actionedSlider = slider;
+                e->accept();
+                return true;
+            }
+            }
+        }
+    }
+    else if (itemIsSliderText(watched))
+    {
+        Slider * slider = qgraphicsitem_cast<Slider*>(watched->parentItem());
+        if (event->type() == QEvent::GraphicsSceneMouseDoubleClick)
+        {
+            QGraphicsSceneMouseEvent* e = static_cast<QGraphicsSceneMouseEvent*>(event);
+            switch (e->button())
+            {
+            case Qt::LeftButton:
+            { // open value editor
+                _actionedSlider = slider;
+                double value = getValue(getSliderIndex(slider));
+                if (value < -12344)
+                    return false;
+
+                // QPoint p = QWidget::mapToGlobal(QPoint(0,0));
+                int x = e->screenPos().x();
+                int y = e->screenPos().y();//p.y() + _ui->_histogramView->height();
+                _valueEditor.move(QPoint(x,y));
+                _valueEditor.setText(QString("%1").arg(value));
+                _valueEditor.show();
+                _valueEditor.resize(60,_valueEditor.height());
+//                if (_valueEditor.x() + _valueEditor.width() > p.x() + this->width())
+//                {
+//                    _valueEditor.move(QPoint(x - _valueEditor.width(),y));
+//                }
+
+                // highlight slider text:
+                highlightSliderTextAtIndex(getSliderIndex(slider));
+
+                e->accept();
+                return true;
+            }
+            }
+        }
     }
     return QGraphicsItem::sceneEventFilter(watched, event);
+}
+
+//*************************************************************************
+
+void ColorPalette::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
+{
+    SD_TRACE("contextMenuEvent");
+
+    if (_settings.editable)
+    {
+        QGraphicsItem * item = scene()->itemAt(event->scenePos(), QTransform());
+        _menu.clear();
+        if (qgraphicsitem_cast<Slider*>(item))
+        {
+            _actionedSlider = qgraphicsitem_cast<Slider*>(item);
+            _menu.addAction(&_removeSlider);
+            _menu.addAction(&_revertSlider);
+
+        }
+        else if (itemIsPalette(item))
+        {
+            _menu.addAction(&_addSlider);
+            _addSlider.setData(event->scenePos());
+        }
+        _menu.popup(event->screenPos());
+    }
+
+}
+
+//*************************************************************************
+
+void ColorPalette::onMenuTriggered(QAction * action)
+{
+    SD_TRACE("onMenuTriggered");
+    if (action == &_addSlider)
+    {
+        addSlider(action->data().toPointF());
+    }
+    else if (action == &_removeSlider)
+    {
+        if (_actionedSlider)
+        {
+            int index = getSliderIndex(_actionedSlider);
+            removeSliderAtIndex(index);
+        }
+    }
+    else if (action == &_revertSlider)
+    {
+        if (_actionedSlider)
+        {
+            int index = getSliderIndex(_actionedSlider);
+            resetColorOfSliderAtIndex(index);
+        }
+    }
+    _actionedSlider = 0;
+}
+
+//*************************************************************************
+
+/*!
+    Slot to handle color pick action
+*/
+void ColorPalette::onColorPicked(QColor c)
+{
+    int index = getSliderIndex(_actionedSlider);
+    if (index < 0 || index > _sliders.size() - 1)
+        return;
+
+    setColorOfSliderAtIndex(index, c);
+    _colorPicker.hide();
+
+    emit sliderColorChanged(_actionedSlider, c);
+    _actionedSlider = 0;
+
+}
+
+
+//*************************************************************************
+
+/*!
+    Slot to handle value modification by user
+*/
+void ColorPalette::onValueEdited()
+{
+    bool ok=false;
+    double newvalue = _valueEditor.text().toDouble(&ok);
+    if (ok)
+    {
+        int index = getSliderIndex(_actionedSlider);
+        if (index < 0 || index > _sliders.size() - 1)
+            return;
+        newvalue = normalized(newvalue, _xmin, _xmax);
+        setSliderValueAtIndex(index, newvalue);
+        _valueEditor.hide();
+        highlightSliderTextAtIndex(index, false);
+    }
+    _actionedSlider = 0;
 }
 
 //*************************************************************************
@@ -329,37 +577,6 @@ void ColorPalette::modifyStop(int index, const QGradientStop & stop)
 
 //*************************************************************************
 
-///*!
-//    Method to set new min/max limits and recompute inner slider positions
-//*/
-//void ColorPalette::setMinMaxRanges(double xmin, double xmax)
-//{
-//    double oldXMin(_xmin), oldXMax(_xmax);
-//    for (int i=0;i<_sliders.size();i++)
-//    {
-//        Slider * s = _sliders[i];
-
-//        QPointF pos = s->pos();
-//        double x = (oldXMin - xmin)/(xmax - xmin) + pos.x()*(oldXMax - oldXMin)/(xmax - xmin);
-//        x = (x > 1.0) ? 1.0 : (x < 0.0) ? 0.0 : x;
-//        pos.setX(x);
-
-//        s->setFlag(ItemSendsGeometryChanges, false);
-//        s->setPos(pos);
-//        s->setFlag(ItemSendsGeometryChanges, true);
-
-//        // update gradient:
-//        QGradientStop & currentStop = _stops[i];
-//        currentStop.first = s->x();
-//    }
-//    updateAllStops();
-//    _xmin = xmin;
-//    _xmax = xmax;
-
-//}
-
-//*************************************************************************
-
 /*!
     Method to create a slider
 */
@@ -374,10 +591,10 @@ Slider * ColorPalette::createSlider(double xpos, const QColor & color, int count
     slider->setupProperties(0.0, 1.0, _settings.paletteHeightRatio);
     slider->installSceneEventFilter(this);
     slider->setText(QString("%1").arg(xpos*(_xmax - _xmin) + _xmin));
+    slider->setTextVisible(_settings.showValues);
     slider->setFlag(ItemSendsGeometryChanges,false);
     slider->setPos(xpos,_settings.paletteHeightRatio);
     slider->setFlag(ItemSendsGeometryChanges,true);
-    slider->installSceneEventFilter(this);
     return slider;
 }
 
@@ -400,23 +617,25 @@ bool ColorPalette::addSlider(const QPointF &position, int * index)
         count++;
     }
     // create new color stop
-    QColor c;
-    if (count > 0 && count < _stops.size() )
+    QColor c(Qt::black);
+    if (!_stops.isEmpty())
     {
-        c = computeColorAtPosition(x, _stops[count-1], _stops[count]);
-    }
-    else if (count == 0)
-    {
-        c = _stops[count].second;
-    }
-    else if (count == _stops.size())
-    {
-        c = _stops[count - 1].second;
+        if (count > 0 && count < _stops.size() )
+        {
+            c = computeColorAtPosition(x, _stops[count-1], _stops[count]);
+        }
+        else if (count == 0)
+        {
+            c = _stops[count].second;
+        }
+        else if (count == _stops.size())
+        {
+            c = _stops[count - 1].second;
+        }
     }
 
     // create new slider
-    /*Slider * newSlider = */createSlider(x, c, count);
-
+    Slider * newSlider = createSlider(x, c, count);
 
     QGradientStop newStop(x, c);
     insertStop(count, newStop);
@@ -425,6 +644,7 @@ bool ColorPalette::addSlider(const QPointF &position, int * index)
     if (index)
         *index=count;
 
+    emit sliderAdded(newSlider);
     return true;
 }
 
@@ -450,6 +670,7 @@ bool ColorPalette::removeSliderAtIndex(int index)
     // update gradient:
     removeStop(index);
 
+    emit sliderRemoved();
     return true;
 }
 
@@ -597,6 +818,7 @@ void fixPositionWithLeftBoundary(QPointF * p, const QPointF & b)
 
 void ColorPalette::preventCollisionsAndUpdateGradient(Slider *slider, QPointF * csPos)
 {
+    SD_TRACE("ColorPalette::preventCollisionsAndUpdateGradient");
     if (!(_palette && _sliders.size() == _stops.size()))
         return;
 
@@ -628,8 +850,28 @@ void ColorPalette::preventCollisionsAndUpdateGradient(Slider *slider, QPointF * 
     // Update text:
     slider->setText(QString("%1").arg(csPos->x()*(_xmax-_xmin) + _xmin));
 
+    // Update all sliders of the group
+    if (_groups.size() > 0 && _groupUpdate)
+    {
+        int groupIndex = _groupsMap.value(slider, -1);
+        if (groupIndex >= 0)
+        {
+            _groupUpdate=false;
+            double deltaX = csPos->x() - slider->pos().x();
+            foreach(Slider * s, _groups[groupIndex])
+            {
+
+                if (s == slider)
+                    continue;
+                s->setPos(s->pos() + QPointF(deltaX, 0.0));
+            }
+            _groupUpdate=true;
+        }
+    }
+
     // notify about the change
-    emit sliderPositionChanged(sliderIndex, csPos->x());
+//    emit sliderPositionChanged(sliderIndex, csPos->x());
+
 
 }
 

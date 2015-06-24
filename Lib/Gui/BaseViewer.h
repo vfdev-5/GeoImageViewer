@@ -12,12 +12,14 @@
 
 // Project
 #include "Core/LibExport.h"
+#include "ui_BaseViewer.h"
 
 class QAction;
 class QProgressDialog;
 class QKeyEvent;
 class QShowEvent;
 class QLabel;
+
 
 namespace Gui
 {
@@ -48,6 +50,7 @@ public:
     };
 
     explicit BaseViewer(const QString & initialText = QString(), QWidget *parent = 0);
+    virtual ~BaseViewer();
     virtual void clear();
 
     void setSettings(const Settings & settings)
@@ -82,10 +85,10 @@ protected:
     { return QVector<double>(); }
 
     QGraphicsScene _scene;
-    QGraphicsView _view;
+//    QGraphicsView _view;
 
     QGraphicsSimpleTextItem * _initialTextItem;
-    QLabel * _pointInfo;
+//    QLabel * _pointInfo;
 
     QString _initialText;
     QProgressDialog * _progressDialog;
@@ -101,6 +104,7 @@ protected:
     QMenu _menu;
 
     void setZoomEnabled(bool enabled);
+    Ui_BaseViewer * _ui;
 
 protected slots:
     void onContextMenuRequested(QPoint p);

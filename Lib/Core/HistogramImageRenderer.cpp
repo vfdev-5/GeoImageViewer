@@ -162,8 +162,11 @@ bool HistogramImageRenderer::setupConfiguration(const ImageDataProvider *provide
     if (nbBands < 2 && mode == HistogramRendererConfiguration::RGB)
         return false;
 
-    if(!ImageRenderer::setupConfiguration(provider, conf))
-        return false;
+    if (conf->toRGBMapping.isEmpty())
+    {
+        if(!ImageRenderer::setupConfiguration(provider, conf))
+            return false;
+    }
 
     double quantileMinValue(2.5), quantileMaxValue(97.5);
     computeQuantileMinMaxValues(provider->getMinValues(), provider->getMaxValues(),

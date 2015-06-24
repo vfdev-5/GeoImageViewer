@@ -1,1 +1,0 @@
-""" Image processing scripts using Opencv and GDAL """

@@ -254,7 +254,7 @@ bool ShapeViewer::eventFilter(QObject * o, QEvent * e)
         // display current point info :
         if (e->type() == QEvent::GraphicsSceneMouseMove)
         {
-            if (_pointInfo->isVisible())
+            if (_ui->_pointInfo->isVisible())
             {
                 QGraphicsSceneMouseEvent * event = static_cast<QGraphicsSceneMouseEvent*>(e);
 //                QPointF pt = computePointOnItem(event->scenePos());
@@ -279,17 +279,17 @@ bool ShapeViewer::eventFilter(QObject * o, QEvent * e)
                         }
                         info += ")";
                     }
-                    _pointInfo->setText(info);
+                    _ui->_pointInfo->setText(info);
 
                 }
             }
         }
     }
-    else if (o == _view.viewport())
+    else if (o == _ui->_view->viewport())
     {
         if (_enableTools &&
                 _currentTool &&
-                _currentTool->dispatch(e, _view.viewport()))
+                _currentTool->dispatch(e, _ui->_view->viewport()))
         {
             e->accept();
             return true;

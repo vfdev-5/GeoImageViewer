@@ -11,9 +11,12 @@
 #include <QMenu>
 #include <QColorDialog>
 #include <QGraphicsScene>
+#include <QGraphicsSceneContextMenuEvent>
+#include <QLineEdit>
 
 // Project
 #include "Core/LibExport.h"
+#include "ColorPickerFrame.h"
 
 namespace Gui
 {
@@ -22,7 +25,8 @@ namespace Gui
 
 class Slider;
 
-class GIV_DLL_EXPORT ColorPalette : public QObject, public QGraphicsItem
+//class GIV_DLL_EXPORT ColorPalette : public QObject, public QGraphicsItem
+class GIV_DLL_EXPORT ColorPalette : public QGraphicsObject
 {
     Q_OBJECT
 public:
@@ -32,9 +36,13 @@ public:
     struct Settings
     {
         double paletteHeightRatio;
+        bool editable;
+        bool showValues;
 
         Settings() :
-            paletteHeightRatio(0.2)
+            paletteHeightRatio(0.2),
+            editable(true),
+            showValues(true)
         {
         }
     };
@@ -52,7 +60,8 @@ public:
     virtual void paint(QPainter * p, const QStyleOptionGraphicsItem *o, QWidget * w);
 
     void setupPalette(const QGradientStops & normValues, double valueMin, double valueMax, bool isDiscrete);
-//    void setMinMaxRanges(double xmin, double xmax);
+
+    void setupSliderGroups(const QMap<int, int> & sliderIndexGroupMap, int nbOfGroups);
 
     QPair<double, double> getMinMaxRanges() const
     { return QPair<double, double>(_xmin, _xmax); }
@@ -62,25 +71,31 @@ public:
     double getValue(int index) const;
     double getNormValue(int index) const;
 
-    bool itemIsSlider(QGraphicsItem* item) const
+//    bool itemIsSlider(QGraphicsItem* item) const
 //    { return _sliders.contains(reinterpret_cast<Slider*>(item)); }
 //    { return _sliders.contains(static_cast<Slider*>(item)); }
-    { return _sliders.contains(qgraphicsitem_cast<Slider*>(item)); }
+//    { return _sliders.contains(qgraphicsitem_cast<Slider*>(item)); }
 
-    bool itemIsPalette(QGraphicsItem* item) const
-    { return _colorPaletteRect == item; }
+    static bool itemIsPalette(QGraphicsItem* item)
+    { return qgraphicsitem_cast<QGraphicsRectItem*>(item) &&
+                qgraphicsitem_cast<ColorPalette*>(item->parentItem());  }
 
-    bool itemIsSliderText(QGraphicsItem* simpletextitem) const
-    { return qgraphicsitem_cast<QGraphicsSimpleTextItem*>(simpletextitem) != 0; }
+    static bool itemIsSliderText(QGraphicsItem* simpletextitem)
+    { return qgraphicsitem_cast<QGraphicsSimpleTextItem*>(simpletextitem) != 0 &&
+                qgraphicsitem_cast<Slider*>(simpletextitem->parentItem()) != 0; }
 
     void highlightSliderTextAtIndex(int index, bool value=true);
 
     int getNbOfSliders() const
     { return _sliders.size(); }
 
-    int getSliderIndex(QGraphicsItem* slider) const
+//    int getSliderIndex(QGraphicsItem* slider) const
 //    { return _sliders.indexOf(reinterpret_cast<Slider*>(slider)); }
-    { return _sliders.indexOf(qgraphicsitem_cast<Slider*>(slider)); }
+//    { return _sliders.indexOf(qgraphicsitem_cast<Slider*>(slider)); }
+
+    int getSliderIndex(Slider* slider) const
+    { return _sliders.indexOf(slider); }
+
 
     bool removeSliderAtIndex(int sliderIndex);
     bool addSlider(const QPointF & position, int *index = 0);
@@ -94,6 +109,7 @@ public:
     { return _isDiscrete; }
     void setIsDiscrete(bool v);
 
+
 protected:
     void preventCollisionsAndUpdateGradient(Slider * slider, QPointF * p);
 
@@ -102,12 +118,23 @@ protected:
     void modifyStop(int index, const QGradientStop & stop);
     void updateAllStops();
 
-    bool sceneEventFilter(QGraphicsItem * watched, QEvent * event);
 
+    virtual bool eventFilter(QObject *, QEvent *);
+    void valueEditorEvents(QEvent * event);
+    virtual bool sceneEventFilter(QGraphicsItem * watched, QEvent * event);
+    virtual void contextMenuEvent(QGraphicsSceneContextMenuEvent* event);
+
+protected slots:
+    void onMenuTriggered(QAction * );
+    void onColorPicked(QColor c);
+    void onValueEdited();
 
 signals:
-    void sliderPositionChanged(int index, double position);
-    void sliderMouseRelease(int index, double position);
+    void sliderAdded(Slider *);
+    void sliderRemoved();
+    void sliderColorChanged(Slider * slider, const QColor & c);
+//    void sliderPositionChanged(Slider * slider, double position);
+//    void sliderMouseRelease(Slider * slider, double position);
 
 private:
 
@@ -119,6 +146,12 @@ private:
     QGradientStops _stops; //! User selected stops. They can be different from real _palette stops (due to discrete color option)
     Settings _settings;
 
+    // TO REMOVE
+    QMap<Slider*, int> _groupsMap;
+    QVector< QVector<Slider*> > _groups;
+    bool _groupUpdate;
+    // END TO REMOVE
+
     double _xmin;
     double _xmax;
 
@@ -126,6 +159,18 @@ private:
 
     bool _sliderPressed;
     bool _sliderMoving;
+
+    QMenu _menu;
+    QAction _removeSlider;
+    QAction _addSlider;
+    QAction _revertSlider;
+
+    Slider * _actionedSlider;
+
+    ColorPickerFrame _colorPicker;
+    QLineEdit _valueEditor;
+
+
 };
 
 //*************************************************************************
@@ -159,7 +204,7 @@ public:
         _text->setParentItem(this);
         _text->setPen(QPen(Qt::black, 0.0));
         _text->setRotation(90.0);
-        _text->installSceneEventFilter(this);
+        _text->installSceneEventFilter(parent);
 
         QFont f;
         f.setPixelSize(10);
@@ -178,6 +223,9 @@ public:
         _motionRangeMax = rangeMax;
         _fixedValue = fixedValue;
     }
+
+    void setTextVisible(bool value)
+    { _text->setVisible(value); }
 
     void setText(const QString & text)
     { _text->setText(text); }

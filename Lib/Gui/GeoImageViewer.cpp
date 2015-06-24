@@ -69,7 +69,7 @@ GeoImageViewer::GeoImageViewer(QWidget *parent) :
     connect(selection, SIGNAL(copyToNewLayer(QRectF)), this, SLOT(onCopyData(QRectF)));
 
     // Create BrushTool :
-    _toolsManager->insertTool(new Tools::BrushTool(&_scene, &_view));
+    _toolsManager->insertTool(new Tools::BrushTool(&_scene, _ui->_view));
 
     // Create ThresholdFilterTool :
     Tools::ThresholdFilterTool * thresholdTool = new Tools::ThresholdFilterTool(0, 0);
@@ -151,7 +151,7 @@ void GeoImageViewer::prepareSceneAndView(int w, int h)
                 QRectF(0,0,w,h)
                 .adjusted(-0.25*w, -0.25*h, 0.25*w, 0.25*h)
                 );
-    _view.setBackgroundBrush(QBrush(Qt::black));
+    _ui->_view->setBackgroundBrush(QBrush(Qt::black));
     showPointInfo(true);
 
 }
@@ -572,7 +572,7 @@ void GeoImageViewer::initFilterTools()
             Tools::FilterTool * ftool = qobject_cast<Tools::FilterTool*>(tool);
             if (ftool)
             {
-                ftool->setGraphicsSceneAndView(&_scene, &_view);
+                ftool->setGraphicsSceneAndView(&_scene, _ui->_view);
                 connect(ftool, SIGNAL(drawingsFinalized(const QString&, Core::DrawingsItem*)), this, SLOT(createScribble(const QString&, Core::DrawingsItem*)));
                 connect(ftool, SIGNAL(itemCreated(QGraphicsItem*)), this, SLOT(onItemCreated(QGraphicsItem*)));
             }
