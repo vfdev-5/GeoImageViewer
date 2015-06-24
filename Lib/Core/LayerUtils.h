@@ -333,7 +333,7 @@ inline OGRFieldType getOGRFieldTypeFromQVariant(const QVariant & v)
     {
         return OFTReal;
     }
-    else if (type == QMetaType::Float)
+    else if (type == (QVariant::Type) QMetaType::Float)
     {
         return OFTReal;
     }

@@ -302,15 +302,15 @@ QWidget * PropertyEditor::readableWidget(const QVariant &value)
 
         return l;
     }
-    else if (value.type() == QMetaType::QRect)
+    else if (value.type() == QVariant::Rect)
     {
         return createRectWidget(value.toRect());
     }
-    else if (value.type() == QMetaType::QRectF)
+    else if (value.type() == QVariant::RectF)
     {
         return createRectWidget(value.toRectF());
     }
-    else if (value.type() == QMetaType::QPolygonF)
+    else if (value.type() == QVariant::PolygonF)
     {
         return createPolygonWidget(value.value<QPolygonF>());
     }
