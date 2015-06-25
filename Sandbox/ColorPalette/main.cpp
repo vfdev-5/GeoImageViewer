@@ -38,6 +38,9 @@ int main(int argc, char *argv[])
     QGraphicsScene scene;
     scene.setSceneRect(-0.15, -0.15, 1.30, 1.30);
 
+    QGraphicsView view;
+    view.setScene(&scene);
+
 
     Gui::ColorPalette * palette = new Gui::ColorPalette();
     scene.addItem(palette);
@@ -51,8 +54,7 @@ int main(int argc, char *argv[])
     palette->setupPalette(stops, 20, 350, false);
 
 
-    QGraphicsView view;
-    view.setScene(&scene);
+
 //    view.setContextMenuPolicy(Qt::CustomContextMenu);
 //    VIEW = &view;
 //    QObject::connect(&view, &QGraphicsView::customContextMenuRequested, onContextMenuRequested);

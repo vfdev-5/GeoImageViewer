@@ -93,7 +93,9 @@ ColorPalette::ColorPalette(QGraphicsItem * parent) :
     _removeSlider(tr("Remove slider"), this),
     _addSlider(tr("Add slider"), this),
     _revertSlider(tr("Center color"), this),
-    _actionedSlider(0)
+    _actionedSlider(0),
+    _colorPicker(new ColorPickerFrame()),
+    _valueEditor(new QLineEdit())
 {
     _colorPaletteRect->setRect(0.0, 0.0, 1.0, _settings.paletteHeightRatio);
     _colorPaletteRect->setPen(QPen(Qt::black, 0.0));
@@ -101,14 +103,14 @@ ColorPalette::ColorPalette(QGraphicsItem * parent) :
     connect(&_menu, SIGNAL(triggered(QAction*)), this, SLOT(onMenuTriggered(QAction*)));
 
     // setup color picker
-    _colorPicker.setWindowFlags(Qt::Popup);
-    connect(&_colorPicker, SIGNAL(colorPicked(QColor)), this, SLOT(onColorPicked(QColor)));
+    _colorPicker->setWindowFlags(Qt::Popup);
+    connect(_colorPicker, SIGNAL(colorPicked(QColor)), this, SLOT(onColorPicked(QColor)));
 
     // setup value editor
-    _valueEditor.setWindowFlags(Qt::Popup);
-    _valueEditor.installEventFilter(this);
-    _valueEditor.setAlignment(Qt::AlignRight);
-    connect(&_valueEditor, SIGNAL(returnPressed()), this, SLOT(onValueEdited()));
+    _valueEditor->setWindowFlags(Qt::Popup);
+    _valueEditor->installEventFilter(this);
+    _valueEditor->setAlignment(Qt::AlignRight);
+    connect(_valueEditor, SIGNAL(editingFinished()), this, SLOT(onValueEdited()));
 
 }
 
@@ -245,7 +247,7 @@ void ColorPalette::updateAllStops()
 
 bool ColorPalette::eventFilter(QObject * object, QEvent * event)
 {
-    if (&_valueEditor == object)
+    if (_valueEditor == object)
     {
         valueEditorEvents(event);
     }
@@ -262,9 +264,9 @@ void ColorPalette::valueEditorEvents(QEvent * event)
     if (event->type() == QEvent::KeyPress)
     { // Hide valueEditor when user presses escape key
         QKeyEvent * ke = static_cast<QKeyEvent*>(event);
-        if (ke->key() == Qt::Key_Escape && _valueEditor.isVisible())
+        if (ke->key() == Qt::Key_Escape && _valueEditor->isVisible())
         {
-            _valueEditor.hide();
+            _valueEditor->hide();
             highlightSliderTextAtIndex(getSliderIndex(_actionedSlider), false);
             _actionedSlider=0;
         }
@@ -272,9 +274,9 @@ void ColorPalette::valueEditorEvents(QEvent * event)
     else if (event->type() == QEvent::MouseButtonPress)
     { // Hide valueEditor when user clicks somewhere else
         QMouseEvent * me = static_cast<QMouseEvent*>(event);
-        if (!_valueEditor.rect().contains(me->pos()))
+        if (!_valueEditor->rect().contains(me->pos()))
         {
-            _valueEditor.hide();
+            _valueEditor->hide();
             highlightSliderTextAtIndex(getSliderIndex(_actionedSlider), false);
             _actionedSlider=0;
         }
@@ -310,25 +312,34 @@ bool ColorPalette::sceneEventFilter(QGraphicsItem * watched, QEvent * event)
             _sliderMoving = false;
             _sliderPressed = false;
         }
-        else if (event->type() == QEvent::GraphicsSceneMouseDoubleClick)
+        else
+        if (event->type() == QEvent::GraphicsSceneMouseDoubleClick)
         {
+            SD_TRACE("Mouse double-click on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
             QGraphicsSceneMouseEvent* e = static_cast<QGraphicsSceneMouseEvent*>(event);
             switch (e->button())
             {
             case Qt::LeftButton:
             { // open color picker
-                _colorPicker.move(e->screenPos());
-                _colorPicker.show();
-//                QPoint p = mapToGlobal(QPoint(0,0));
-//                if (_colorPicker.x() + _colorPicker.width() > p.x() + this->width())
-//                {
-//                    _colorPicker.move(e->screenPos() - QPoint(_colorPicker.width(),0));
-//                }
+                // Ignore double click event is need because popup menu
+                // blocks the last release event
+                e->ignore();
+
+                QWidget * w = e->widget();
+                QPoint p1 = e->screenPos();
+                _colorPicker->move(p1);
+                _colorPicker->show();
+                QPoint p2 = w->mapToGlobal(QPoint(0,0));
+                if (_colorPicker->x() + _colorPicker->width() > p2.x() + w->width())
+                {
+                    _colorPicker->move(p1 - QPoint(_colorPicker->width(),0));
+                }
                 _actionedSlider = slider;
-                e->accept();
-                return true;
+
             }
+
             }
+            SD_TRACE("Mouse end double-click on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
         }
     }
     else if (itemIsSliderText(watched))
@@ -346,23 +357,28 @@ bool ColorPalette::sceneEventFilter(QGraphicsItem * watched, QEvent * event)
                 if (value < -12344)
                     return false;
 
-                // QPoint p = QWidget::mapToGlobal(QPoint(0,0));
+                // Ignore double click event is need because popup menu
+                // blocks the last release event
+                e->ignore();
+
+                QWidget * w = e->widget();
+                QPoint p = w->mapToGlobal(QPoint(0,0));
                 int x = e->screenPos().x();
-                int y = e->screenPos().y();//p.y() + _ui->_histogramView->height();
-                _valueEditor.move(QPoint(x,y));
-                _valueEditor.setText(QString("%1").arg(value));
-                _valueEditor.show();
-                _valueEditor.resize(60,_valueEditor.height());
-//                if (_valueEditor.x() + _valueEditor.width() > p.x() + this->width())
-//                {
-//                    _valueEditor.move(QPoint(x - _valueEditor.width(),y));
-//                }
+                int y = e->screenPos().y();//p.y() + w->height();
+                _valueEditor->move(QPoint(x,y));
+                _valueEditor->setText(QString("%1").arg(value));
+                _valueEditor->show();
+                _valueEditor->resize(60,_valueEditor->height());
+                if (_valueEditor->x() + _valueEditor->width() > p.x() + w->width())
+                {
+                    _valueEditor->move(QPoint(x - _valueEditor->width(),y));
+                }
 
                 // highlight slider text:
                 highlightSliderTextAtIndex(getSliderIndex(slider));
 
-                e->accept();
-                return true;
+//                e->accept();
+//                return true;
             }
             }
         }
@@ -437,7 +453,7 @@ void ColorPalette::onColorPicked(QColor c)
         return;
 
     setColorOfSliderAtIndex(index, c);
-    _colorPicker.hide();
+    _colorPicker->hide();
 
     emit sliderColorChanged(_actionedSlider, c);
     _actionedSlider = 0;
@@ -453,7 +469,7 @@ void ColorPalette::onColorPicked(QColor c)
 void ColorPalette::onValueEdited()
 {
     bool ok=false;
-    double newvalue = _valueEditor.text().toDouble(&ok);
+    double newvalue = _valueEditor->text().toDouble(&ok);
     if (ok)
     {
         int index = getSliderIndex(_actionedSlider);
@@ -461,7 +477,7 @@ void ColorPalette::onValueEdited()
             return;
         newvalue = normalized(newvalue, _xmin, _xmax);
         setSliderValueAtIndex(index, newvalue);
-        _valueEditor.hide();
+        _valueEditor->hide();
         highlightSliderTextAtIndex(index, false);
     }
     _actionedSlider = 0;

@@ -119,10 +119,10 @@ protected:
     void updateAllStops();
 
 
-    virtual bool eventFilter(QObject *, QEvent *);
+    bool eventFilter(QObject *, QEvent *);
     void valueEditorEvents(QEvent * event);
-    virtual bool sceneEventFilter(QGraphicsItem * watched, QEvent * event);
-    virtual void contextMenuEvent(QGraphicsSceneContextMenuEvent* event);
+    bool sceneEventFilter(QGraphicsItem * watched, QEvent * event);
+    void contextMenuEvent(QGraphicsSceneContextMenuEvent* event);
 
 protected slots:
     void onMenuTriggered(QAction * );
@@ -167,8 +167,8 @@ private:
 
     Slider * _actionedSlider;
 
-    ColorPickerFrame _colorPicker;
-    QLineEdit _valueEditor;
+    ColorPickerFrame * _colorPicker;
+    QLineEdit * _valueEditor;
 
 
 };
