@@ -3,6 +3,7 @@
 #include <QGraphicsItemGroup>
 #include <QGraphicsLineItem>
 #include <QGraphicsView>
+#include <QContextMenuEvent>
 
 // Project
 #include "Core/Global.h"
@@ -399,36 +400,26 @@ void HistogramView::zoomInterval(double vXMin, double vXMax)
 
 void HistogramView::setupViewContextMenu()
 {
-    _ui->_histogramView->setContextMenuPolicy(Qt::CustomContextMenu);
-
-
-    _ui->_histogramView->addAction(&_zoomIn);
-    _ui->_histogramView->addAction(&_zoomOut);
-    QAction * separator = new QAction(_ui->_histogramView);
-    separator->setSeparator(true);
-    _ui->_histogramView->addAction(separator);
-    _ui->_histogramView->addAction(&_zoomAll);
-
+    // menu
+    _menu.addAction(&_zoomIn);
+    _menu.addAction(&_zoomOut);
+    _menu.addSeparator();
+    _menu.addAction(&_zoomAll);
 
     connect(&_zoomIn, SIGNAL(triggered()), this, SLOT(onZoomActionTriggered()));
     connect(&_zoomOut, SIGNAL(triggered()), this, SLOT(onZoomActionTriggered()));
     connect(&_zoomAll, SIGNAL(triggered()), this, SLOT(onZoomActionTriggered()));
-
-    // menu
-    _menu.addActions(_ui->_histogramView->actions());
-
-    connect(_ui->_histogramView, SIGNAL(customContextMenuRequested(QPoint)),
-            this, SLOT(onContextMenuRequested(QPoint)));
 }
 
 //*************************************************************************
 
-void HistogramView::onContextMenuRequested(QPoint p)
+void HistogramView::contextMenuEvent(QContextMenuEvent *event)
 {
     if (_histograms.size() > 0)
     {
-        _menu.popup(_ui->_histogramView->mapToGlobal(p));
+        _menu.popup(event->globalPos());
     }
+    QWidget::contextMenuEvent(event);
 }
 
 //*************************************************************************

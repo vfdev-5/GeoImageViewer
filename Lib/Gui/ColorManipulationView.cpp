@@ -2,15 +2,8 @@
 // Qt
 #include <QGraphicsItemGroup>
 #include <QGraphicsLineItem>
-#include <QGraphicsView>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QLabel>
-#include <QSpacerItem>
-#include <QComboBox>
-#include <QRadioButton>
-#include <QSpinBox>
 #include <QGraphicsSceneMouseEvent>
+#include <QContextMenuEvent>
 
 // Project
 #include "Core/Global.h"
@@ -34,7 +27,7 @@ namespace Gui
 
 //*************************************************************************
 
-QGraphicsLineItem * createSliderLine(QGraphicsItem * parent)
+QGraphicsLineItem * createSliderLine(QGraphicsItem * parent=0)
 {
     QGraphicsLineItem * line = new QGraphicsLineItem(
                 0.0,0.0,
@@ -79,11 +72,7 @@ void orderStops(QGradientStops * stops)
 ColorManipulationView::ColorManipulationView(QWidget *parent) :
     HistogramView(parent),
 //    _colorPalette(0),
-    _removeSlider(tr("Remove slider"), this),
-    _addSlider(tr("Add slider"), this),
-    _revertSlider(tr("Center color"), this),
     _zoomFitSliders(tr("Fit sliders"), this),
-    _indexOfActionedSlider(-1),
     _currentColorPalette(0)
 {
 
@@ -94,16 +83,6 @@ ColorManipulationView::ColorManipulationView(QWidget *parent) :
 
     // setup context menu:
     setupViewContextMenu();
-
-//    // setup color picker
-//    _colorPicker.setWindowFlags(Qt::Popup);
-//    connect(&_colorPicker, SIGNAL(colorPicked(QColor)), this, SLOT(onColorPicked(QColor)));
-
-    //    // setup value editor
-//    _valueEditor.setWindowFlags(Qt::Popup);
-//    _valueEditor.installEventFilter(this);
-//    _valueEditor.setAlignment(Qt::AlignRight);
-//    connect(&_valueEditor, SIGNAL(returnPressed()), this, SLOT(onValueEdited()));
 
     _histogramScene.installEventFilter(this);
 
@@ -142,22 +121,9 @@ void ColorManipulationView::clear()
 */
 void ColorManipulationView::setupViewContextMenu()
 {
-
-    _removeSlider.setVisible(false);
-    _addSlider.setVisible(false);
-    _revertSlider.setVisible(false);
-    _zoomFitSliders.setVisible(false);
-
-    this->addAction(&_removeSlider);
-    this->addAction(&_addSlider);
-    this->addAction(&_revertSlider);
-
+    _menu.addAction(&_zoomFitSliders);
     // connect actions:
-    connect(&_removeSlider, SIGNAL(triggered()), this, SLOT(onRemoveSlider()));
-    connect(&_addSlider, SIGNAL(triggered()), this, SLOT(onAddSlider()));
-    connect(&_revertSlider, SIGNAL(triggered()), this, SLOT(onRevertSlider()));
     connect(&_zoomFitSliders, SIGNAL(triggered()), this, SLOT(onFitSliders()));
-
 }
 
 //*************************************************************************
@@ -415,9 +381,9 @@ void ColorManipulationView::onSliderMouseRelease(int index, double position)
 */
 void ColorManipulationView::onAddSlider()
 {
-    QPointF position = _addSlider.data().toPointF();
-    if (position.isNull())
-        return;
+//    QPointF position = _addSlider.data().toPointF();
+//    if (position.isNull())
+//        return;
 
     int index=-1;
 
@@ -443,8 +409,8 @@ void ColorManipulationView::onAddSlider()
 */
 void ColorManipulationView::onRemoveSlider()
 {
-    int index = _indexOfActionedSlider;
-    _indexOfActionedSlider=-1;
+//    int index = _indexOfActionedSlider;
+//    _indexOfActionedSlider=-1;
 //    if (index < 0 || index > _sliderLines.size() - 1)
 //        return;
 
@@ -519,8 +485,8 @@ void ColorManipulationView::onRemoveSlider()
 */
 void ColorManipulationView::onRevertSlider()
 {
-    int index = _indexOfActionedSlider;
-    _indexOfActionedSlider=-1;
+//    int index = _indexOfActionedSlider;
+//    _indexOfActionedSlider=-1;
 //    if (index < 0 || index > _sliderLines.size() - 1)
 //        return;
 
@@ -735,21 +701,26 @@ void ColorManipulationView::setupColorPalette(ColorPalette* palette, const QGrad
 //    }
 //    _sliderLines.clear();
 
+    palette->setupPalette(houtputStops, xmin, xmax, isDiscrete);
+
     // create slider lines from stops:
     for (int i=0;i<houtputStops.size();i++)
     {
-        QGraphicsLineItem * sliderLine = createSliderLine(palette);
+        QGraphicsLineItem * sliderLine = createSliderLine();
         _histogramScene.addItem(sliderLine);
         sliderLine->setTransform(_settings.histogramTransform);
+        sliderLine->setParentItem(palette->getSlider(i));
+
         double xpos=houtputStops[i].first;
         sliderLine->setTransform(QTransform::fromTranslate(xpos, 0), true);
         sliderLine->setZValue(1.0);
 //        _sliderLines << sliderLine;
     }
 
-    palette->setupPalette(houtputStops, xmin, xmax, isDiscrete);
-    connect(palette, SIGNAL(sliderPositionChanged(int,double)), this, SLOT(onSliderPositionChanged(int,double)));
-    connect(palette, SIGNAL(sliderMouseRelease(int,double)), this, SLOT(onSliderMouseRelease(int,double)));
+
+//    connect(palette, SIGNAL(sliderPositionChanged(int,double)), this, SLOT(onSliderPositionChanged(int,double)));
+//    connect(palette, SIGNAL(sliderMouseRelease(int,double)), this, SLOT(onSliderMouseRelease(int,double)));
+
 }
 
 //*************************************************************************
@@ -766,70 +737,7 @@ ColorPalette * ColorManipulationView::createColorPalette(const QTransform & tran
     {
         colorPalette->setTransform(_cmvSettings.colorPaletteTransform);
     }
-}
-
-//*************************************************************************
-
-void ColorManipulationView::onContextMenuRequested(QPoint p)
-{
-    QPointF scenePt = _ui->_histogramView->mapToScene(p);
-    _menu.clear();
-    if (_histograms.size() > 0)
-    {
-        QGraphicsItem * itemUnderMouse = _histogramScene.itemAt(scenePt, QTransform());
-
-        if (//_colorPalette->itemIsSlider(itemUnderMouse)
-            qgraphicsitem_cast<Slider*>(itemUnderMouse)
-                && _cmvSettings.interactiveColorPalette )
-        { // if clicked on slider :
-            Slider * slider = qgraphicsitem_cast<Slider*>(itemUnderMouse);
-            ColorPalette * palette = qgraphicsitem_cast<ColorPalette*>(slider->parentItem());
-            if (palette)
-            {
-                _menu.addActions(this->actions());
-                // open context menu : - remove slider if nb(sliders) > 3
-                if (palette->getNbOfSliders() > 3)
-                {
-                    _addSlider.setVisible(false);
-                    _removeSlider.setVisible(true);
-                    _revertSlider.setVisible(true);
-                    _indexOfActionedSlider = palette->getSliderIndex(slider);
-                }
-                else if (palette->getNbOfSliders() == 3)
-                {
-                    _addSlider.setVisible(false);
-                    _removeSlider.setVisible(false);
-                    _revertSlider.setVisible(true);
-                    _indexOfActionedSlider = palette->getSliderIndex(slider);
-                }
-            }
-        }
-        else if (//_colorPalette->itemIsPalette(itemUnderMouse)
-                 qgraphicsitem_cast<QGraphicsRectItem*>(itemUnderMouse) &&
-                 qgraphicsitem_cast<ColorPalette*>(itemUnderMouse->parentItem())
-                 && _cmvSettings.interactiveColorPalette)
-        { // if clicked on color palette rectangle
-//            ColorPalette * palette = qgraphicsitem_cast<ColorPalette*>(slider->parentItem());
-//            if (palette)
-//            {
-//                _menu.addActions(this->actions());
-//                _removeSlider.setVisible(false);
-//                _revertSlider.setVisible(false);
-//                _addSlider.setVisible(true);
-////                _addSlider.setData(itemUnderMouse->mapFromScene(scenePt));
-//            }
-        }
-        else
-        {
-            _menu.addActions(_ui->_histogramView->actions());
-            _zoomFitSliders.setVisible(true);
-            _menu.addAction(&_zoomFitSliders);
-            HistogramView::onContextMenuRequested(p);
-            return;
-        }
-        _menu.popup(_ui->_histogramView->mapToGlobal(p));
-    }
-
+    return colorPalette;
 }
 
 //*************************************************************************
@@ -838,116 +746,8 @@ void ColorManipulationView::onContextMenuRequested(QPoint p)
 */
 bool ColorManipulationView::eventFilter(QObject * object, QEvent * event)
 {
-    if (&_histogramScene == object && _histograms.size() > 0)
-    {
-        /*
-        if (event->type() == QEvent::GraphicsSceneMouseDoubleClick)
-        {
-            QGraphicsSceneMouseEvent* e = static_cast<QGraphicsSceneMouseEvent*>(event);
-            QGraphicsItem * itemUnderMouse = _histogramScene.itemAt(e->scenePos(), QTransform());
-            if (//_colorPalette->itemIsSlider(itemUnderMouse)
-                    qgraphicsitem_cast<Slider*>(itemUnderMouse)
-                    && _cmvSettings.interactiveColorPalette)
-            { // if double-clicked on slider :
-                Slider * slider = qgraphicsitem_cast<Slider*>(itemUnderMouse);
-                ColorPalette * palette = qgraphicsitem_cast<ColorPalette*>(slider->parentItem());
-                if (palette)
-                {
-                    switch (e->button())
-                    {
-                    case Qt::LeftButton:
-                    { // open color picker
-                        _colorPicker.move(e->screenPos());
-                        _colorPicker.show();
-                        QPoint p = QWidget::mapToGlobal(QPoint(0,0));
-                        if (_colorPicker.x() + _colorPicker.width() > p.x() + this->width())
-                        {
-                            _colorPicker.move(e->screenPos() - QPoint(_colorPicker.width(),0));
-                        }
-                        _indexOfActionedSlider = palette->getSliderIndex(slider);
-                        e->accept();
-                        return true;
-                    }
-                    }
-                }
-            }
-            else if (//_colorPalette->itemIsSliderText(itemUnderMouse)
-                     ColorPalette::itemIsSliderText(itemUnderMouse))
-            { // if double-clicked on slider-text :
-                Slider * slider = qgraphicsitem_cast<Slider*>(itemUnderMouse->parentItem());
-                ColorPalette * palette = qgraphicsitem_cast<ColorPalette*>(slider->parentItem());
-                if (palette)
-                {
-                    switch (e->button())
-                    {
-                    case Qt::LeftButton:
-                    { // open value editor
-                        _indexOfActionedSlider=palette->getSliderIndex(slider);
-                        if (_indexOfActionedSlider < 0)
-                            return false;
-                        double value = palette->getValue(_indexOfActionedSlider);
-                        if (value < -12344)
-                            return false;
-
-                        QPoint p = QWidget::mapToGlobal(QPoint(0,0));
-                        int x = e->screenPos().x();
-                        int y = p.y() + _ui->_histogramView->height();
-                        _valueEditor.move(QPoint(x,y));
-                        _valueEditor.setText(QString("%1").arg(value));
-                        _valueEditor.show();
-                        _valueEditor.resize(60,_valueEditor.height());
-                        if (_valueEditor.x() + _valueEditor.width() > p.x() + this->width())
-                        {
-                            _valueEditor.move(QPoint(x - _valueEditor.width(),y));
-                        }
-
-                        // highlight slider text:
-                        palette->highlightSliderTextAtIndex(_indexOfActionedSlider);
-
-                        e->accept();
-                        return true;
-                    }
-                    }
-                }
-            }
-        }
-        */
-    }
-//    else if (&_valueEditor == object)
-//    {
-//        valueEditorEvents(event);
-//    }
     return QWidget::eventFilter(object, event);
 }
-
-////*************************************************************************
-
-///*!
-// * Handle value editor key and mouse events
-//*/
-//void ColorManipulationView::valueEditorEvents(QEvent * event)
-//{
-//    if (event->type() == QEvent::KeyPress)
-//    { // Hide valueEditor when user presses escape key
-//        QKeyEvent * ke = static_cast<QKeyEvent*>(event);
-//        if (ke->key() == Qt::Key_Escape && _valueEditor.isVisible())
-//        {
-//            _valueEditor.hide();
-////            _colorPalette->highlightSliderTextAtIndex(_indexOfActionedSlider, false);
-//            _indexOfActionedSlider=-1;
-//        }
-//    }
-//    else if (event->type() == QEvent::MouseButtonPress)
-//    { // Hide valueEditor when user clicks somewhere else
-//        QMouseEvent * me = static_cast<QMouseEvent*>(event);
-//        if (!_valueEditor.rect().contains(me->pos()))
-//        {
-//            _valueEditor.hide();
-////            _colorPalette->highlightSliderTextAtIndex(_indexOfActionedSlider, false);
-//            _indexOfActionedSlider=-1;
-//        }
-//    }
-//}
 
 //*************************************************************************
 

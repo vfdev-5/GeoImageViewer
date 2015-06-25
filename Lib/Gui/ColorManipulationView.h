@@ -61,11 +61,7 @@ protected slots:
     void onRemoveSlider();
     void onAddSlider();
     void onRevertSlider();
-//    void onValueEdited();
     void onFitSliders();
-
-    virtual void onContextMenuRequested(QPoint p);
-
 
 protected:
 
@@ -88,23 +84,12 @@ protected:
     void setupColorPalette(ColorPalette* palette, const QGradientStops & houtputStops, double xmin, double xmax, bool isDiscrete);
 
     bool eventFilter(QObject *, QEvent *);
-//    void valueEditorEvents(QEvent *);
     void setupViewContextMenu();
 
-
-//    ColorPalette * _colorPalette;
-//    QList<QGraphicsLineItem*> _sliderLines;
     QList<ColorPalette*> _colorPalettes;
     ColorPalette* _currentColorPalette;
-    int _indexOfActionedSlider;
-
-    QAction _removeSlider;
-    QAction _addSlider;
-    QAction _revertSlider;
 
     QAction _zoomFitSliders;
-
-//    QLineEdit _valueEditor;
 
     CMVSettings _cmvSettings;
 };

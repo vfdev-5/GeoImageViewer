@@ -66,15 +66,9 @@ public:
     QPair<double, double> getMinMaxRanges() const
     { return QPair<double, double>(_xmin, _xmax); }
 
-
     QGradientStops getPalette() const;
     double getValue(int index) const;
     double getNormValue(int index) const;
-
-//    bool itemIsSlider(QGraphicsItem* item) const
-//    { return _sliders.contains(reinterpret_cast<Slider*>(item)); }
-//    { return _sliders.contains(static_cast<Slider*>(item)); }
-//    { return _sliders.contains(qgraphicsitem_cast<Slider*>(item)); }
 
     static bool itemIsPalette(QGraphicsItem* item)
     { return qgraphicsitem_cast<QGraphicsRectItem*>(item) &&
@@ -96,6 +90,12 @@ public:
     int getSliderIndex(Slider* slider) const
     { return _sliders.indexOf(slider); }
 
+    Slider * getSlider(int index)
+    {
+        if (index < 0 || index >= _sliders.size())
+            return 0;
+        return _sliders[index];
+    }
 
     bool removeSliderAtIndex(int sliderIndex);
     bool addSlider(const QPointF & position, int *index = 0);

@@ -59,7 +59,6 @@ public slots:
     void clear();
 
 protected slots:
-    virtual void onContextMenuRequested(QPoint p);
     void onZoomActionTriggered();
 
 protected:
@@ -84,6 +83,7 @@ protected:
 
     void showEvent(QShowEvent * event);
     void resizeEvent(QResizeEvent * event);
+    virtual void contextMenuEvent(QContextMenuEvent * event);
 
     void zoom(double factor, double xpos);
 

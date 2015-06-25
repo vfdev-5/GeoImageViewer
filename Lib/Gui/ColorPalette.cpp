@@ -292,7 +292,7 @@ bool ColorPalette::sceneEventFilter(QGraphicsItem * watched, QEvent * event)
         Slider * slider = qgraphicsitem_cast<Slider*>(watched);
         if (event->type() == QEvent::GraphicsSceneMousePress)
         {
-            SD_TRACE("Mouse press on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
+//            SD_TRACE("Mouse press on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
             _sliderPressed = true;
 
         }
@@ -302,10 +302,10 @@ bool ColorPalette::sceneEventFilter(QGraphicsItem * watched, QEvent * event)
         }
         else if (event->type() == QEvent::GraphicsSceneMouseRelease && _sliderPressed)
         {
-            SD_TRACE("Mouse release on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
+//            SD_TRACE("Mouse release on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
             if (_sliderMoving)
             {
-                SD_TRACE("After moving : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
+//                SD_TRACE("After moving : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
 //                int index = getSliderIndex(slider);
 //                emit sliderMouseRelease(index, watched->pos().x());
             }
@@ -315,7 +315,7 @@ bool ColorPalette::sceneEventFilter(QGraphicsItem * watched, QEvent * event)
         else
         if (event->type() == QEvent::GraphicsSceneMouseDoubleClick)
         {
-            SD_TRACE("Mouse double-click on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
+//            SD_TRACE("Mouse double-click on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
             QGraphicsSceneMouseEvent* e = static_cast<QGraphicsSceneMouseEvent*>(event);
             switch (e->button())
             {
@@ -339,7 +339,6 @@ bool ColorPalette::sceneEventFilter(QGraphicsItem * watched, QEvent * event)
             }
 
             }
-            SD_TRACE("Mouse end double-click on slider : " +  QString("0x%1").arg((quintptr)watched, QT_POINTER_SIZE * 2, 16, QChar('0')));
         }
     }
     else if (itemIsSliderText(watched))
@@ -377,8 +376,6 @@ bool ColorPalette::sceneEventFilter(QGraphicsItem * watched, QEvent * event)
                 // highlight slider text:
                 highlightSliderTextAtIndex(getSliderIndex(slider));
 
-//                e->accept();
-//                return true;
             }
             }
         }
@@ -410,6 +407,9 @@ void ColorPalette::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         }
         _menu.popup(event->screenPos());
     }
+
+    // Should not propagate the event
+    //QGraphicsObject::contextMenuEvent(event);
 
 }
 
@@ -834,7 +834,6 @@ void fixPositionWithLeftBoundary(QPointF * p, const QPointF & b)
 
 void ColorPalette::preventCollisionsAndUpdateGradient(Slider *slider, QPointF * csPos)
 {
-    SD_TRACE("ColorPalette::preventCollisionsAndUpdateGradient");
     if (!(_palette && _sliders.size() == _stops.size()))
         return;
 
@@ -952,7 +951,7 @@ void Slider::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
                 QTransform::fromScale(1.0/tr.m11(), 1.0/tr.m22())
 
                 );
-
+    // DEBUG :
 //    std::cout << "Tr : " << tr.m11() << ", " << tr.m22() << std::endl;
 //    std::cout << "Widget : " << widget->width() << ", " << widget->height() << std::endl;
 
@@ -964,6 +963,7 @@ void Slider::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
     _brect.setWidth(r.width() * _size / tr.m11());
     _brect.setHeight(r.height() * _size / tr.m22());
 
+    // DEBUG :
 //    painter->setBrush(QColor(0,255,0,127));
 //    painter->setPen(QPen(QColor(Qt::black), 0.0));
 //    painter->drawRect(boundingRect());
