@@ -16,7 +16,6 @@
 
 namespace Gui
 {
-
 //*************************************************************************
 
 void setupStopsEndColor(QGradientStops & stops, const QColor &color)
@@ -28,8 +27,7 @@ void setupStopsEndColor(QGradientStops & stops, const QColor &color)
 void configureAChannel(QSpinBox * spinbox, int currentValue, int minValue, int maxValue)
 {
     spinbox->setMinimum(minValue);
-    spinbox->setMaximum(maxValue);
-    spinbox->setValue(currentValue);
+    spinbox->setMaximum(maxValue);    spinbox->setValue(currentValue);
 }
 
 //*************************************************************************
@@ -62,7 +60,12 @@ HistogramRendererView::HistogramRendererView(QWidget *parent) :
     connect(_ui->_histogramView, SIGNAL(stopsChanged(int, QGradientStops)),
             this, SLOT(onStopsChanged(int, QGradientStops)));
     connect(_ui->_discreteColors, SIGNAL(clicked(bool)),
-            _ui->_histogramView, SLOT(onDiscreteColorsClicked(bool)));
+            _ui->_histogramView, SLOT(setDiscreteColors(bool)));
+
+    connect(_ui->_revert, SIGNAL(clicked()), this, SLOT(revert()));
+
+    // set transfer function names:
+    setTransferFunctionNames(Core::HistogramRendererConfiguration::getAvailableTransferFunctionNames());
 
 }
 
@@ -137,8 +140,7 @@ HistogramRendererView::HistogramRendererView(QWidget *parent) :
 //    _ui->_histogramView->setRenderHint(QPainter::Antialiasing);
 
 
-//    // set transfer function names:
-//    setTransferFunctionNames(Core::HistogramRendererConfiguration::getAvailableTransferFunctionNames());
+
 
 //}
 
@@ -178,88 +180,6 @@ void HistogramRendererView::revert()
     setup(&_initialConf, _dataProvider);
     emit renderConfigurationChanged(&_initialConf);
 }
-
-////*************************************************************************
-
-///*!
-//    Method to reset sliders to default values
-//*/
-//void HistogramRendererView::resetToDefault()
-//{
-//    if (!_currentHistogram)
-//        return;
-
-//    if (_colorPalette)
-//    {
-//        // remove color palette with sliders
-//        _histogramScene.removeItem(_colorPalette);
-//    }
-//    // redraw color palette & sliders & sliderlines
-//    createColorPalette();
-
-//    _ui->_transferFunction->setCurrentIndex(0);
-//    _currentHistogram->transferFunctionName=_ui->_transferFunction->currentIndex();
-//    _ui->_discreteColors->setChecked(false);
-//    _currentHistogram->isDiscrete=_ui->_discreteColors->isChecked();
-
-//    // reset current histogram outputstops
-//    if (_currentHistogram->bandId > -1)
-//    {
-//        int index = _ui->_histList->currentIndex();
-//        double a=(_currentHistogram->xmax2 - _currentHistogram->xmin2);
-//        double b=_currentHistogram->xmin2;
-//        if (a == 0)
-//            a = 1;
-//        if (_mode == RGB)
-//            _currentHistogram->outputStops = Core::resetStops(index,a,b);
-//        else
-//            _currentHistogram->outputStops = Core::resetStops(-1,a,b);
-//        // redraw histogram and sliders:
-//        drawHistogram(index);
-//    }
-//    else
-//    {
-//        double a=(_currentHistogram->xmax2 - _currentHistogram->xmin2);
-//        double b=_currentHistogram->xmin2;
-//        _currentHistogram->outputStops = Core::resetStops(4,a,b);
-//        // redraw
-//        drawAllHistograms();
-//    }
-
-
-//    // notify
-//    emit renderConfigurationChanged(&_conf);
-
-//}
-
-////*************************************************************************
-
-//void HistogramRendererView::initializeAllBandsHistogram()
-//{
-//    _allBandsHistogram.bandId=-1;
-//    double xmin(1e10), xmax(-1e10), xmin2(xmin), xmax2(xmax);
-//    foreach (HistogramDataView h, _histograms)
-//    {
-//        if (h.xmin < xmin) xmin = h.xmin;
-//        if (h.xmax > xmax) xmax = h.xmax;
-//        if (h.xmin2 < xmin2) xmin2 = h.xmin2;
-//        if (h.xmax2 > xmax2) xmax2 = h.xmax2;
-
-//    }
-//    _allBandsHistogram.xmin=xmin;
-//    _allBandsHistogram.xmin2=xmin2;
-//    _allBandsHistogram.xmax=xmax;
-//    _allBandsHistogram.xmax2=xmax2;
-//    _allBandsHistogram.vxmin = _allBandsHistogram.xmin;
-//    _allBandsHistogram.vxmax = _allBandsHistogram.xmax;
-//    _allBandsHistogram.isDiscrete=false;
-//    _allBandsHistogram.outputStops=Core::resetStops(4,xmax2-xmin2, xmin2);
-//    _allBandsHistogram.transferFunctionName=_ui->_transferFunction->itemText(0);
-//    _allBandsHistogram.graphicsItem=new QGraphicsItemGroup();
-//    _allBandsHistogram.graphicsItem->setVisible(true);
-//    _histogramScene.addItem(_allBandsHistogram.graphicsItem);
-
-//}
 
 //*************************************************************************
 /*!
@@ -318,9 +238,31 @@ void HistogramRendererView::setup(const Core::ImageRendererConfiguration *conf, 
 
 //*************************************************************************
 
+/*!
+    Method to set transfer function names
+*/
+void HistogramRendererView::setTransferFunctionNames(const QStringList &transferFunctionNames)
+{
+    _ui->_transferFunction->clear();
+    foreach (QString tf, transferFunctionNames)
+    {
+        _ui->_transferFunction->addItem(tf);
+    }
+
+    // set visible if specified at least one transfer function
+    if (!_ui->_transferFunction->isVisible())
+    {
+        _ui->_transferFunction->setVisible(true);
+        _ui->_transferFunctionLabel->setVisible(true);
+    }
+}
+
+//*************************************************************************
+
 void HistogramRendererView::setupGrayModeView()
 {
     _ui->_discreteColors->setEnabled(true);
+    _ui->_transferFunction->setEnabled(true);
 
     _ui->_histogramView->clear();
     int nbBands = _dataProvider->getNbBands();
@@ -342,7 +284,8 @@ void HistogramRendererView::setupGrayModeView()
         _ui->_histogramView->addHistogram(_conf.normHistStops[i],
                                           _dataProvider->getBandHistograms()[i],
                                           _dataProvider->getMinValues()[i],
-                                          _dataProvider->getMaxValues()[i]);
+                                          _dataProvider->getMaxValues()[i],
+                                          _conf.isDiscreteValues[i]);
     }
 
 }
@@ -352,6 +295,7 @@ void HistogramRendererView::setupGrayModeView()
 void HistogramRendererView::setupRgbModeView()
 {
     _ui->_discreteColors->setEnabled(false);
+    _ui->_transferFunction->setEnabled(false);
 
     _ui->_histogramView->clear();
     // setup end stops colors:
@@ -375,14 +319,15 @@ void HistogramRendererView::setupRgbModeView()
         }
     }
 
-    for (int i=0; i<3; i++)
+    for (int i=0;i<3;i++)
     {
         QGradientStops stops = _conf.normHistStops[indices[i]];
         setupStopsEndColor(stops, colors[i]);
         _ui->_histogramView->addHistogram(stops,
                 _dataProvider->getBandHistograms()[indices[i]],
                 _dataProvider->getMinValues()[indices[i]],
-                _dataProvider->getMaxValues()[indices[i]]);
+                _dataProvider->getMaxValues()[indices[i]],
+                false);
     }
 }
 
@@ -413,6 +358,8 @@ void HistogramRendererView::on__isGrayMode_clicked(bool checked)
 void HistogramRendererView::setGrayHistogram(int index)
 {
     _ui->_histogramView->drawSingleHistogram(index);
+    _ui->_discreteColors->setChecked(_conf.isDiscreteValues[index]);
+    _ui->_transferFunction->setCurrentText(_conf.transferFunctions[index]->getName());
     // setup rendering configuration
     _conf.toRGBMapping[0]=index;
     _conf.toRGBMapping[1]=index;
@@ -452,6 +399,7 @@ void HistogramRendererView::on__discreteColors_clicked(bool checked)
 void HistogramRendererView::setRgbHistogram()
 {
     _ui->_histogramView->drawRgbHistogram();
+    _ui->_discreteColors->setChecked(false);
     // setup rendering configuration
     _conf.toRGBMapping[0]=_ui->_redChannel->value()-1;
     _conf.toRGBMapping[1]=_ui->_greenChannel->value()-1;
@@ -509,15 +457,34 @@ void HistogramRendererView::onStopsChanged(int hIndex, const QGradientStops & ne
     if (_ui->_isGrayMode->isChecked())
     {
         int index = _ui->_grayChannel->value()-1;
-//        index == hIndex;
+        if (index != hIndex)
+        {
+            SD_TRACE("HistogramRendererView::onStopsChanged : Indices are not equal");
+            return;
+        }
         _conf.normHistStops[index] = newstops;
         emit renderConfigurationChanged(&_conf);
     }
     else if (_ui->_isRgbMode->isChecked())
     {
-        int r = _ui->_redChannel->value()-1;
-//        _conf.normHistStops[r] =
+        _conf.normHistStops[hIndex] = newstops;
+        emit renderConfigurationChanged(&_conf);
+    }
+}
 
+//*************************************************************************
+
+void HistogramRendererView::on__transferFunction_activated(QString text)
+{
+    if (_ui->_isGrayMode->isChecked())
+    {
+        int index = _ui->_grayChannel->value()-1;
+        Core::TransferFunction * newFunction = Core::HistogramRendererConfiguration::getTransferFunctionByName(text);
+        if (newFunction != _conf.transferFunctions[index])
+        {
+            _conf.transferFunctions[index] = newFunction;
+            emit renderConfigurationChanged(&_conf);
+        }
     }
 }
 

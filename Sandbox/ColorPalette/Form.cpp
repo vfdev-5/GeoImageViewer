@@ -34,6 +34,12 @@ Form::Form(QWidget *parent) :
     double xmin = -150.5;
     double xmax = 243.7;
     colorPalette->setupPalette(stops, xmin, xmax, false);
+    colorPalette->setZValue(0.1);
+
+
+    QGraphicsItem * item = _scene.addRect(_scene.sceneRect(), QPen(Qt::black,0.0), QBrush(Qt::magenta));
+    item->setZValue(0.2);
+
 
 
 }

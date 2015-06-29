@@ -79,8 +79,6 @@ QColor computeColorAtPosition(double position, const QGradientStop & leftStop, c
     Constructor
 */
 ColorPalette::ColorPalette(QGraphicsItem * parent) :
-//    QGraphicsItem(parent),
-//    QObject(0),
     QGraphicsObject(parent),
     _colorPaletteRect(new QGraphicsRectItem(this)),
     _palette(0),
@@ -392,9 +390,17 @@ void ColorPalette::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         else if (itemIsPalette(item))
         {
             _menu.addAction(&_addSlider);
+            _menu.addSeparator();
+            _menu.addActions(_supplActions);
             _addSlider.setData(event->scenePos());
             _menu.popup(event->screenPos());
         }
+    }
+    else if (!_supplActions.isEmpty())
+    {
+        _menu.clear();
+        _menu.addActions(_supplActions);
+        _menu.popup(event->screenPos());
     }
 
     // Should not propagate the event
@@ -593,7 +599,7 @@ Slider * ColorPalette::createSlider(double xpos, const QColor & color, int count
     Slider * slider = new Slider(this);
     _sliders.insert(count, slider);
 
-    slider->setZValue(1.0);
+//    slider->setZValue(this->zValue() + 1.0);`
     slider->setColor(color);
 	slider->setScale(0.06);
     slider->setupProperties(0.0, 1.0, _settings.paletteHeightRatio);

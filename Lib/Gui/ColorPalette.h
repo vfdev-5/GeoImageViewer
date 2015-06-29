@@ -25,7 +25,6 @@ namespace Gui
 
 class Slider;
 
-//class GIV_DLL_EXPORT ColorPalette : public QObject, public QGraphicsItem
 class GIV_DLL_EXPORT ColorPalette : public QGraphicsObject
 {
     Q_OBJECT
@@ -35,7 +34,7 @@ public:
 
     struct Settings
     {
-        double paletteHeightRatio;
+        const double paletteHeightRatio;
         bool editable;
         bool showValues;
 
@@ -61,6 +60,12 @@ public:
     virtual void paint(QPainter * p, const QStyleOptionGraphicsItem *o, QWidget * w);
 
     void setupPalette(const QGradientStops & normValues, double valueMin, double valueMax, bool isDiscrete);
+
+    void setEditableSettings(bool editable)
+    { _settings.editable = editable; }
+
+    void setShowValuesSettings(bool show)
+    { _settings.showValues = show; }
 
     QPair<double, double> getMinMaxRanges() const
     { return QPair<double, double>(_xmin, _xmax); }
@@ -104,6 +109,8 @@ public:
     { return _isDiscrete; }
     void setIsDiscrete(bool v);
 
+    void setSupplMenuActions(const QList<QAction*> & actions)
+    { _supplActions = actions; }
 
 protected:
     void preventCollisionsAndUpdateGradient(Slider * slider, QPointF * p);
@@ -129,7 +136,6 @@ signals:
     void sliderRemoved();
     void sliderColorChanged(Slider * slider, const QColor & c);
     void sliderPositionChanged(Slider * slider, double position);
-//    void sliderMouseRelease(Slider * slider, double position);
 
 private:
 
@@ -153,6 +159,7 @@ private:
     QAction _removeSlider;
     QAction _addSlider;
     QAction _revertSlider;
+    QList<QAction*> _supplActions;
 
     Slider * _actionedSlider;
 
@@ -189,8 +196,7 @@ public:
         setAcceptedMouseButtons((Qt::MouseButtons)(Qt::LeftButton | Qt::RightButton));
 
 
-        _text = new QGraphicsSimpleTextItem;
-        _text->setParentItem(this);
+        _text = new QGraphicsSimpleTextItem(this);
         _text->setPen(QPen(Qt::black, 0.0));
         _text->setRotation(90.0);
         _text->installSceneEventFilter(parent);

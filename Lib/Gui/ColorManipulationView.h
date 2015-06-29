@@ -32,6 +32,7 @@ public:
     {
         const double histOverPaletteRatio;
         QTransform colorPaletteTransform;
+        QTransform colorPaletteTransform2;
         int updateDelayMaxTime;
         bool interactiveColorPalette;
         CMVSettings() :
@@ -41,8 +42,8 @@ public:
         {}
     };
 
-    void addHistogram(const QGradientStops &normStops, const QVector<double> &data, double xmin, double xmax);
-    bool setHistogram(int index, const QGradientStops & normHistStops, const QVector<double> & data, double xmin, double xmax);
+    void addHistogram(const QGradientStops &normStops, const QVector<double> &data, double xmin, double xmax, bool isDiscrete);
+    bool setHistogram(int index, const QGradientStops & normHistStops, const QVector<double> & data, double xmin, double xmax, bool isDiscrete);
 
     void drawSingleHistogram(int index);
     void drawRgbHistogram(int r=0, int g=1, int b=2);
@@ -52,7 +53,7 @@ signals:
 
 public slots:
     void clear();
-    void onDiscreteColorsClicked(bool checked);
+    void setDiscreteColors(bool value);
 
 protected slots:
     // Slider management
@@ -79,18 +80,21 @@ protected:
         }
     };
 
+    CMVHistogramItem * getHistogramItem(ColorPalette * colorPalette);
 
     void updateAllStops(ColorPalette * colorPalette);
-    void updateHistogramItem(int index=-1, double xpos = -13245, const QColor &c = QColor(), bool notificationDelayed=false);
+//    void updateHistogramItem(int index=-1, double xpos = -13245, const QColor &c = QColor(), bool notificationDelayed=false);
     ColorPalette *createColorPalette(const QTransform & transform = QTransform());
     QGraphicsLineItem * createSliderLine(Slider * slider);
     void setupColorPalette(ColorPalette* palette, const QGradientStops & houtputStops, double xmin, double xmax, bool isDiscrete);
 
-    bool eventFilter(QObject *, QEvent *);
-    void setupViewContextMenu();
+    void removeColorPalettes();
 
+    void setupContextMenu();
+
+    QMap<ColorPalette*, CMVHistogramItem*> _paletteHistogramMap;
     QList<ColorPalette*> _colorPalettes;
-    ColorPalette* _currentColorPalette;
+//    ColorPalette* _currentColorPalette;
 
     QAction _zoomFitSliders;
 

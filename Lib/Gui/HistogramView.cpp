@@ -81,7 +81,7 @@ HistogramView::HistogramView(QWidget *parent) :
     _visibleZone = _histogramScene.sceneRect();
 
     // setup context menu
-    setupViewContextMenu();
+    setupContextMenu();
 
     // Draw items:
     // clear();
@@ -272,7 +272,7 @@ void HistogramView::drawRgbHistogram(int r, int g, int b)
                            QColor(0,255,0,81),
                            QColor(0,0,255,81)};
     int indices[] = {r,g,b};
-    for (int i=0;i<_histograms.size();i++)
+    for (int i=0;i<3;i++)
     {
         HistogramItem * h = _histograms[indices[i]];
         drawHistogramGraphicsItem(h, QPen(dataColors[i], 0.0));
@@ -399,7 +399,7 @@ void HistogramView::zoomInterval(double vXMin, double vXMax)
 
 //*************************************************************************
 
-void HistogramView::setupViewContextMenu()
+void HistogramView::setupContextMenu()
 {
     // menu
     _menu.addAction(&_zoomIn);
