@@ -59,7 +59,6 @@ ShapeViewer::~ShapeViewer()
 
 void ShapeViewer::clear()
 {
-    SD_TRACE("ShapeViewer::clear");
     foreach (Core::BaseLayer * layer, _layers)
     {
         layer->setParent(0);
@@ -80,7 +79,6 @@ void ShapeViewer::clear()
 
 void ShapeViewer::onToolChanged(const QString & toolName)
 {
-    SD_TRACE("onToolChanged : " + toolName);
     Tools::AbstractTool * tool = _toolsManager->getTool(toolName);
     // change to the new one
     if (!tool)
@@ -217,7 +215,6 @@ void ShapeViewer::onBaseLayerDestroyed(QObject * layerObj)
 void ShapeViewer::onBaseLayerSelected(Core::BaseLayer * layer)
 {
     Q_UNUSED(layer);
-    SD_TRACE("ShapeViewer::onBaseLayerSelected");
 }
 
 //******************************************************************************

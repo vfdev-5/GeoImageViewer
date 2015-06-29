@@ -93,7 +93,6 @@ void FiltersManager::insertFilter(AbstractFilter *filter)
 
 void FiltersManager::loadPlugins(const QString &path)
 {
-
     foreach (Core::Plugin pair, Core::PluginLoader::loadAll(path))
     {
         QString fileName = pair.first;

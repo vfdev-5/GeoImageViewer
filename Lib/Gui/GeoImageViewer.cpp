@@ -95,7 +95,6 @@ GeoImageViewer::~GeoImageViewer()
 
 void GeoImageViewer::clear()
 {
-    SD_TRACE("GeoImageViewer::clear");
     if (_rendererView)
     {
         _rendererView->clear();
@@ -231,7 +230,6 @@ void GeoImageViewer::onProgressCanceled()
 
 void GeoImageViewer::onBaseLayerSelected(Core::BaseLayer * layer)
 {
-    SD_TRACE("GeoImageViewer::onBaseLayerSelected");
     ShapeViewer::onBaseLayerSelected(layer);
 
     // setup renderer view if layer is geo image layer

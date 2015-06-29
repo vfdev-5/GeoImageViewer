@@ -315,9 +315,9 @@ QGraphicsItemGroup * HistogramView::createHistogramGraphicsItem(const QVector<do
     {
         double value = data[i];
         QGraphicsLineItem * l = new QGraphicsLineItem(
-                    i*1.0/histSize + d,
+                    i*1.0/histSize,
                     1.0 - value - d,
-                    i*1.0/histSize + d,
+                    i*1.0/histSize,
                     1.0 - d
                     );
         l->setPen(dataPen);
@@ -385,13 +385,13 @@ void HistogramView::drawAxes()
  */
 void HistogramView::zoomInterval(double vXMin, double vXMax)
 {
-    SD_TRACE(QString("HistogramView::zoomInterval : %1, %2").arg(vXMin).arg(vXMax));
     if (vXMax < vXMin ||
-            vXMax-vXMin < 1.0/_settings.zoomMaxFactor)
+            qAbs(vXMax-vXMin) < 1.0/_settings.zoomMaxFactor)
     {
         SD_TRACE("HistogramView::zoomInterval : vXMax should be bigger than vXMin");
         return;
     }
+
     _visibleZone.setX(vXMin);
     _visibleZone.setWidth(vXMax-vXMin);
     _ui->_histogramView->fitInView(_visibleZone);

@@ -467,7 +467,8 @@ void HistogramRendererView::onStopsChanged(int hIndex, const QGradientStops & ne
     }
     else if (_ui->_isRgbMode->isChecked())
     {
-        _conf.normHistStops[hIndex] = newstops;
+        int index = _conf.toRGBMapping[hIndex];
+        _conf.normHistStops[index] = newstops;
         emit renderConfigurationChanged(&_conf);
     }
 }

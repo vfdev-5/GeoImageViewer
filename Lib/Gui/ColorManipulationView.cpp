@@ -269,6 +269,10 @@ void ColorManipulationView::drawRgbHistogram(int r, int g, int b)
 
     zoomInterval(0.0, 1.0);
 
+    // remove action in menu
+    _menu.removeAction(&_zoomFitSliders);
+
+
 }
 
 //*************************************************************************
@@ -422,7 +426,16 @@ void ColorManipulationView::onFitSliders()
     CMVHistogramItem * h = static_cast<CMVHistogramItem*>(_currentHistogram);
     if (!h)
         return;
-    zoomInterval(h->outputStops.first().first, h->outputStops.last().first);
+
+    double vXMin = h->outputStops.first().first;
+    double vXMax = h->outputStops.last().first;
+    if ( qAbs(vXMax-vXMin) < 1.0/_settings.zoomMaxFactor )
+    {
+        SD_ERR("Cannot zoom to fit sliders. Distance between sliders is too small");
+        return;
+    }
+
+    zoomInterval(vXMin, vXMax);
 }
 
 //*************************************************************************
