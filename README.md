@@ -13,6 +13,6 @@ Project main dependencies:
 
 Project contains :
 * Library ('Lib/') with bricks to create geo-image aware applications 
-* Example applications ('App/' or 'App2/') showing basic usage of the library
+* Example applications ('App/') showing basic usage of the library
 * Tests
 * Plugins
