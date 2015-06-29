@@ -12,7 +12,7 @@
 namespace Core
 {
 #ifdef _DEBUG
-    const QStringList PluginFilters << "*Plugin.d.dll" << "*Plugin.d.so" << "*Plugin.d.dylib";
+    const QStringList PluginLoader::PluginFilters = QStringList() << "*Plugin.d.dll" << "*Plugin.d.so" << "*Plugin.d.dylib";
 #else
     const QStringList PluginLoader::PluginFilters = QStringList() << "*Plugin.dll" << "*Plugin.so" << "*Plugin.dylib";
 #endif

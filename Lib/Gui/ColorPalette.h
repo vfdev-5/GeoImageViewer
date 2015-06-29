@@ -55,13 +55,12 @@ public:
     { return Type; }
 
     explicit ColorPalette(QGraphicsItem * parent = 0);
+    virtual ~ColorPalette();
 
     virtual QRectF boundingRect() const;
     virtual void paint(QPainter * p, const QStyleOptionGraphicsItem *o, QWidget * w);
 
     void setupPalette(const QGradientStops & normValues, double valueMin, double valueMax, bool isDiscrete);
-
-    void setupSliderGroups(const QMap<int, int> & sliderIndexGroupMap, int nbOfGroups);
 
     QPair<double, double> getMinMaxRanges() const
     { return QPair<double, double>(_xmin, _xmax); }
@@ -82,10 +81,6 @@ public:
 
     int getNbOfSliders() const
     { return _sliders.size(); }
-
-//    int getSliderIndex(QGraphicsItem* slider) const
-//    { return _sliders.indexOf(reinterpret_cast<Slider*>(slider)); }
-//    { return _sliders.indexOf(qgraphicsitem_cast<Slider*>(slider)); }
 
     int getSliderIndex(Slider* slider) const
     { return _sliders.indexOf(slider); }
@@ -133,7 +128,7 @@ signals:
     void sliderAdded(Slider *);
     void sliderRemoved();
     void sliderColorChanged(Slider * slider, const QColor & c);
-//    void sliderPositionChanged(Slider * slider, double position);
+    void sliderPositionChanged(Slider * slider, double position);
 //    void sliderMouseRelease(Slider * slider, double position);
 
 private:
@@ -145,12 +140,6 @@ private:
     QList<Slider*> _sliders;
     QGradientStops _stops; //! User selected stops. They can be different from real _palette stops (due to discrete color option)
     Settings _settings;
-
-    // TO REMOVE
-    QMap<Slider*, int> _groupsMap;
-    QVector< QVector<Slider*> > _groups;
-    bool _groupUpdate;
-    // END TO REMOVE
 
     double _xmin;
     double _xmax;
@@ -213,6 +202,11 @@ public:
         _text->setFont(f);
     }
 
+    virtual ~Slider()
+    {
+        delete _text;
+    }
+
     enum { Type = UserType + 1002 };
     int type() const
     { return Type; }
@@ -238,6 +232,7 @@ public:
     virtual QRectF boundingRect() const;
     virtual QPainterPath shape() const;
     virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+
 protected:
     virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);
 

@@ -385,6 +385,7 @@ void HistogramView::drawAxes()
  */
 void HistogramView::zoomInterval(double vXMin, double vXMax)
 {
+    SD_TRACE(QString("HistogramView::zoomInterval : %1, %2").arg(vXMin).arg(vXMax));
     if (vXMax < vXMin ||
             vXMax-vXMin < 1.0/_settings.zoomMaxFactor)
     {

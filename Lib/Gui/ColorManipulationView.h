@@ -19,13 +19,13 @@ namespace Gui
 
 //*************************************************************************
 
-class ColorManipulationView : public HistogramView
+class GIV_DLL_EXPORT ColorManipulationView : public HistogramView
 {
     Q_OBJECT
 
 public:
 
-    ColorManipulationView(QWidget * parent = 0);
+    explicit ColorManipulationView(QWidget * parent = 0);
 //    virtual ~ColorManipulationView() {}
 
     struct CMVSettings
@@ -52,15 +52,16 @@ signals:
 
 public slots:
     void clear();
-    void onSliderPositionChanged(int index, double position);
-    void onSliderMouseRelease(int index, double position);
     void onDiscreteColorsClicked(bool checked);
 
 protected slots:
     // Slider management
     void onRemoveSlider();
-    void onAddSlider();
+    void onAddSlider(Slider *slider);
     void onRevertSlider();
+    void onSliderPositionChanged(Slider *slider, double position);
+    void onSliderColorChanged(Slider* slider, const QColor & c);
+    // Zoom
     void onFitSliders();
 
 protected:
@@ -79,8 +80,10 @@ protected:
     };
 
 
+    void updateAllStops(ColorPalette * colorPalette);
     void updateHistogramItem(int index=-1, double xpos = -13245, const QColor &c = QColor(), bool notificationDelayed=false);
     ColorPalette *createColorPalette(const QTransform & transform = QTransform());
+    QGraphicsLineItem * createSliderLine(Slider * slider);
     void setupColorPalette(ColorPalette* palette, const QGradientStops & houtputStops, double xmin, double xmax, bool isDiscrete);
 
     bool eventFilter(QObject *, QEvent *);

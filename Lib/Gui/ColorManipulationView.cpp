@@ -27,7 +27,7 @@ namespace Gui
 
 //*************************************************************************
 
-QGraphicsLineItem * createSliderLine(QGraphicsItem * parent=0)
+QGraphicsLineItem * createLine(QGraphicsItem * parent=0)
 {
     QGraphicsLineItem * line = new QGraphicsLineItem(
                 0.0,0.0,
@@ -36,6 +36,12 @@ QGraphicsLineItem * createSliderLine(QGraphicsItem * parent=0)
     line->setPen(QPen(QBrush(Qt::white), 0.0, Qt::DashLine));
     line->setZValue(2.0);
     return line;
+}
+
+QTransform sliderLineTransform(QGraphicsLineItem * sliderLine, QGraphicsItem * slider)
+{
+    return QTransform::fromTranslate(slider->scenePos().x(), 0.0) *
+            sliderLine->sceneTransform().inverted();
 }
 
 inline void copyPositions(const QGradientStops & src, QGradientStops & dst)
@@ -50,6 +56,17 @@ inline void copyPositions(const QGradientStops & src, QGradientStops & dst)
 void orderStops(QGradientStops * stops)
 {
     qSort(stops->begin(), stops->end(), std::less<QGradientStop>());
+}
+
+void printStops(const QGradientStops & stops)
+{
+    SD_TRACE("----- Print stops -----");
+    SD_TRACE(QString("Stops count : %1").arg(stops.size()));
+    foreach (QGradientStop stop, stops)
+    {
+        SD_TRACE(QString("Stop : %1, %2").arg(stop.first).arg(stop.second.name()));
+    }
+    SD_TRACE("-----------------------");
 }
 
 //*************************************************************************
@@ -92,7 +109,6 @@ ColorManipulationView::ColorManipulationView(QWidget *parent) :
     _cmvSettings.colorPaletteTransform =
             QTransform::fromScale(1.0, 1.0 -_cmvSettings.histOverPaletteRatio) *
             QTransform::fromTranslate(0.0, _histogramScene.height()*_cmvSettings.histOverPaletteRatio);
-
 
     // Draw items:
     // clear();
@@ -338,40 +354,99 @@ void ColorManipulationView::updateHistogramItem(int index, double xpos, const QC
     }
 }
 
+////*************************************************************************
+
+///*!
+//    Slot to respond on slider position change
+//*/
+//void ColorManipulationView::onSliderPositionChanged(int index, double position)
+//{
+////    if (index < 0 || index > _sliderLines.size() - 1 || !_currentHistogram)
+////        return;
+
+////    QGraphicsLineItem * sliderLine = _sliderLines[index];
+////    sliderLine->setTransform(_settings.histogramTransform);
+//////    double npos=normalized(position, _currentHistogram->xmin, _currentHistogram->xmax);
+////    double npos=position;
+////    sliderLine->setTransform(QTransform::fromTranslate(npos, 0), true);
+
+//    // update histogram data
+//    updateHistogramItem(index, position, QColor(), true);
+
+//}
+
 //*************************************************************************
 
 /*!
     Slot to respond on slider position change
+    double xpos is normalized slider position
 */
-void ColorManipulationView::onSliderPositionChanged(int index, double position)
+void ColorManipulationView::onSliderPositionChanged(Slider* slider, double xpos)
 {
-//    if (index < 0 || index > _sliderLines.size() - 1 || !_currentHistogram)
-//        return;
+    CMVHistogramItem * h = static_cast<CMVHistogramItem*>(_currentHistogram);
+    if (!h)
+    {
+        SD_TRACE("ColorManipulationView::onSliderPositionChanged : _currentHistogram = null");
+        return;
+    }
 
-//    QGraphicsLineItem * sliderLine = _sliderLines[index];
-//    sliderLine->setTransform(_settings.histogramTransform);
-////    double npos=normalized(position, _currentHistogram->xmin, _currentHistogram->xmax);
-//    double npos=position;
-//    sliderLine->setTransform(QTransform::fromTranslate(npos, 0), true);
+    ColorPalette * palette = qobject_cast<ColorPalette*>(sender());
+    if (!palette)
+    {
+        SD_TRACE("ColorManipulationView::onSliderPositionChanged : palette = null");
+        return;
+    }
 
-    // update histogram data
-    updateHistogramItem(index, position, QColor(), true);
+
+    int index = palette->getSliderIndex(slider);
+    if (index < 0 || index >= h->outputStops.size())
+    {
+        SD_TRACE("ColorManipulationView::onSliderPositionChanged : slider index is out of bounds");
+        return;
+    }
+
+    h->outputStops[index].first = xpos;
+
+    int hIndex = _histograms.indexOf(h);
+    emit stopsChanged(hIndex, h->outputStops);
+
+    printStops(h->outputStops);
 
 }
 
 //*************************************************************************
 
 /*!
-    Slot to respond on slider position change
+    Slot to handle slider's color change
 */
-void ColorManipulationView::onSliderMouseRelease(int index, double position)
+void ColorManipulationView::onSliderColorChanged(Slider *slider, const QColor &c)
 {
-//    if (index < 0 || index > _sliderLines.size() - 1 || !_currentHistogram)
-//        return;
+    CMVHistogramItem * h = static_cast<CMVHistogramItem*>(_currentHistogram);
+    if (!h)
+    {
+        SD_TRACE("ColorManipulationView::onSliderColorChanged : _currentHistogram = null");
+        return;
+    }
 
-    // update histogram data
-    updateHistogramItem(index, position);
+    ColorPalette * palette = qobject_cast<ColorPalette*>(sender());
+    if (!palette)
+    {
+        SD_TRACE("ColorManipulationView::onSliderColorChanged : palette = null");
+        return;
+    }
 
+    int index = palette->getSliderIndex(slider);
+    if (index < 0 || index >= h->outputStops.size())
+    {
+        SD_TRACE("ColorManipulationView::onSliderColorChanged : slider index is out of bounds");
+        return;
+    }
+
+    h->outputStops[index].second = c;
+    int hIndex = _histograms.indexOf(h);
+    emit stopsChanged(hIndex, h->outputStops);
+
+    printStops(h->outputStops);
 }
 
 //*************************************************************************
@@ -379,27 +454,17 @@ void ColorManipulationView::onSliderMouseRelease(int index, double position)
 /*!
     Slot to handle add slider action
 */
-void ColorManipulationView::onAddSlider()
+void ColorManipulationView::onAddSlider(Slider* slider)
 {
-//    QPointF position = _addSlider.data().toPointF();
-//    if (position.isNull())
-//        return;
+    /*QGraphicsLineItem * sliderLine = */createSliderLine(slider);
 
-    int index=-1;
-
-//    if (_colorPalette->addSlider(position, &index))
-//    {
-//        QGraphicsLineItem * sliderLine = createSliderLine();
-//        _histogramScene.addItem(sliderLine);
-//        sliderLine->setTransform(_settings.histogramTransform);
-//        sliderLine->setTransform(QTransform::fromTranslate(position.x(), 0), true);
-//        sliderLine->setZValue(1.0);
-////        _sliderLines.insert(index, sliderLine);
-//    }
-
-    // update histogram data
-    updateHistogramItem();
-
+    ColorPalette * palette = qobject_cast<ColorPalette*>(sender());
+    if (!palette)
+    {
+        SD_TRACE("ColorManipulationView::onAddSlider : palette = null");
+        return;
+    }
+    updateAllStops(palette);
 }
 
 //*************************************************************************
@@ -409,74 +474,31 @@ void ColorManipulationView::onAddSlider()
 */
 void ColorManipulationView::onRemoveSlider()
 {
-//    int index = _indexOfActionedSlider;
-//    _indexOfActionedSlider=-1;
-//    if (index < 0 || index > _sliderLines.size() - 1)
-//        return;
-
-//    if (_colorPalette->removeSliderAtIndex(index))
-//    {
-//        QGraphicsLineItem * sliderLine = _sliderLines[index];
-//        _sliderLines.removeAt(index);
-//        _histogramScene.removeItem(sliderLine);
-//    }
-
-    // update histogram data
-    updateHistogramItem();
-
+    ColorPalette * palette = qobject_cast<ColorPalette*>(sender());
+    if (!palette)
+    {
+        SD_TRACE("ColorManipulationView::onRemoveSlider : palette = null");
+        return;
+    }
+    updateAllStops(palette);
 }
 
-////*************************************************************************
+//*************************************************************************
 
-///*!
-//    Slot to handle color pick action
-//*/
-//void ColorManipulationView::onColorPicked(QColor c)
-//{
-//    int index = _indexOfActionedSlider;
-//    _indexOfActionedSlider=-1;
-////    if (index < 0 || index > _sliderLines.size() - 1)
-////        return;
+void ColorManipulationView::updateAllStops(ColorPalette * colorPalette)
+{
+    CMVHistogramItem * h = static_cast<CMVHistogramItem*>(_currentHistogram);
+    if (!h)
+    {
+        SD_TRACE("ColorManipulationView::updateAllStops : _currentHistogram = null");
+        return;
+    }
+    h->outputStops=colorPalette->getPalette();
+    int hIndex = _histograms.indexOf(h);
+    emit stopsChanged(hIndex, h->outputStops);
 
-////    _colorPalette->setColorOfSliderAtIndex(index, c);
-////    _colorPicker.hide();
-
-//    // update histogram data
-//    updateHistogramItem(index, -12345, c);
-
-//}
-
-////*************************************************************************
-
-///*!
-//    Slot to handle value modification by user
-//*/
-//void ColorManipulationView::onValueEdited()
-//{
-
-//    bool ok=false;
-//    double newvalue = _valueEditor.text().toDouble(&ok);
-//    if (ok)
-//    {
-//        int index = _indexOfActionedSlider;
-//        _indexOfActionedSlider=-1;
-////        if (index < 0 || index > _sliderLines.size() - 1
-////                || !_currentHistogram)
-////            return;
-////        newvalue = normalized(newvalue, _currentHistogram->xmin, _currentHistogram->xmax);
-////        _colorPalette->setSliderValueAtIndex(index, newvalue);
-////        _valueEditor.hide();
-////        _colorPalette->highlightSliderTextAtIndex(index, false);
-
-//        // notify about the change. Slider position change slot does not notify
-//        CMVHistogramItem * h = static_cast<CMVHistogramItem*>(_currentHistogram);
-//        if (h)
-//        {
-//            int hIndex = _histograms.indexOf(h);
-//            emit stopsChanged(hIndex, h->outputStops);
-//        }
-//    }
-//}
+    printStops(h->outputStops);
+}
 
 //*************************************************************************
 
@@ -485,15 +507,13 @@ void ColorManipulationView::onRemoveSlider()
 */
 void ColorManipulationView::onRevertSlider()
 {
-//    int index = _indexOfActionedSlider;
-//    _indexOfActionedSlider=-1;
-//    if (index < 0 || index > _sliderLines.size() - 1)
-//        return;
-
-//    _colorPalette->resetColorOfSliderAtIndex(index);
-
-    updateHistogramItem();
-
+    ColorPalette * palette = qobject_cast<ColorPalette*>(sender());
+    if (!palette)
+    {
+        SD_TRACE("ColorManipulationView::onRevertSlider : palette = null");
+        return;
+    }
+    updateAllStops(palette);
 }
 
 //*************************************************************************
@@ -686,46 +706,6 @@ void ColorManipulationView::onDiscreteColorsClicked(bool checked)
 //*************************************************************************
 
 /*!
-    Method to draw a color palette with n sliders from histogram info
-    The map between line and slider is done with index in the _sliderLines and the index in the ColorPalette
-*/
-void ColorManipulationView::setupColorPalette(ColorPalette* palette, const QGradientStops & houtputStops, double xmin, double xmax, bool isDiscrete)
-{
-
-
-//    // remove previous slider lines :
-//    foreach (QGraphicsLineItem * line, _sliderLines)
-//    {
-//        _histogramScene.removeItem(line);
-//        delete line;
-//    }
-//    _sliderLines.clear();
-
-    palette->setupPalette(houtputStops, xmin, xmax, isDiscrete);
-
-    // create slider lines from stops:
-    for (int i=0;i<houtputStops.size();i++)
-    {
-        QGraphicsLineItem * sliderLine = createSliderLine();
-        _histogramScene.addItem(sliderLine);
-        sliderLine->setTransform(_settings.histogramTransform);
-        sliderLine->setParentItem(palette->getSlider(i));
-
-        double xpos=houtputStops[i].first;
-        sliderLine->setTransform(QTransform::fromTranslate(xpos, 0), true);
-        sliderLine->setZValue(1.0);
-//        _sliderLines << sliderLine;
-    }
-
-
-//    connect(palette, SIGNAL(sliderPositionChanged(int,double)), this, SLOT(onSliderPositionChanged(int,double)));
-//    connect(palette, SIGNAL(sliderMouseRelease(int,double)), this, SLOT(onSliderMouseRelease(int,double)));
-
-}
-
-//*************************************************************************
-
-/*!
     Method to create color palette graphics item
 */
 ColorPalette * ColorManipulationView::createColorPalette(const QTransform & transform)
@@ -737,8 +717,61 @@ ColorPalette * ColorManipulationView::createColorPalette(const QTransform & tran
     {
         colorPalette->setTransform(_cmvSettings.colorPaletteTransform);
     }
+
+    connect(colorPalette, SIGNAL(sliderPositionChanged(Slider*,double)), this, SLOT(onSliderPositionChanged(Slider*,double)));
+    connect(colorPalette, SIGNAL(sliderColorChanged(Slider*,const QColor&)), this, SLOT(onSliderColorChanged(Slider*,QColor)));
+    connect(colorPalette, SIGNAL(sliderAdded(Slider*)), this, SLOT(onAddSlider(Slider*)));
+    connect(colorPalette, SIGNAL(sliderRemoved()), this, SLOT(onRemoveSlider()));
+
+
     return colorPalette;
 }
+
+//*************************************************************************
+
+/*!
+    Method to draw a color palette with n sliders from histogram info
+    The map between line and slider is done with index in the _sliderLines and the index in the ColorPalette
+*/
+void ColorManipulationView::setupColorPalette(ColorPalette* palette, const QGradientStops & houtputStops, double xmin, double xmax, bool isDiscrete)
+{
+
+    palette->setupPalette(houtputStops, xmin, xmax, isDiscrete);
+
+    // create slider lines from stops:
+    for (int i=0;i<houtputStops.size();i++)
+    {
+        Slider* slider = palette->getSlider(i);
+        /*QGraphicsLineItem * sliderLine = */createSliderLine(slider);
+    }
+}
+
+//*************************************************************************
+
+/*!
+    Method to create slider line from color palette slider item
+*/
+QGraphicsLineItem * ColorManipulationView::createSliderLine(Slider * slider)
+{
+    QGraphicsLineItem * sliderLine = createLine();
+    //        SD_TRACE(QString("SLIDER TRANSFORM : scale=%1 | m11=%2, m22=%3 | m31=%4, m32=%5 | scenePos=%6, %7")
+    //                 .arg(slider->scale())
+    //                 .arg(slider->transform().m11())
+    //                 .arg(slider->transform().m22())
+    //                 .arg(slider->transform().m31())
+    //                 .arg(slider->transform().m32())
+    //                 .arg(slider->scenePos().x())
+    //                 .arg(slider->scenePos().y())
+    //                 );
+    sliderLine->setParentItem(slider);
+
+    // reset all parent transforms + align vertically with slider
+    sliderLine->setTransform(sliderLineTransform(sliderLine, slider));
+    sliderLine->setTransform(_settings.histogramTransform, true);
+    sliderLine->setZValue(1.0);
+    return sliderLine;
+}
+
 
 //*************************************************************************
 
