@@ -28,7 +28,6 @@ private slots:
     void test_FloatingDataProvider();
     void test_FloatingDataProvider2();
     void test_FloatingDataProvider3();
-//    void test_FloatingDataProvider4();
     void cleanupTestCase();
 
 private:

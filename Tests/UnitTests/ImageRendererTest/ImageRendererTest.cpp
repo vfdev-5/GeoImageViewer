@@ -12,6 +12,7 @@
 #include "Core/HistogramImageRenderer.h"
 #include "Core/ImageDataProvider.h"
 
+
 namespace Tests
 {
 
@@ -85,6 +86,7 @@ void ImageRendererTest::test()
 
     // Render raw data
     cv::Mat r = renderer.render(m, &hConf, true);
+    QVERIFY(!r.empty());
 
 #ifdef _DEBUG
     std::cout << "Display matrix value :" << std::endl;
@@ -197,37 +199,16 @@ void ImageRendererTest::test2()
     hConf.qMinValues << 0.0 << 0.0 << 0.0;
     hConf.qMaxValues << 200.0 << 150.0 << 220.0;
 
-    // GRAY :
-    hConf.transferFunctions
-            << Core::HistogramRendererConfiguration::availableTransferFunctions[0]
-            << Core::HistogramRendererConfiguration::availableTransferFunctions[0]
-            << Core::HistogramRendererConfiguration::availableTransferFunctions[0];
-
-    hConf.isDiscreteValues
-            << false
-            << false
-            << false;
-
-    // define histogram stops as :
-    QGradientStops stops;
-    stops << QGradientStop(0.25, Qt::black);
-    stops << QGradientStop(0.5, Qt::red);
-    stops << QGradientStop(0.75, Qt::blue);
-    stops << QGradientStop(1.0, Qt::white);
-    hConf.normHistStops << stops;
-
-
     // RGB :
-//    hConf.rgbTransferFunctions << Core::HistogramRendererConfiguration::availableTransferFunctions[0];
-//    hConf.isRGBDiscreteValues << false;
-//    QGradientStops rStops, gStops, bStops;
-//    rStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::red);
-//    gStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::green);
-//    bStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::blue);
-//    hConf.normRGBHistStops << rStops << gStops << bStops;
+    QGradientStops rStops, gStops, bStops;
+    rStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::red);
+    gStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::green);
+    bStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::blue);
+    hConf.normHistStops << rStops << gStops << bStops;
 
     // Render raw data
     cv::Mat r = renderer.render(m, &hConf, true);
+    QVERIFY(!r.empty());
 
 #ifdef _DEBUG
     std::cout << "Display matrix value :" << std::endl;
@@ -358,18 +339,12 @@ void ImageRendererTest::test3()
     stops << QGradientStop(1.0, Qt::white);
     hConf.normHistStops << stops;
 
-
-//    // RGB :
-//    hConf.rgbTransferFunction = Core::HistogramRendererConfiguration::availableTransferFunctions[0];
-//    hConf.isRGBDiscreteValue = false;
-//    QGradientStops rStops, gStops, bStops;
-//    rStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::red);
-//    gStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::green);
-//    bStops << QGradientStop(0.1, Qt::black) << QGradientStop(0.9, Qt::blue);
-////    hConf.normRGBHistStops << rStops << gStops << bStops;
-
     // Render raw data
     cv::Mat r = renderer.render(m, &hConf, true);
+    QVERIFY(!r.empty());
+
+
+
 
 #ifdef _DEBUG
     std::cout << "Display matrix value :" << std::endl;
@@ -382,6 +357,7 @@ void ImageRendererTest::test3()
         std::cout << std::endl;
     }
 #endif
+
 
     // Convert to QImage
     // For correct conversion : rendered image should be in BGRA format
@@ -428,6 +404,7 @@ void ImageRendererTest::test3()
     QVERIFY(testRGBAColor2(QColor::fromRgba(im.pixel(2,2)),0,0,0,0));
 
 }
+
 
 //*************************************************************************
 

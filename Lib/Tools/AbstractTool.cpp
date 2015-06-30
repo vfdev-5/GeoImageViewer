@@ -42,17 +42,29 @@ ItemCreationTool::ItemCreationTool(QObject *parent) :
 ImageCreationTool::ImageCreationTool(QObject * parent) :
     CreationTool(parent),
     _drawingsItem(0),
-    _mode(QPainter::CompositionMode_SourceOver),
-    _erase(false)
+    _mode(QPainter::RasterOp_SourceOrDestination),
+    _erase(false),
+    _isMerging(true)
 {
     _toolType = Type;
 }
+
 //******************************************************************************
 
 void ImageCreationTool::setErase(bool erase)
 {
     _erase = erase;
-    _mode = _erase ? QPainter::CompositionMode_SourceOut : QPainter::CompositionMode_SourceOver;
+    _mode = _erase ? QPainter::CompositionMode_SourceOut :
+                     _isMerging ? QPainter::RasterOp_SourceOrDestination:
+                                  QPainter::CompositionMode_SourceOver;
+}
+
+//******************************************************************************
+
+void ImageCreationTool::setIsMerging(bool value)
+{
+    _isMerging = value;
+    _mode = _isMerging ? QPainter::RasterOp_SourceOrDestination : QPainter::CompositionMode_SourceOver;
 }
 
 //******************************************************************************

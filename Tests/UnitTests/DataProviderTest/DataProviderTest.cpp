@@ -18,15 +18,6 @@ namespace Tests
 int WIDTH  = 2000;
 int HEIGHT = 2000;
 
-//int DEPTH  = CV_16UC(5);
-//cv::Mat TEST_MATRIX;
-//QString PROJECTION_STR;
-//QVector<double> GEO_TRANSFORM;
-//double NO_DATA_VALUE=(1<<16) - 1;
-//QList< QPair<QString,QString> > METADATA;
-//QPolygonF GEO_EXTENT;
-
-
 bool compareVectors(const QVector<double> & v1, const QVector<double> & v2, double tol = 1e-8)
 {
     if (v1.size() != v2.size())
@@ -53,6 +44,18 @@ bool comparePolygons(const QPolygonF & v1, const QPolygonF & v2, double tol = 1e
     }
     return true;
 }
+
+void printGeoExtent(const QPolygonF & poly)
+{
+    SD_TRACE("---- Print GeoExtent ----");
+    foreach (QPointF p, poly)
+    {
+        SD_TRACE(QString("Point : %1, %2").arg(p.x()).arg(p.y()));
+    }
+    SD_TRACE("---- END Print GeoExtent ----");
+}
+
+
 
 cv::Mat computeMaskND(const cv::Mat & data, float noDataValue)
 {
@@ -136,12 +139,19 @@ void setupGeoExtent(QPolygonF * geoExtent, const QVector<double> & geoTransform,
 void DataProviderTest::initTestCase()
 {
 
+    _provider = 0;
     // Register GDAL drivers
     GDALAllRegister();
 
-    //
-    QDir::addSearchPath("Input", QCoreApplication::applicationDirPath() +
-                        "/../../GeoImageViewer_source/Tests/Data/");
+
+    // Create temporary dir
+    QDir d = QDir::currentPath() + "/Temp_tests_123";
+    SD_TRACE("Temporary dir : " + d.absolutePath());
+    if (!d.exists())
+    {
+        d.mkdir(d.absolutePath());
+    }
+    QDir::addSearchPath("Input", d.absolutePath());
 
     _noDataValue = (1<<16) - 1;
 
@@ -173,10 +183,6 @@ void DataProviderTest::initTestCase()
     }
 
     _provider = new Core::GDALDataProvider();
-
-
-    //
-
 
 }
 
@@ -235,8 +241,16 @@ bool checkMatrices(const cv::Mat & m1, const cv::Mat & m2, float nodatavalue)
     return true;
 }
 
+/*!
+ * \brief DataProviderTest::test_GDALDataProvider
+ *  Check reading from a file :
+ *  a) data
+ *  b) metadata
+ *  c) roi
+ */
 void DataProviderTest::test_GDALDataProvider()
 {
+
     QString path = _testFiles[0];
 
     QVERIFY(_provider->setup(path));
@@ -260,22 +274,16 @@ void DataProviderTest::test_GDALDataProvider()
     m2(cv::Rect(0,0,100,50)).copyTo(m3(cv::Rect(100,100,100,50)));
     QVERIFY(Core::isEqual(m3,m));
 
-
-
-    // check ROI extraction with upsampling resize:
-//    Core::displayMat(m,true,"m");
-    m = _provider->getImageData(QRect(-100,-100, 200, 150), 512);
-//    Core::displayMat(m,true,"new m");
-//    cv::Mat m4;
-//    cv::resize(m3,m4,cv::Size(m.cols, m.rows), CV_INTER_NN);
-//    Core::displayMat(m4,true,"m4");
-//    QVERIFY(Core::isEqual(m4,m));
-
-
 }
 
 //*************************************************************************
 
+/*!
+ * \brief DataProviderTest::test_GDALDataProvider2
+ * Check reading from a file with NoDataValue
+ * a) data
+ * b) metadata
+ */
 void DataProviderTest::test_GDALDataProvider2()
 {
 
@@ -311,9 +319,20 @@ void DataProviderTest::test_GDALDataProvider2()
 
 //*************************************************************************
 
+/*!
+ * \brief DataProviderTest::test_FloatingDataProvider
+ * Check floating data provider created from gdal data provider
+ * a) data
+ * b) metadata
+ */
 void DataProviderTest::test_FloatingDataProvider()
 {
     QVERIFY(_provider);
+    if (!_provider->isValid())
+    {
+        QString path = _testFiles[1];
+        QVERIFY(_provider->setup(path));
+    }
 
     Core::FloatingDataProvider * provider =
             Core::FloatingDataProvider::createDataProvider(_provider, _provider->getPixelExtent());
@@ -335,11 +354,21 @@ void DataProviderTest::test_FloatingDataProvider()
 
 //*************************************************************************
 
+/*!
+ * \brief DataProviderTest::test_FloatingDataProvider2
+ * Check floating data provider created as roi of gdal data provider
+ * a) data
+ * b) metadata
+ */
 void DataProviderTest::test_FloatingDataProvider2()
 {
     QVERIFY(_provider);
+    if (!_provider->isValid())
+    {
+        QString path = _testFiles[1];
+        QVERIFY(_provider->setup(path));
+    }
     QRect pe = _provider->getPixelExtent().adjusted(-10, -20, -30, -40);
-//    QRect pe = _provider->getPixelExtent().adjusted(100, 200, -500, -600);
 
     Core::FloatingDataProvider * provider =
             Core::FloatingDataProvider::createDataProvider(_provider, pe);
@@ -353,18 +382,43 @@ void DataProviderTest::test_FloatingDataProvider2()
 
     QVERIFY(Core::isEqual(mSrc(r),mDst));
 
-    // IS NOT FINISHED
     // Check geo info :
     QVERIFY( Core::compareProjections(_provider->fetchProjectionRef(), provider->fetchProjectionRef()) );
-//    QVERIFY( comparePolygons(_provider->fetchGeoExtent(), provider->fetchGeoExtent()) );
-//    QVERIFY( compareVectors(_provider->fetchGeoTransform(), provider->fetchGeoTransform()) );
-//    QVERIFY( _provider->getPixelExtent() == provider->getPixelExtent() );
+    QVERIFY( pe == provider->getPixelExtent() );
 
-//    delete provider;
+
+    // Works for WGS84 only:
+    QVector<double> pgt = _provider->fetchGeoTransform();
+    QPolygonF ge;
+    ge << QPointF(pgt[0] + pe.x()*pgt[1] + pe.y()*pgt[2],
+            pgt[3] + pe.x()*pgt[4] + pe.y()*pgt[5]);
+    ge << QPointF(pgt[0] + (pe.x() + pe.width()-1)*pgt[1] + pe.y()*pgt[2],
+            pgt[3] + (pe.x()+ pe.width())*pgt[4] + pe.y()*pgt[5]);
+    ge << QPointF(pgt[0] + (pe.x() + pe.width()-1)*pgt[1] + (pe.y()+pe.height()-1)*pgt[2],
+            pgt[3] + (pe.x()+ pe.width()-1)*pgt[4] + (pe.y()+pe.height()-1)*pgt[5]);
+    ge << QPointF(pgt[0] + pe.x()*pgt[1] + (pe.y()+pe.height()-1)*pgt[2],
+            pgt[3] + pe.x()*pgt[4] + (pe.y()+pe.height()-1)*pgt[5]);
+
+    QVector<double> gt(6);
+    gt[0] = ge[0].x();
+    gt[3] = ge[0].y();
+    gt[1] = pgt[1];
+    gt[2] = pgt[2];
+    gt[4] = pgt[4];
+    gt[5] = pgt[5];
+
+    QVERIFY( comparePolygons(ge, provider->fetchGeoExtent()) );
+    QVERIFY( compareVectors(gt, provider->fetchGeoTransform()) );
+
+    delete provider;
 }
 
 //*************************************************************************
 
+/*!
+ * \brief DataProviderTest::test_FloatingDataProvider3
+ * Check floating data provider created from cv::Mat
+ */
 void DataProviderTest::test_FloatingDataProvider3()
 {
     Core::FloatingDataProvider * provider =
@@ -380,43 +434,14 @@ void DataProviderTest::test_FloatingDataProvider3()
 }
 
 //*************************************************************************
-/*
-void DataProviderTest::test_FloatingDataProvider4()
-{
-    Core::FloatingDataProvider * provider =
-            Core::FloatingDataProvider::createEmptyDataProvider("test", 100, 200);
-
-    QVERIFY(provider);
-    cv::Mat m = provider->getImageData();
-//    Core::displayMat(m,true,"m");
-
-    cv::Mat m3(20,20,CV_32F,cv::Scalar(15));
-    provider->setImageData(QPoint(50,50), m3);
-    m = provider->getImageData();
-//    Core::displayMat(m,true,"m2");
-
-}
-*/
-//*************************************************************************
 
 void DataProviderTest::cleanupTestCase()
 {
     if (_provider) delete _provider;
 
-    // Remove temp test image
-    foreach (QString path, _testFiles)
-    {
-        QVERIFY(QFile(path).exists());
-        QVERIFY(QFile(path).remove());
-
-        QString path2=path+".ovr";
-        if(QFile(path2).exists())
-            QVERIFY(QFile(path2).remove());
-
-        path2=path+".aux.xml";
-        if(QFile(path2).exists())
-            QVERIFY(QFile(path2).remove());
-    }
+    // remove temporary directory:
+    QDir d("Input:");
+    QVERIFY(d.removeRecursively());
 
     // gdal
     GDALDestroyDriverManager();

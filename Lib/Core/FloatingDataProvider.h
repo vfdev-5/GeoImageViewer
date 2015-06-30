@@ -43,6 +43,9 @@ public:
 
     bool create(const QString & name, const cv::Mat & src, const QRect & intersection=QRect());
 
+    virtual bool isValid() const
+    { return !_data.empty(); }
+
 signals:
     void dataChanged(const QRect & pixelExtent);
 

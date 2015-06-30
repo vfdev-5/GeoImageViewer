@@ -32,8 +32,15 @@ QPolygonF GEO_EXTENT;
 
 void ImageWriterTest::initTestCase()
 {
-    QDir::addSearchPath("Input", QCoreApplication::applicationDirPath() +
-                        "/../../GeoImageViewer_source/Tests/Data/");
+
+    // Create temporary dir
+    QDir d = QDir::currentPath() + "/Temp_tests_123";
+    SD_TRACE("Temporary dir : " + d.absolutePath());
+    if (!d.exists())
+    {
+        d.mkdir(d.absolutePath());
+    }
+    QDir::addSearchPath("Input", d.absolutePath());
 
     // Register GDAL drivers
     _imageWriter = new Core::ImageWriter(this);
@@ -85,10 +92,6 @@ void ImageWriterTest::initTestCase()
     _provider->setProjectionRef(PROJECTION_STR);
     _provider->setGeoTransform(GEO_TRANSFORM);
     _provider->setGeoExtent(GEO_EXTENT);
-
-//    QRect pixelExtent = QRect(0,0,WIDTH,HEIGHT);
-//    QVector<double> gt = Core::computeGeoTransform(GEO_EXTENT, pixelExtent);
-//    QVERIFY(gt == GEO_TRANSFORM);
 
 
     // Create a GeoItemLayer to store geo image info :
@@ -192,7 +195,9 @@ void ImageWriterTest::onImageWriteFinished(bool ok)
 
 void ImageWriterTest::cleanupTestCase()
 {
-
+    // remove temporary directory:
+    QDir d("Input:");
+    QVERIFY(d.removeRecursively());
 }
 
 //*************************************************************************

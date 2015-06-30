@@ -66,18 +66,17 @@ inline bool HistogramImageRenderer::checkBeforeRender(int nbBands, const Histogr
     if (!ImageRenderer::checkBeforeRender(nbBands, conf))
         return false;
 
-//    if (conf->mode == HistogramRendererConfiguration::GRAY)
-//    {
+    if (conf->mode == HistogramRendererConfiguration::GRAY)
+    {
         return !conf->normHistStops.isEmpty() &&
                 !conf->isDiscreteValues.isEmpty() &&
                 !conf->transferFunctions.isEmpty();
-//    }
-//    else if (conf->mode == HistogramRendererConfiguration::RGB)
-//    {
-//        return !conf->normRGBHistStops.isEmpty() &&
-//        return conf->rgbTransferFunction;
-//    }
-//    return false;
+    }
+    else if (conf->mode == HistogramRendererConfiguration::RGB)
+    {
+        return !conf->normHistStops.isEmpty();
+    }
+    return false;
 }
 
 //******************************************************************************

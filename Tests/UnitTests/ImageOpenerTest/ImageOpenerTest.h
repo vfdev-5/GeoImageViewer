@@ -19,9 +19,9 @@ class ImageOpenerTest : public QObject
     Q_OBJECT
 private slots:
     void initTestCase();
-    void test();
-    void test2();
-    void test3();
+    void test_openImage();
+    void test_openImageInBackground();
+    void test_openImageInBackground_and_Cancel();
     void cleanupTestCase();
 
 protected:

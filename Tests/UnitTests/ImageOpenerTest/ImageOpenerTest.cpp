@@ -44,8 +44,16 @@ void ImageOpenerTest::initTestCase()
 
 //    Core::displayMat(TEST_MATRIX, true, "TEST_MATRIX");
 
-    QDir::addSearchPath("Input", QCoreApplication::applicationDirPath() +
-                        "/../../GeoImageViewer_source/Tests/Data/");
+    // Create temporary dir
+    QDir d = QDir::currentPath() + "/Temp_tests_123";
+    SD_TRACE("Temporary dir : " + d.absolutePath());
+    if (!d.exists())
+    {
+        d.mkdir(d.absolutePath());
+    }
+    QDir::addSearchPath("Input", d.absolutePath());
+
+
     QString path = QFileInfo("Input:").absoluteFilePath() + "/test_image.tif";
 
     QVERIFY(Core::writeToFile(path, TEST_MATRIX));
@@ -59,7 +67,7 @@ void ImageOpenerTest::initTestCase()
 
 //*************************************************************************
 
-void ImageOpenerTest::test()
+void ImageOpenerTest::test_openImage()
 {
 
     Core::ImageDataProvider * provider = _imageOpener->openImage(_url);
@@ -76,7 +84,7 @@ void ImageOpenerTest::test()
 
 //*************************************************************************
 
-void ImageOpenerTest::test2()
+void ImageOpenerTest::test_openImageInBackground()
 {
     connect(_imageOpener, &Core::ImageOpener::imageOpened,
             this, &Tests::ImageOpenerTest::onImageOpened);
@@ -91,7 +99,7 @@ void ImageOpenerTest::test2()
 
 //*************************************************************************
 
-void ImageOpenerTest::test3()
+void ImageOpenerTest::test_openImageInBackground_and_Cancel()
 {
     connect(_imageOpener, &Core::ImageOpener::imageOpened,
             this, &Tests::ImageOpenerTest::onImageOpenCanceled);
@@ -142,19 +150,9 @@ void ImageOpenerTest::onImageOpened(Core::ImageDataProvider * provider)
 void ImageOpenerTest::cleanupTestCase()
 {
 
-    // Remove temp test image
-    QString path = QFileInfo("Input:").absoluteFilePath() + "/test_image.tif";
-    QVERIFY(QFile(path).exists());
-    QVERIFY(QFile(path).remove());
-
-    QString path2=path+".ovr";
-    if(QFile(path2).exists())
-        QVERIFY(QFile(path2).remove());
-
-    path2=path+".aux.xml";
-    if(QFile(path2).exists())
-        QVERIFY(QFile(path2).remove());
-
+    // remove temporary directory:
+    QDir d("Input:");
+    QVERIFY(d.removeRecursively());
 
 }
 
