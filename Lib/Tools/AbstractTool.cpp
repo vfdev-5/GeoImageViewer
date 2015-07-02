@@ -10,15 +10,19 @@ namespace Tools
 {
 
 //******************************************************************************
+
 /*!
   \class AbstractTool
-  \brief Abstract class represent application tools, e.g navigation, move, create a shape, etc
+  \brief Abstract class represent application tools, e.g navigation, move, create a shape, image etc
 
   \class ItemCreationTool
-  \brief Inherits from AbstractTool, abstract class represents application tools that create a shape and notify
-  the application that a new BaseLayer is created
+  \brief Inherits from CreationTool, abstract class represents application tools that create a shape (QGraphicsRectItem, QGraphicsLineItem, etc)
+   and notify the application that a new BaseLayer is created. Created QGraphicsItem is own by QGraphicsScene.
 
-  */
+  \class ImageCreationTool from CreationTool,
+  \brief Inherits from CreationTool, abstract class represents a tool to create a Core::DrawingsItem. Created Core::DrawingsItem is not owned by this class
+
+*/
 
 //******************************************************************************
 
@@ -47,6 +51,7 @@ ImageCreationTool::ImageCreationTool(QObject * parent) :
     _isMerging(true)
 {
     _toolType = Type;
+    _cursor = QCursor(Qt::BlankCursor);
 }
 
 //******************************************************************************

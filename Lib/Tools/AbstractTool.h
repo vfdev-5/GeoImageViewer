@@ -44,6 +44,10 @@ public:
     virtual bool dispatch(QEvent * e, QWidget * graphicsViewViewport)
     { Q_UNUSED(e); Q_UNUSED(graphicsViewViewport); return false; }
 
+public slots:
+    virtual void clear() {}
+
+public:
     enum {
         Type = 0,
     };
@@ -80,9 +84,6 @@ public:
         Type = 1,
     };
 
-public slots:
-    virtual void clear() = 0;
-
 
 signals:
     void itemCreated(QGraphicsItem * item);
@@ -115,8 +116,6 @@ public:
 
     virtual void setErase(bool erase);
     virtual void setIsMerging(bool value);
-
-
 
 protected:
     int _mode;

@@ -77,8 +77,6 @@ cv::Mat ThresholdFilterTool::processData(const cv::Mat &data)
 void ThresholdFilterTool::onFinalize()
 {
     //  Do something with data
-//    emit drawingsFinalized("Threshold Filter", _drawingsItem);
-
     QImage im = _drawingsItem->getImage();
     cv::Mat image(im.height(), im.width(), CV_8UC4, im.bits());
 

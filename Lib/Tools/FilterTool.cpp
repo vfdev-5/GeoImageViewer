@@ -21,6 +21,18 @@
 namespace Tools
 {
 
+//******************************************************************************
+
+/*!
+  \class FilterTool
+  \brief Abstract class inherits from ImageCreationTool class and represent a base structure
+  to filter image part under the mouse in real-time mode.
+  Abstract method processData() should be subclassed to process input data under the mouse.
+  Virtual method onFinalize() should be subclassed to finish the processing and send the result.
+  The result of the filtering can be a QGraphicsItem or Core::DrawingsItem which is not owned by the class.
+
+
+*/
 
 //******************************************************************************
 
@@ -38,7 +50,6 @@ FilterTool::FilterTool(QGraphicsScene *scene, QGraphicsView *view, QObject *pare
     _opacity(0.5)
 {
     _toolType = Type;
-
 
     _finalize = new QAction(tr("Finalize"), this);
     _finalize->setEnabled(false);
@@ -59,9 +70,8 @@ FilterTool::FilterTool(QGraphicsScene *scene, QGraphicsView *view, QObject *pare
     connect(_clear, SIGNAL(triggered()), this, SLOT(clear()));
     _actions.append(_clear);
 
-
-
     _isValid = _scene && _view;
+
 }
 
 //******************************************************************************
@@ -90,7 +100,7 @@ bool FilterTool::dispatch(QEvent *e, QGraphicsScene *scene)
                     _drawingsItem = new Core::DrawingsItem(r.width(), r.height(), QColor(Qt::transparent));
                     _drawingsItem->setPos(r.x(), r.y());
                     _drawingsItem->setZValue(_cursorShapeZValue-10);
-                    //                    _drawingsItem->setOpacity(_opacity);
+                    _drawingsItem->setOpacity(_opacity);
                     // visible canvas
                     QGraphicsRectItem * canvas = new QGraphicsRectItem(QRectF(0.0,0.0,r.width(), r.height()), _drawingsItem);
                     canvas->setPen(QPen(Qt::white, 0));
@@ -324,8 +334,16 @@ void FilterTool::onFinalize()
 
 void FilterTool::clear()
 {
-    _scene->removeItem(_drawingsItem);
-    delete _drawingsItem;
+    if (_cursorShape)
+    {
+        destroyCursor();
+        _cursorShapeScale = -1.0;
+    }
+    if (_drawingsItem)
+    {
+        _scene->removeItem(_drawingsItem);
+        delete _drawingsItem;
+    }
     FilterTool::onFinalize();
 }
 
@@ -358,9 +376,6 @@ void FilterTool::drawAtPoint(const QPointF &pos)
         r2=r2.adjusted(-size*0.25, -size*0.25, size*0.25, size*0.25);
         _drawingsItem->update(r2);
     }
-    //    else
-    //    {
-    //    }
 }
 
 //******************************************************************************

@@ -300,16 +300,6 @@ void GeoImageViewer::onCreateBaseLayer()
             prepareSceneAndView(r.width(), r.height());
         }
 
-        // Create empty image data provider :
-//        Core::FloatingDataProvider * provider = Core::FloatingDataProvider::createEmptyDataProvider(name, r.width(), r.height());
-        // Create geo image item :
-//        Core::GeoImageItem * item = createGeoImageItem(provider, r.topLeft());
-        // connect on data changed :
-//        connect(provider, SIGNAL(dataChanged(QRect)), item, SLOT(onDataChanged(QRect)));
-        // Create geo image layer :
-//        Core::BaseLayer * layer = createGeoImageLayer("Image", provider);
-
-
         Core::DrawingsItem * item = new Core::DrawingsItem(r.width(), r.height());
         item->setPos(r.x(), r.y());
         item->setZValue(1000);
@@ -579,12 +569,21 @@ void GeoImageViewer::initFilterTools()
 }
 
 //******************************************************************************
-
+/*!
+ * \brief GeoImageViewer::configureTool Configures tool according to the layer.
+ * For the tool of type Tools::ImageCreationTool
+ *
+ *
+ *
+ * \param tool
+ * \param layer
+ * \return
+ */
 bool GeoImageViewer::configureTool(Tools::AbstractTool *tool, Core::BaseLayer *layer)
 {
     if (tool->getType() == Tools::ImageCreationTool::Type)
     {
-        Tools::ImageCreationTool * ictool = qobject_cast<Tools::ImageCreationTool *>(tool);
+        Tools::ImageCreationTool * ictool = qobject_cast<Tools::ImageCreationTool*>(tool);
         if (!ictool)
         {
             SD_TRACE("configureTool : Failed to get image creational tool");

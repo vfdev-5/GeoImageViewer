@@ -22,11 +22,6 @@ class GIV_DLL_EXPORT BrushTool : public ImageCreationTool
 
     Q_PROPERTY_WITH_ACCESSORS(QColor, color, getColor, setColor)
 
-//    Q_PROPERTY(bool erase READ erase WRITE setErase)
-//    PROPERTY_GETACCESSOR(bool, erase, erase)
-//    Q_CLASSINFO("erase","label:Erase")
-
-
     PROPERTY_ACCESSORS(double, size, getSize, setSize)
     Q_CLASSINFO("color","label:Color")
 
@@ -38,6 +33,9 @@ public:
     virtual bool dispatch(QEvent * e, QWidget * viewport);
 
     virtual void setErase(bool erase);
+
+public slots:
+    virtual void clear();
 
 signals:
     void sizeChanged(double);
@@ -53,7 +51,6 @@ protected:
     QGraphicsScene * _scene;
     QGraphicsView * _view;
     QColor _ucolor;
-//    int _mode;
 
 };
 

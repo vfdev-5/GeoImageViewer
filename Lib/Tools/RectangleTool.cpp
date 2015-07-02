@@ -119,17 +119,10 @@ bool RectangleTool::mouseReleaseEvent(QGraphicsSceneMouseEvent * event, QGraphic
 {
     if (event->button() == Qt::LeftButton && _pressed)
     {
-//        SD_TRACE("RectangleTool : mouse release" );
         _pressed=false;
         _anchor = QPointF();
-
         emit itemCreated(_rect);
-
         _rect = 0;
-//        if (!_singleItem) {
-//            _rect = 0;
-//        }
-
         return true;
     }
     return false;

@@ -43,7 +43,7 @@ ShapeViewer::ShapeViewer(const QString &initialText, QWidget *parent) :
     _currentTool = _toolsManager->getTool("navigation");
     if (!_currentTool)
     {
-        SD_ERR("Application internal error. No tools found");
+        SD_ERR("Application internal error. No navigation tool");
     }
 }
 
@@ -72,6 +72,13 @@ void ShapeViewer::clear()
     if (_layersView)
         _layersView->setLayers(_layers);
 
+
+    changeTool(_toolsManager->getTool("navigation"));
+    if (_toolsView)
+    {
+        _toolsView->setCurrentTool(_currentTool->getName());
+    }
+
     BaseViewer::clear();
 }
 
@@ -97,6 +104,8 @@ void ShapeViewer::changeTool(Tools::AbstractTool *newTool)
     // disable previous tool :
     if (_currentTool)
     {
+        _currentTool->clear();
+
         // disconnect 'item => layer' link
         if (_currentTool->getType() == Tools::ItemCreationTool::Type)
         {

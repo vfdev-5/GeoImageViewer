@@ -1,4 +1,4 @@
-project( GIV_FloodThresholdFilterToolPlugin )
+project( GIV_DarkPixelFilterToolPlugin )
 
 ## include & link to OpenCV :
 include_directories(${OpenCV_INCLUDE_DIRS})
