@@ -10,10 +10,12 @@ namespace Filters
 {
 
 //******************************************************************************
+
 /*!
   \class BlurFilter
   \brief Blur filter implementation
 */
+
 //******************************************************************************
 
 BlurFilter::BlurFilter(QObject *parent) :

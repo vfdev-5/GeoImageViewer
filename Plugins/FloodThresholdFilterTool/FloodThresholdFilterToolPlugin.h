@@ -1,5 +1,5 @@
-#ifndef HistogramThresholdFilterPlugin_H
-#define HistogramThresholdFilterPlugin_H
+#ifndef FloodThresholdFilterToolPlugin_H
+#define FloodThresholdFilterToolPlugin_H
 
 // Qt
 #include <QObject>
@@ -52,4 +52,4 @@ protected:
 
 }
 
-#endif // HistogramThresholdFilterPlugin_H
+#endif // FloodThresholdFilterToolPlugin_H

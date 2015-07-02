@@ -1,5 +1,5 @@
-#ifndef HistogramThresholdFilterPlugin_H
-#define HistogramThresholdFilterPlugin_H
+#ifndef DarkPixelFilterToolPlugin_H
+#define DarkPixelFilterToolPlugin_H
 
 // Qt
 #include <QObject>
@@ -41,4 +41,4 @@ protected:
 
 }
 
-#endif // HistogramThresholdFilterPlugin_H
+#endif // DarkPixelFilterToolPlugin_H
