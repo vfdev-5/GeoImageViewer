@@ -268,8 +268,8 @@ bool ShapeViewer::eventFilter(QObject * o, QEvent * e)
                 {
                     QPointF pt = event->scenePos();
                     QString info = QString("Pixel coordinates : %1, %2")
-                            .arg(pt.x())
-                            .arg(pt.y());
+                            .arg(pt.x(), -7)
+                            .arg(pt.y(), -7);
                     bool isComplex = false;
                     QVector<double> vals = getPixelValues(QPoint(qFloor(pt.x()), qFloor(pt.y())) , &isComplex);
                     if (!vals.isEmpty())
@@ -281,7 +281,7 @@ bool ShapeViewer::eventFilter(QObject * o, QEvent * e)
                         for (int i=0; i<vals.size();i++)
                         {
                             double v = vals[i];
-                            info += QString("%1 ").arg(v);
+                            info += QString("%1 ").arg(v, -7);
                         }
                         info += ")";
                     }

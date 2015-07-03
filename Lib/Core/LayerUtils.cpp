@@ -475,27 +475,30 @@ bool computeNormalizedHistogram(const cv::Mat & data, const cv::Mat & noDataMask
         REPORT();
 
         // 2) compute histogram:
+        QVector<double> bandHistogramVector;
         if (mm == MM)
         {
-            mm = MM - histSize*0.5;
-            MM = MM + histSize*0.5;
+            bandHistogramVector.fill(mm, 1);
         }
-
-        int histSizeArray[] = {histSize};
-        int channels[] = {0};
-        float histRangeArray[] = {(float) mm, (float) MM};
-        const float * ranges[] = { histRangeArray };
-        cv::calcHist( &band32F, 1, channels, noDataMask, bandHistogram, 1, histSizeArray, ranges, true, false ); // bool uniform=true, bool accumulate=false
-
-        REPORT();
-
-        cv::minMaxLoc(bandHistogram, &mm, &MM);
-        QVector<double> bandHistogramVector(histSize, 0.0);
-        if (MM > mm)
+        else
         {
-            for (int k=0; k<bandHistogram.rows;k++)
+            int histSizeArray[] = {histSize};
+            int channels[] = {0};
+            float delta = 0.001*(MM-mm);
+            float histRangeArray[] = {(float) mm, (float) MM + delta};
+            const float * ranges[] = { histRangeArray };
+            cv::calcHist( &band32F, 1, channels, noDataMask, bandHistogram, 1, histSizeArray, ranges, true, false ); // bool uniform=true, bool accumulate=false
+
+            REPORT();
+
+            cv::minMaxLoc(bandHistogram, &mm, &MM);
+            bandHistogramVector.fill(0.0, histSize);
+            if (MM > mm)
             {
-                bandHistogramVector[k] = (bandHistogram.at<float>(k,0) - mm)/(MM - mm);
+                for (int k=0; k<bandHistogram.rows;k++)
+                {
+                    bandHistogramVector[k] = (bandHistogram.at<float>(k,0) - mm)/(MM - mm);
+                }
             }
         }
         bandHistograms << bandHistogramVector;

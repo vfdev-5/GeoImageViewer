@@ -94,7 +94,10 @@ cv::Mat DarkPixelFilterPlugin::filter(const cv::Mat &data) const
     std::vector<std::vector<cv::Point> > contours;
     cv::findContours(out, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
 
-    cv::Mat res = cv::Mat::zeros(out.size(), CV_8U);
+    cv::Mat res(out.size(), CV_32F);
+//    res.setTo(0.0);
+    res.setTo(_noDataValue);
+
     if (contours.size() > 0)
     {
         SD_TRACE("contours.size() > 0");
@@ -109,7 +112,7 @@ cv::Mat DarkPixelFilterPlugin::filter(const cv::Mat &data) const
             if (s > minArea)
             {
                 SD_TRACE("s>minArea");
-                cv::drawContours(res, contours, i, cv::Scalar::all(255), CV_FILLED);
+                cv::drawContours(res, contours, i, cv::Scalar::all(1.0), CV_FILLED);
                 SD_TRACE("cv::drawContours");
             }
         }
