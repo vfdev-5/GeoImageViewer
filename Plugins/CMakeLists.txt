@@ -12,5 +12,6 @@ file(GLOB PLUGINS_INC_FILES "PluginExport.h")
 #add_subdirectory("HistogramThresholdFilter")
 add_subdirectory("FloodThresholdFilterTool")
 add_subdirectory("DarkPixelFilterTool")
+add_subdirectory("DarkPixelFilter")
 
 

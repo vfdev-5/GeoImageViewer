@@ -22,8 +22,6 @@ class GIV_DLL_EXPORT AbstractFilter : public QObject
     PROPERTY_GETACCESSOR(int, filterType, getType)
     Q_PROPERTY_WITH_GETACCESSOR(QString, name, getName)
     Q_PROPERTY_WITH_GETACCESSOR(QString, description, getDescription)
-
-    PROPERTY_GETACCESSOR(QString, errorMessage, getErrorMessage)
     PROPERTY_ACCESSORS(float, noDataValue, getNoDataValue, setNoDataValue)
 
 public:
@@ -36,8 +34,13 @@ public:
         Type = 0,
     };
 
+    QString getErrorMessage() const
+    { return _errorMessage; }
+
+
 protected:
     virtual cv::Mat filter(const cv::Mat & src) const = 0;
+    mutable QString _errorMessage;
 
 };
 

@@ -416,10 +416,12 @@ void GeoImageViewer::filterGeoImageLayer(Core::BaseLayer * layer)
 
 void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
 {
-    SD_TRACE("GeoImageViewer::onFilteringFinished");
     if (!provider)
     {
-        SD_TRACE("GeoImageViewer::onFilteringFinished : provider is null");
+//        SD_TRACE("GeoImageViewer::onFilteringFinished : provider is null");
+        SD_ERR(tr("Filtering  with \'%1\' has failed.\n\nError message: %2")
+               .arg(_appliedFilter->getName())
+               .arg(_appliedFilter->getErrorMessage()));
         _progressDialog->close();
         return;
     }

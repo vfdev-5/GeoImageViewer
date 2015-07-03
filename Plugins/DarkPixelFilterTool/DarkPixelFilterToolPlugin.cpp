@@ -27,9 +27,6 @@ namespace Plugins
  *  2) Convert to 8U
  *  3) Adaptive thresholding
  *  4) Morpho close+dilate
- *  5) Find contours
- *  6) Select contours by area: s > minSize^2
- *
  */
 //******************************************************************************
 
@@ -67,14 +64,14 @@ cv::Mat DarkPixelFilterToolPlugin::processData(const cv::Mat &data)
         {
             data.copyTo(out);
         }
-        data.convertTo(out, CV_32F);
+        else
+        {
+            data.convertTo(out, CV_32F);
+        }
     }
 
     // 1) Image -> 1.0/Image
-    double d = 1e-4;
-    out = 1.0/(out + d);
-    cv::threshold(out, out, 1.0/d - 1.0, 0.0, cv::THRESH_TOZERO_INV);
-
+    cv::divide(1.0,out,out,CV_32F);
 
     // 2) Convert to 8U
     double minVal, maxVal;
@@ -95,30 +92,6 @@ cv::Mat DarkPixelFilterToolPlugin::processData(const cv::Mat &data)
     cv::Mat k2=cv::Mat::ones(3,3,CV_8U);
     cv::morphologyEx(out, out, cv::MORPH_CLOSE, k1);
     cv::morphologyEx(out, out, cv::MORPH_OPEN, k2);
-
-
-    //
-
-//    // Flood fill
-//    cv::Mat processedData(in.rows+2,in.cols+2,CV_8U,cv::Scalar(0));
-//    cv::Point p(in.cols/2, in.rows/2);
-//    int flag = 8 | (255 << 8) | cv::FLOODFILL_FIXED_RANGE | cv::FLOODFILL_MASK_ONLY;
-//    cv::floodFill(in, processedData, p, cv::Scalar(0), 0, cv::Scalar::all(_loDiff), cv::Scalar::all(_upDiff), flag);
-
-//    // morpho close:
-//    cv::morphologyEx(processedData, processedData, cv::MORPH_CLOSE, cv::Mat(3,3,CV_8U,cv::Scalar(1)));
-
-//    // return result
-//    cv::Mat temp, processedData8U;
-//    if (processedData.depth() != CV_8U)
-//    {
-//        processedData.convertTo(temp, CV_8U);
-//    }
-//    else
-//    {
-//        temp = processedData;
-//    }
-//    processedData8U = temp(cv::Rect(1,1,temp.cols-2,temp.rows-2));
 
 
     // Render to RGBA :

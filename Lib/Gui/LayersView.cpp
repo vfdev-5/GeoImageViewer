@@ -185,9 +185,8 @@ void LayersView::onItemClicked(QListWidgetItem * item)
 
 void LayersView::onItemChanged(QListWidgetItem * item)
 {
-
-    // !!! NOTHING TO DO !!!
-
+    Q_UNUSED(item);
+    // NOTHING TO DO
 //    int index = ui->_layers->row(item);
 //    SD_TRACE(QString("onItemChanged : index=%1 text=%2")
 //             .arg(index)

@@ -364,8 +364,8 @@ cv::Mat GDALDataProvider::getImageData(const QRect & srcPixelExtent, int dstPixe
 
         // get mask band :
         GDALRasterBand * maskband = band->GetMaskBand();
-        // !!! CAN NOT USE maskband->GetMaskFlags() & GMF_ALL_VALID
-        // !!! maskband->GetMaskFlags() is always GMF_ALL_VALID
+        // CAN NOT USE maskband->GetMaskFlags() & GMF_ALL_VALID
+        // maskband->GetMaskFlags() is always GMF_ALL_VALID
         if (maskband)
         {
             cv::Mat m(r.height, r.width, CV_8U, cv::Scalar(0));

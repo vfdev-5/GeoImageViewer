@@ -37,11 +37,12 @@ public:
         const double paletteHeightRatio;
         bool editable;
         bool showValues;
-
+        int minNbSliders;
         Settings() :
             paletteHeightRatio(0.2),
             editable(true),
-            showValues(true)
+            showValues(true),
+            minNbSliders(2)
         {
         }
     };

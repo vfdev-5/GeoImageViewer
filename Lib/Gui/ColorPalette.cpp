@@ -21,10 +21,10 @@ inline double normalized(double x, double xmin, double xmax)
     return (x - xmin)/(xmax - xmin);
 }
 
-inline double unnormalized(double x, double xmin, double xmax)
-{
-    return x*(xmax - xmin) + xmin;
-}
+//inline double unnormalized(double x, double xmin, double xmax)
+//{
+//    return x*(xmax - xmin) + xmin;
+//}
 
 QGradientStops computeStopsFromValues(const QGradientStops & values, double hxmin, double hxmax)
 {
@@ -383,15 +383,21 @@ void ColorPalette::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         if (qgraphicsitem_cast<Slider*>(item))
         {
             _actionedSlider = qgraphicsitem_cast<Slider*>(item);
-            _menu.addAction(&_removeSlider);
+            if (_sliders.size() > _settings.minNbSliders)
+            {
+                _menu.addAction(&_removeSlider);
+            }
             _menu.addAction(&_revertSlider);
             _menu.popup(event->screenPos());
         }
         else if (itemIsPalette(item))
         {
             _menu.addAction(&_addSlider);
-            _menu.addSeparator();
-            _menu.addActions(_supplActions);
+            if (!_supplActions.isEmpty())
+            {
+                _menu.addSeparator();
+                _menu.addActions(_supplActions);
+            }
             _addSlider.setData(event->scenePos());
             _menu.popup(event->screenPos());
         }
@@ -543,7 +549,7 @@ void ColorPalette::removeStop(int index)
     {
         QGradientStops stops = _palette->stops();
 
-        if (index > 0 && 2*index < stops.size())
+        if (index > 0 && 2*index < stops.size()-1)
         {
             stops[2*(index+1)-1].second = stops[2*(index-1)].second;
             stops.remove(2*index-1, 2);

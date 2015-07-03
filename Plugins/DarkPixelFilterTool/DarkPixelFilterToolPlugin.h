@@ -41,4 +41,4 @@ protected:
 
 }
 
-#endif // DarkPixelFilterToolPlugin_H
+#endif // DarkPixelFilterToolPlugin
