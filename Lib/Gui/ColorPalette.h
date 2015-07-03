@@ -194,7 +194,10 @@ public:
         setBrush(Qt::white);
         setFlag(ItemIsMovable);
         setFlag(ItemSendsGeometryChanges);
-        setAcceptedMouseButtons((Qt::MouseButtons)(Qt::LeftButton | Qt::RightButton));
+        // accepted mouse button should be only left button
+        // otherwise on context menu request with the right button
+        // slider will also recieve press/move/release events and move the slider
+        setAcceptedMouseButtons((Qt::MouseButtons)(Qt::LeftButton));
 
 
         _text = new QGraphicsSimpleTextItem(this);

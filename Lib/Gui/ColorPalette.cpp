@@ -605,7 +605,7 @@ Slider * ColorPalette::createSlider(double xpos, const QColor & color, int count
     Slider * slider = new Slider(this);
     _sliders.insert(count, slider);
 
-//    slider->setZValue(this->zValue() + 1.0);`
+//    slider->setZValue(this->zValue() + 1.0);
     slider->setColor(color);
 	slider->setScale(0.06);
     slider->setupProperties(0.0, 1.0, _settings.paletteHeightRatio);
@@ -852,6 +852,7 @@ void ColorPalette::preventCollisionsAndUpdateGradient(Slider *slider, QPointF * 
         return;
     }
 
+
     if (sliderIndex >= 0 && sliderIndex < _sliders.size() - 1)
     { // Check only right neighbour
         Slider * rightSlider = _sliders[sliderIndex+1];
@@ -870,6 +871,7 @@ void ColorPalette::preventCollisionsAndUpdateGradient(Slider *slider, QPointF * 
 
     // Update text:
     slider->setText(QString("%1").arg(csPos->x()*(_xmax-_xmin) + _xmin));
+//    slider->setText(QString("%1").arg(csPos->x()));
 
 }
 
@@ -888,6 +890,7 @@ QVariant Slider::itemChange(GraphicsItemChange change, const QVariant &value)
     {
         // Limit position to the Slider available line
         QPointF newPos = value.toPointF();
+
         if (qAbs(newPos.y() - _fixedValue) > 1e-5 ||
                 newPos.x() > _motionRangeMax ||
                 newPos.x() < _motionRangeMin)
