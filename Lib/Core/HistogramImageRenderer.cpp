@@ -293,19 +293,18 @@ cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, const ImageRender
     bool isDiscreteValue;
     QVector<QGradientStops> normHistStops;
 
-//    if (hconf->mode == HistogramRendererConfiguration::GRAY)
+    if (hconf->mode == HistogramRendererConfiguration::GRAY)
     {
         int index = mapping[0]; // mapping[0] == mapping[1] == mapping[2]
         transferFunction = hconf->transferFunctions[index];
         isDiscreteValue  = hconf->isDiscreteValues[index];
-        normHistStops    = hconf->normHistStops;
     }
-//    else if (hconf->mode == HistogramRendererConfiguration::RGB)
-//    {
-//        transferFunction = hconf->rgbTransferFunction;
-//        isDiscreteValue  = hconf->isRGBDiscreteValue;
-//        normHistStops    = computeRGBStops(mapping, hconf->normRGBHistStops);
-//    }
+    else if (hconf->mode == HistogramRendererConfiguration::RGB)
+    {
+        transferFunction = HistogramRendererConfiguration::availableTransferFunctions[0];
+        isDiscreteValue  = false;
+    }
+    normHistStops = hconf->normHistStops;
 
 
     float a32 = 0.0;

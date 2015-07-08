@@ -1,5 +1,5 @@
-#ifndef FloodThreshold_H
-#define FloodThreshold_H
+#ifndef PluginExport_H
+#define PluginExport_H
 
 //******************************************************************************
 // DLL Export definitions
@@ -12,4 +12,4 @@
 #  define GIV_PLUGIN_EXPORT
 #endif
 
-#endif // FloodThreshold_H
+#endif // PluginExport_H

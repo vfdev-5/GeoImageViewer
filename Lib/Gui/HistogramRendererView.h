@@ -50,10 +50,13 @@ protected slots:
     void on__isGrayMode_clicked(bool checked);
     void on__isRgbMode_clicked(bool checked);
     void on__discreteColors_clicked(bool checked);
+    void on__transferFunction_activated(QString text);
 
     void onStopsChanged(int hIndex, const QGradientStops &);
 
 protected:
+
+    void setTransferFunctionNames(const QStringList &transferFunctionNames);
     void setupGrayModeView();
     void setupRgbModeView();
 
@@ -66,6 +69,7 @@ protected:
 
     Core::HistogramRendererConfiguration _conf;
     Core::HistogramRendererConfiguration _initialConf;
+
 
 };
 

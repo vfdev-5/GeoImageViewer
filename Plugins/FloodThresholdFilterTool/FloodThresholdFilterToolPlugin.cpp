@@ -35,8 +35,6 @@ FloodThresholdFilterToolPlugin::FloodThresholdFilterToolPlugin(QObject * parent)
     _name=tr("Flood Threshold");
     _description=tr("Filter to segment image using floodfill and thresholding");
     _icon = QIcon(":/icons/wand");
-    _cursor = QCursor(Qt::BlankCursor);
-
 }
 
 //******************************************************************************

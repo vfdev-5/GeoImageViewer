@@ -44,6 +44,10 @@ public:
     virtual bool dispatch(QEvent * e, QWidget * graphicsViewViewport)
     { Q_UNUSED(e); Q_UNUSED(graphicsViewViewport); return false; }
 
+public slots:
+    virtual void clear() {}
+
+public:
     enum {
         Type = 0,
     };
@@ -80,9 +84,6 @@ public:
         Type = 1,
     };
 
-public slots:
-    virtual void clear() = 0;
-
 
 signals:
     void itemCreated(QGraphicsItem * item);
@@ -101,6 +102,11 @@ class GIV_DLL_EXPORT ImageCreationTool : public CreationTool
     PROPERTY_GETACCESSOR(bool, erase, erase)
     Q_CLASSINFO("erase","label:Erase")
 
+    Q_PROPERTY(bool isMerging READ isMerging WRITE setIsMerging)
+    PROPERTY_GETACCESSOR(bool, isMerging, isMerging)
+    Q_CLASSINFO("isMerging", "label:Merge")
+
+
 public:
 
     ImageCreationTool(QObject * parent = 0);
@@ -109,7 +115,7 @@ public:
     };
 
     virtual void setErase(bool erase);
-
+    virtual void setIsMerging(bool value);
 
 protected:
     int _mode;

@@ -84,7 +84,10 @@ void MainWindow::onOpenImageActionTriggered()
                                            tr("Open Image"),
                                            QString(),
                                            tr("Images (*.*)"));
-    _viewer.loadImage(url);
+    if (url.isValid())
+    {
+        _viewer.loadImage(url);
+    }
 }
 
 //******************************************************************************

@@ -79,7 +79,7 @@ protected:
 
     void drawAxes();
     void drawHistogramGraphicsItem(HistogramItem *h, const QPen &dataPen);
-    void setupViewContextMenu();
+    void setupContextMenu();
 
     void showEvent(QShowEvent * event);
     void resizeEvent(QResizeEvent * event);

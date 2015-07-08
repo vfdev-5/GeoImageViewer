@@ -64,7 +64,7 @@ protected:
     virtual void destroyCursor();
 
     void drawAtPoint(const QPointF & pt);
-    virtual cv::Mat processData(const cv::Mat & data) = 0;
+    virtual cv::Mat processData(const cv::Mat & data) = 0; //!< Abstract method to process data. Returns RGBA (4-channels, 8U) matrix
 
 
     QGraphicsPixmapItem * _cursorShape;

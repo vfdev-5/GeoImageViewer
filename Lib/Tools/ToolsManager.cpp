@@ -54,7 +54,6 @@ void ToolsManager::insertTool(AbstractTool *tool)
 
 void ToolsManager::loadPlugins(const QString &path)
 {
-
     foreach (Core::Plugin pair, Core::PluginLoader::loadAll(path))
     {
         QString fileName = pair.first;

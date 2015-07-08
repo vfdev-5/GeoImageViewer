@@ -43,7 +43,7 @@ ShapeViewer::ShapeViewer(const QString &initialText, QWidget *parent) :
     _currentTool = _toolsManager->getTool("navigation");
     if (!_currentTool)
     {
-        SD_ERR("Application internal error. No tools found");
+        SD_ERR("Application internal error. No navigation tool");
     }
 }
 
@@ -59,7 +59,6 @@ ShapeViewer::~ShapeViewer()
 
 void ShapeViewer::clear()
 {
-    SD_TRACE("ShapeViewer::clear");
     foreach (Core::BaseLayer * layer, _layers)
     {
         layer->setParent(0);
@@ -73,6 +72,13 @@ void ShapeViewer::clear()
     if (_layersView)
         _layersView->setLayers(_layers);
 
+
+    changeTool(_toolsManager->getTool("navigation"));
+    if (_toolsView)
+    {
+        _toolsView->setCurrentTool(_currentTool->getName());
+    }
+
     BaseViewer::clear();
 }
 
@@ -80,7 +86,6 @@ void ShapeViewer::clear()
 
 void ShapeViewer::onToolChanged(const QString & toolName)
 {
-    SD_TRACE("onToolChanged : " + toolName);
     Tools::AbstractTool * tool = _toolsManager->getTool(toolName);
     // change to the new one
     if (!tool)
@@ -99,6 +104,8 @@ void ShapeViewer::changeTool(Tools::AbstractTool *newTool)
     // disable previous tool :
     if (_currentTool)
     {
+        _currentTool->clear();
+
         // disconnect 'item => layer' link
         if (_currentTool->getType() == Tools::ItemCreationTool::Type)
         {
@@ -217,7 +224,6 @@ void ShapeViewer::onBaseLayerDestroyed(QObject * layerObj)
 void ShapeViewer::onBaseLayerSelected(Core::BaseLayer * layer)
 {
     Q_UNUSED(layer);
-    SD_TRACE("ShapeViewer::onBaseLayerSelected");
 }
 
 //******************************************************************************

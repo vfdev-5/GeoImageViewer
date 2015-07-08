@@ -1,4 +1,4 @@
-project( Shaper )
+project( Sandbox_Shaper )
 
 ## include & link to OpenCV :
 include_directories(${OpenCV_INCLUDE_DIRS})

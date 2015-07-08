@@ -81,7 +81,7 @@ HistogramView::HistogramView(QWidget *parent) :
     _visibleZone = _histogramScene.sceneRect();
 
     // setup context menu
-    setupViewContextMenu();
+    setupContextMenu();
 
     // Draw items:
     // clear();
@@ -272,7 +272,7 @@ void HistogramView::drawRgbHistogram(int r, int g, int b)
                            QColor(0,255,0,81),
                            QColor(0,0,255,81)};
     int indices[] = {r,g,b};
-    for (int i=0;i<_histograms.size();i++)
+    for (int i=0;i<3;i++)
     {
         HistogramItem * h = _histograms[indices[i]];
         drawHistogramGraphicsItem(h, QPen(dataColors[i], 0.0));
@@ -315,9 +315,9 @@ QGraphicsItemGroup * HistogramView::createHistogramGraphicsItem(const QVector<do
     {
         double value = data[i];
         QGraphicsLineItem * l = new QGraphicsLineItem(
-                    i*1.0/histSize + d,
+                    i*1.0/histSize,
                     1.0 - value - d,
-                    i*1.0/histSize + d,
+                    i*1.0/histSize,
                     1.0 - d
                     );
         l->setPen(dataPen);
@@ -386,11 +386,12 @@ void HistogramView::drawAxes()
 void HistogramView::zoomInterval(double vXMin, double vXMax)
 {
     if (vXMax < vXMin ||
-            vXMax-vXMin < 1.0/_settings.zoomMaxFactor)
+            qAbs(vXMax-vXMin) < 1.0/_settings.zoomMaxFactor)
     {
         SD_TRACE("HistogramView::zoomInterval : vXMax should be bigger than vXMin");
         return;
     }
+
     _visibleZone.setX(vXMin);
     _visibleZone.setWidth(vXMax-vXMin);
     _ui->_histogramView->fitInView(_visibleZone);
@@ -398,7 +399,7 @@ void HistogramView::zoomInterval(double vXMin, double vXMax)
 
 //*************************************************************************
 
-void HistogramView::setupViewContextMenu()
+void HistogramView::setupContextMenu()
 {
     // menu
     _menu.addAction(&_zoomIn);

@@ -111,8 +111,6 @@ BaseViewer::~BaseViewer()
 
 void BaseViewer::clear()
 {
-    SD_TRACE("BaseViewer::clear");
-
     _scene.clear();
 
     // setup scene:
@@ -144,7 +142,6 @@ void BaseViewer::clear()
 
 void BaseViewer::showEvent(QShowEvent *e)
 {
-    SD_TRACE("BaseViewer::showEvent");
     Q_UNUSED(e)
     centerOnAtZoom(_zoomLevel, getVisibleSceneRect().center());
 #ifdef _DEBUG
@@ -157,7 +154,6 @@ void BaseViewer::showEvent(QShowEvent *e)
 
 void BaseViewer::resizeEvent(QResizeEvent *e)
 {
-    SD_TRACE("BaseViewer::resizeEvent");
     Q_UNUSED(e)
 #ifdef _DEBUG
     viewportInfo();
@@ -202,7 +198,6 @@ void BaseViewer::onZoomActionTriggered()
 
 void BaseViewer::onContextMenuRequested(QPoint p)
 {
-    SD_TRACE("onContextMenuRequested : " + QString::number(_menu.actions().size()));
     _menu.popup(_ui->_view->mapToGlobal(p));
 }
 

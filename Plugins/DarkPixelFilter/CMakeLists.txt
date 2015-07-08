@@ -1,4 +1,4 @@
-project( GIV_FloodThresholdFilterToolPlugin )
+project( GIV_DarkPixelFilterPlugin )
 
 ## include & link to OpenCV :
 include_directories(${OpenCV_INCLUDE_DIRS})
@@ -8,7 +8,6 @@ link_libraries(${OpenCV_LIBS})
 ## include & link to GDAL :
 include_directories(${GDAL_INCLUDE_DIR})
 link_libraries(${GDAL_LIBRARY})
-
 
 ## include & link to Qt :
 SET(INSTALL_QT_DLLS OFF)
@@ -35,5 +34,5 @@ add_library( ${PROJECT_NAME} SHARED ${SRC_FILES} ${INC_FILES} ${UI_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX ".d")
 
 ## installation :
-#install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin/Plugins/Tools ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin/Plugins/Tools ARCHIVE DESTINATION lib LIBRARY DESTINATION bin/Plugins/Tools)
+#install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin/Plugins/Filters ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin/Plugins/Filters ARCHIVE DESTINATION lib LIBRARY DESTINATION bin/Plugins/Filters)

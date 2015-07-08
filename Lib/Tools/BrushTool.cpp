@@ -18,6 +18,14 @@ namespace Tools
 
 //******************************************************************************
 
+/*!
+  \class BrushTool
+  \brief Class inherits from ImageCreationTool class and represent a tool to draw circles on Core::DrawingsItem.
+  User can specify the color and the size.
+*/
+
+//******************************************************************************
+
 BrushTool::BrushTool(QGraphicsScene* scene, QGraphicsView * view, QObject *parent) :
     ImageCreationTool(parent),
     _color(Qt::red),
@@ -26,15 +34,11 @@ BrushTool::BrushTool(QGraphicsScene* scene, QGraphicsView * view, QObject *paren
     _cursorShape(0),
     _scene(scene),
     _view(view)
-  //    _erase(false),
-  //    _mode(QPainter::CompositionMode_SourceOver)
 {
     setObjectName("brush");
     _name=tr("Brush");
     _description=tr("Tool to draw on a layer");
     _icon = QIcon(":/icons/brush");
-    _cursor = QCursor(Qt::BlankCursor);
-
 }
 
 //******************************************************************************
@@ -219,6 +223,19 @@ void BrushTool::setErase(bool erase)
     else
     {
         _ucolor = _color;
+    }
+}
+
+//******************************************************************************
+/*!
+ * \brief BrushTool::clear Clears the tool's temporary objects
+ * This method should be called before QGraphicsScene::clear().
+ */
+void BrushTool::clear()
+{
+    if (_cursorShape)
+    {
+        destroyCursor();
     }
 }
 

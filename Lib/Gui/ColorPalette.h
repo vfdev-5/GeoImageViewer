@@ -25,7 +25,6 @@ namespace Gui
 
 class Slider;
 
-//class GIV_DLL_EXPORT ColorPalette : public QObject, public QGraphicsItem
 class GIV_DLL_EXPORT ColorPalette : public QGraphicsObject
 {
     Q_OBJECT
@@ -35,14 +34,15 @@ public:
 
     struct Settings
     {
-        double paletteHeightRatio;
+        const double paletteHeightRatio;
         bool editable;
         bool showValues;
-
+        int minNbSliders;
         Settings() :
             paletteHeightRatio(0.2),
             editable(true),
-            showValues(true)
+            showValues(true),
+            minNbSliders(2)
         {
         }
     };
@@ -55,13 +55,18 @@ public:
     { return Type; }
 
     explicit ColorPalette(QGraphicsItem * parent = 0);
+    virtual ~ColorPalette();
 
     virtual QRectF boundingRect() const;
     virtual void paint(QPainter * p, const QStyleOptionGraphicsItem *o, QWidget * w);
 
     void setupPalette(const QGradientStops & normValues, double valueMin, double valueMax, bool isDiscrete);
 
-    void setupSliderGroups(const QMap<int, int> & sliderIndexGroupMap, int nbOfGroups);
+    void setEditableSettings(bool editable)
+    { _settings.editable = editable; }
+
+    void setShowValuesSettings(bool show)
+    { _settings.showValues = show; }
 
     QPair<double, double> getMinMaxRanges() const
     { return QPair<double, double>(_xmin, _xmax); }
@@ -82,10 +87,6 @@ public:
 
     int getNbOfSliders() const
     { return _sliders.size(); }
-
-//    int getSliderIndex(QGraphicsItem* slider) const
-//    { return _sliders.indexOf(reinterpret_cast<Slider*>(slider)); }
-//    { return _sliders.indexOf(qgraphicsitem_cast<Slider*>(slider)); }
 
     int getSliderIndex(Slider* slider) const
     { return _sliders.indexOf(slider); }
@@ -109,6 +110,8 @@ public:
     { return _isDiscrete; }
     void setIsDiscrete(bool v);
 
+    void setSupplMenuActions(const QList<QAction*> & actions)
+    { _supplActions = actions; }
 
 protected:
     void preventCollisionsAndUpdateGradient(Slider * slider, QPointF * p);
@@ -133,8 +136,7 @@ signals:
     void sliderAdded(Slider *);
     void sliderRemoved();
     void sliderColorChanged(Slider * slider, const QColor & c);
-//    void sliderPositionChanged(Slider * slider, double position);
-//    void sliderMouseRelease(Slider * slider, double position);
+    void sliderPositionChanged(Slider * slider, double position);
 
 private:
 
@@ -145,12 +147,6 @@ private:
     QList<Slider*> _sliders;
     QGradientStops _stops; //! User selected stops. They can be different from real _palette stops (due to discrete color option)
     Settings _settings;
-
-    // TO REMOVE
-    QMap<Slider*, int> _groupsMap;
-    QVector< QVector<Slider*> > _groups;
-    bool _groupUpdate;
-    // END TO REMOVE
 
     double _xmin;
     double _xmax;
@@ -164,6 +160,7 @@ private:
     QAction _removeSlider;
     QAction _addSlider;
     QAction _revertSlider;
+    QList<QAction*> _supplActions;
 
     Slider * _actionedSlider;
 
@@ -197,11 +194,13 @@ public:
         setBrush(Qt::white);
         setFlag(ItemIsMovable);
         setFlag(ItemSendsGeometryChanges);
-        setAcceptedMouseButtons((Qt::MouseButtons)(Qt::LeftButton | Qt::RightButton));
+        // accepted mouse button should be only left button
+        // otherwise on context menu request with the right button
+        // slider will also recieve press/move/release events and move the slider
+        setAcceptedMouseButtons((Qt::MouseButtons)(Qt::LeftButton));
 
 
-        _text = new QGraphicsSimpleTextItem;
-        _text->setParentItem(this);
+        _text = new QGraphicsSimpleTextItem(this);
         _text->setPen(QPen(Qt::black, 0.0));
         _text->setRotation(90.0);
         _text->installSceneEventFilter(parent);
@@ -211,6 +210,11 @@ public:
         f.setStyleHint(QFont::System);
         f.setWeight(QFont::Light);
         _text->setFont(f);
+    }
+
+    virtual ~Slider()
+    {
+        delete _text;
     }
 
     enum { Type = UserType + 1002 };
@@ -238,6 +242,7 @@ public:
     virtual QRectF boundingRect() const;
     virtual QPainterPath shape() const;
     virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+
 protected:
     virtual QVariant itemChange(GraphicsItemChange change, const QVariant &value);
 

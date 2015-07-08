@@ -39,6 +39,15 @@ QT5_ADD_RESOURCES (ResourceSources ${QRC_FILES})
 # add ui_<source>.h
 INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR}/Lib)
 
+#### for debug purposes: ################
+if (NOT WIN32)
+    if (CMAKE_BUILD_TYPE MATCHES Debug)
+        message("Define _DEBUG symbol")
+        add_definitions("-D_DEBUG")
+    endif (CMAKE_BUILD_TYPE MATCHES Debug)
+endif(NOT WIN32)
+##########################################
+
 ## create library :
 add_definitions("-DLIB_EXPORT")
 add_library( ${PROJECT_NAME} SHARED ${SRC_FILES} ${INC_FILES} ${UI_FILES} ${ResourceSources})

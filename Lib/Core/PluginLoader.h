@@ -15,11 +15,11 @@ namespace Core
 {
 typedef QPair<QString,QObject*> Plugin;
 
-struct PluginLoader
+struct GIV_DLL_EXPORT PluginLoader
 {
     static const QStringList PluginFilters;
-    static QList< Plugin > GIV_DLL_EXPORT loadAll(const QString &path);
-    static QObject * GIV_DLL_EXPORT load(const QString & pluginPath, QString & errorMessage);
+    static QList< Plugin > loadAll(const QString &path);
+    static QObject * load(const QString & pluginPath, QString & errorMessage);
 };
 
 }

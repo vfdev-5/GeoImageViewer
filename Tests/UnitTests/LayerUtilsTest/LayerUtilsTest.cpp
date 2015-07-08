@@ -26,8 +26,6 @@ double NO_DATA_VALUE=(1<<16) - 1;
 QList< QPair<QString,QString> > METADATA;
 QPolygonF GEO_EXTENT;
 
-//cv::Mat TEST_MATRIX2;
-
 
 bool compareVectors(const QVector<double> & v1, const QVector<double> & v2, double tol = 1e-8)
 {
@@ -60,8 +58,15 @@ bool comparePolygons(const QPolygonF & v1, const QPolygonF & v2, double tol = 1e
 
 void LayerUtilsTest::initTestCase()
 {
-    QDir::addSearchPath("Input", QCoreApplication::applicationDirPath() +
-                        "/../../GeoImageViewer_source/Tests/Data/");
+    // Create temporary dir
+    QDir d = QDir::currentPath() + "/Temp_tests_123";
+    SD_TRACE("Temporary dir : " + d.absolutePath());
+    if (!d.exists())
+    {
+        d.mkdir(d.absolutePath());
+    }
+    QDir::addSearchPath("Input", d.absolutePath());
+
 
     // Register GDAL drivers
     GDALAllRegister();
@@ -250,6 +255,12 @@ void LayerUtilsTest::test_FileReadWriteMethods()
 
 void LayerUtilsTest::cleanupTestCase()
 {
+
+    // remove temporary directory:
+    QDir d("Input:");
+    QVERIFY(d.removeRecursively());
+
+
     GDALDestroyDriverManager();
 }
 
