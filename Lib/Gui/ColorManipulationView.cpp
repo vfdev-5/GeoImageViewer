@@ -76,11 +76,6 @@ ColorManipulationView::ColorManipulationView(QWidget *parent) :
     _currentColorPalette(0)
 {
 
-    //    // setup timer:
-    //    _updateDelayTimer.setSingleShot(true);
-    //    connect(&_updateDelayTimer, SIGNAL(timeout()), this, SLOT(onUpdateTimerTimeout()));
-
-
     // setup context menu:
     setupViewContextMenu();
 
