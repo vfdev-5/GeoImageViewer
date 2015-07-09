@@ -92,7 +92,6 @@ void ToolsView::setCurrentTool(QToolButton *button)
     _currentTool->setAutoRaise(false);
     QString toolName = button->objectName();
     ui->_editor->setup( Tools::ToolsManager::get()->getTool(toolName) );
-    emit toolChanged(toolName);
 }
 
 //******************************************************************************
@@ -104,6 +103,7 @@ void ToolsView::onToolButtonClicked()
         return;
 
     setCurrentTool(button);
+    emit toolChanged(button->objectName());
 }
 
 //******************************************************************************

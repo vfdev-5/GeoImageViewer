@@ -32,7 +32,8 @@ DrawingsItem::DrawingsItem(int width, int height, QColor bg, QGraphicsItem * par
     QGraphicsItem(parent),
     _background(bg)
 {
-    _image = QImage(width, height, QImage::Format_ARGB32);
+//    _image = QImage(width, height, QImage::Format_ARGB32);
+    _image = QImage(width, height, QImage::Format_RGBA8888);
     _image.fill(_background);
 }
 

@@ -32,20 +32,25 @@ class GIV_DLL_EXPORT GeoImageLayer : public GeoShapeLayer
     PROPERTY_ACCESSORS(QString, location, getLocation, setLocation)
 
     // Image/Geo info :
+    Q_PROPERTY(QRect pixelExtent READ getPixelExtent)
+    PROPERTY_ACCESSORS(QRect, pixelExtent, getPixelExtent, setPixelExtent)
+
     Q_PROPERTY(int nbBands READ getNbBands)
     PROPERTY_ACCESSORS(int, nbBands, getNbBands, setNbBands)
+
     Q_PROPERTY(int depth READ getDepthInBytes)
     PROPERTY_ACCESSORS(int, depth, getDepthInBytes, setDepthInBytes)
+
     Q_PROPERTY(bool isComplex READ isComplex)
     PROPERTY_ACCESSORS(bool, isComplex, isComplex, setIsComplex)
 
+    Q_CLASSINFO("pixelExtent","label:Pixel extent")
     Q_CLASSINFO("nbBands","label:Number of channels")
     Q_CLASSINFO("depth","label:Encoding (bytes)")
     Q_CLASSINFO("isComplex","label:Complex pixel")
 
 //    Q_PROPERTY(double noDataValue READ getNoDataValue)
 //    PROPERTY_ACCESSORS(double, noDataValue, getNoDataValue, setNoDataValue)
-
 //    Q_CLASSINFO("noDataValue","label:NoData Value")
 
     Q_PROPERTY(QString projectionRef READ getProjectionRef)

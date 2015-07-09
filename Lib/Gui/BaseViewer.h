@@ -85,10 +85,8 @@ protected:
     { return QVector<double>(); }
 
     QGraphicsScene _scene;
-//    QGraphicsView _view;
 
     QGraphicsSimpleTextItem * _initialTextItem;
-//    QLabel * _pointInfo;
 
     QString _initialText;
     QProgressDialog * _progressDialog;

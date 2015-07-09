@@ -5,6 +5,7 @@
 // Qt
 #include <qmath.h>
 #include <QString>
+#include <QFileInfo>
 
 // OpenCV
 #include <opencv2/imgproc/imgproc.hpp>
@@ -180,7 +181,8 @@ cv::Mat displayMat(const cv::Mat & inputImage0, bool showMinMax, const QString &
     int depth = inputImage0.elemSize1();
 
     cv::Mat inputImage;
-    if (inputImage0.depth() != CV_32F && inputImage0.depth() != CV_64F)
+    int inputDepth = inputImage0.depth();
+    if (inputDepth != CV_32F && inputDepth != CV_64F)
     {
         inputImage0.convertTo(inputImage, CV_32F);
     }
@@ -251,16 +253,25 @@ cv::Mat displayMat(const cv::Mat & inputImage0, bool showMinMax, const QString &
     for (int i=0; i < mapping.size(); i ++)
     {
        int index = mapping.value(i+1) - 1;
-       if (!minMaxComputed[index])
+       if (inputDepth != CV_8U)
        {
-           cv::minMaxLoc(iChannels[index], &min[index], &max[index]);
-           cv::Scalar mean, std;
-           cv::meanStdDev(iChannels[index], mean, std);
-           nmin[index] = mean.val[0] - 3.0*std.val[0];
-           nmin[index] = (nmin[index] < min[index]) ? min[index] : nmin[index];
-           nmax[index] = mean.val[0] + 3.0*std.val[0];
-           nmax[index] = (nmax[index] > max[index]) ? max[index] : nmax[index];
+           if (!minMaxComputed[index])
+           {
+               cv::minMaxLoc(iChannels[index], &min[index], &max[index]);
+               cv::Scalar mean, std;
+               cv::meanStdDev(iChannels[index], mean, std);
+               nmin[index] = mean.val[0] - 3.0*std.val[0];
+               nmin[index] = (nmin[index] < min[index]) ? min[index] : nmin[index];
+               nmax[index] = mean.val[0] + 3.0*std.val[0];
+               nmax[index] = (nmax[index] > max[index]) ? max[index] : nmax[index];
+           }
        }
+       else
+       {
+           nmin[index] = min[index] = 0;
+           nmax[index] = max[index] = 255;
+       }
+
        if (showMinMax)
        {
            SD_TRACE( QString( "Image " + windowNameS + ", min/max : %1, %2" ).arg( min[index] ).arg( max[index] ) );
@@ -377,13 +388,14 @@ QVector<QPolygonF> vectorizeAsPolygons(const cv::Mat & inputImage)
 //******************************************************************************
 
 template<typename T>
-void printPixel(const cv::Mat & singleBand, int i, int j)
+void printPixel(const cv::Mat & singleBand, int x, int y)
 {
 
-    std::cout << singleBand.at<T>(i,j);
+    std::cout << singleBand.at<T>(y,x);
 }
 
-void printMat(const cv::Mat & inputImage0, const QString &windowName)
+// Print matrix data:
+void printMat(const cv::Mat & inputImage0, const QString &windowName, int limit)
 {
 
     cv::Mat inputImage;
@@ -394,17 +406,15 @@ void printMat(const cv::Mat & inputImage0, const QString &windowName)
     else
         inputImage = inputImage0;
 
-    SD_TRACE("------ Print matrix : " + windowName.isEmpty() ? "inputImage" : windowName);
+    QString t = windowName.isEmpty() ? "inputImage" : windowName;
+    SD_TRACE(QString("------ Print matrix : ") + t);
     int w = inputImage.cols;
     int h = inputImage.rows;
     SD_TRACE("Size : " + QString::number(w) + ", " + QString::number(h));
 
 
-
-    int limit = 7;
     w = w > limit ? limit : w;
     h = h > limit ? limit : h;
-
     int nbBands = inputImage.channels();
     std::vector<cv::Mat> iChannels(nbBands);
     cv::split(inputImage, &iChannels[0]);
@@ -416,7 +426,7 @@ void printMat(const cv::Mat & inputImage0, const QString &windowName)
             std::cout << "(";
             for (int k=0; k<nbBands; k++)
             {
-                printPixel<float>(iChannels[k], i, j);
+                printPixel<float>(iChannels[k], j, i);
                 std::cout << " ";
             }
             std::cout << ")";
@@ -772,7 +782,7 @@ bool isGeoProjection(const QString &prStr)
 
 //******************************************************************************
 
-bool writeToFile(const QString &outputFilename, const cv::Mat &image,
+bool writeToFile(const QString &outputFilename0, const cv::Mat &image,
                  const QString & projectionStr, const QVector<double> &geoTransform,
                  double nodatavalue,
                  const QList< QPair<QString,QString> > & metadata)
@@ -801,6 +811,13 @@ bool writeToFile(const QString &outputFilename, const cv::Mat &image,
 
     char **papszCreateOptions = 0;
     papszCreateOptions=CSLAddString(papszCreateOptions, "COMPRESS=LZW");
+
+    QString outputFilename = outputFilename0;
+    QFileInfo fi(outputFilename);
+    if (fi.suffix().compare("tif", Qt::CaseInsensitive))
+    {
+        outputFilename.append(".tif");
+    }
 
     GDALDataset * outputDataset = driver->Create(outputFilename.toStdString().c_str(), width, height, outputNbBands, dataType, papszCreateOptions);
     if (!outputDataset)

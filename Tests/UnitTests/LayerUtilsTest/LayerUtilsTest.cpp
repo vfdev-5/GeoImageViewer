@@ -2,12 +2,14 @@
 // Qt
 #include <QDir>
 #include <QFileInfo>
-#include <QThreadPool>
+#include <QLabel>
 
 // OpenCV
 #include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 // Tests
+#include "../../Common.h"
 #include "LayerUtilsTest.h"
 #include "Core/LayerUtils.h"
 #include "Core/ImageDataProvider.h"
@@ -25,34 +27,6 @@ QVector<double> GEO_TRANSFORM;
 double NO_DATA_VALUE=(1<<16) - 1;
 QList< QPair<QString,QString> > METADATA;
 QPolygonF GEO_EXTENT;
-
-
-bool compareVectors(const QVector<double> & v1, const QVector<double> & v2, double tol = 1e-8)
-{
-    if (v1.size() != v2.size())
-        return false;
-
-    for (int i=0;i<v1.size();i++)
-    {
-        if (qAbs(v1[i] - v2[i]) > tol)
-            return false;
-    }
-    return true;
-}
-
-bool comparePolygons(const QPolygonF & v1, const QPolygonF & v2, double tol = 1e-5)
-{
-    if (v1.size() != v2.size())
-        return false;
-
-    for (int i=0;i<v1.size();i++)
-    {
-        QPointF p = v1[i] - v2[i];
-        if (qSqrt(p.x()*p.x() + p.y()*p.y()) > tol)
-            return false;
-    }
-    return true;
-}
 
 //*************************************************************************
 
@@ -249,6 +223,94 @@ void LayerUtilsTest::test_FileReadWriteMethods()
     delete provider;
 
     QVERIFY(QFile(out).remove());
+}
+
+//*************************************************************************
+
+void LayerUtilsTest::test_Mat2QImage()
+{
+    cv::Mat rgbaSource(500, 500, CV_8UC4, cv::Scalar(0,0,0,255));
+    int offsetX = 1;
+    int offsetY = 0;
+    for (int i=offsetY;i<offsetY+50;i++)
+    {
+        for (int j=offsetX;j<offsetX+100;j++)
+        {
+            rgbaSource.at<cv::Vec4b>(i,j) = cv::Vec4b(0,0,112,255);
+        }
+    }
+
+//    Core::printMat(rgbaSource, "SRC");
+
+    QImage im = Core::fromMat(rgbaSource).copy();
+
+//    std::cout << "Print QImage :"<< std::endl;
+//    for (int i=0;i<10;i++)
+//    {
+//        for (int j=0;j<10;j++)
+//        {
+//            QRgb rgba = im.pixel(j,i);
+//            std::cout << "(";
+//            std::cout << qRed(rgba) << " "
+//                      << qGreen(rgba) << " "
+//                      << qBlue(rgba) << " "
+//                      << qAlpha(rgba);
+//            std::cout << ")";
+//        }
+//        std::cout << std::endl;
+//    }
+//    std::cout << "------"<< std::endl;
+
+//    QLabel * label = new QLabel();
+//    label->setPixmap(QPixmap::fromImage(im));
+//    label->show();
+
+    for (int i=0;i<rgbaSource.rows;i++)
+    {
+        for (int j=0;j<rgbaSource.cols;j++)
+        {
+            QRgb rgba = im.pixel(j,i);
+            QVERIFY(testRGBAColor(rgbaSource.at<cv::Vec4b>(i,j),
+                                  qRed(rgba),
+                                  qGreen(rgba),
+                                  qBlue(rgba),
+                                  qAlpha(rgba))
+                    );
+        }
+    }
+
+    cv::Mat rgbaDst = Core::fromQImage(im);
+//    Core::displayMat(rgbaSource, true, "DST");
+
+    QVERIFY(Core::isEqual(rgbaDst, rgbaSource));
+
+//    label->hide();
+//    delete label;
+
+}
+
+//*************************************************************************
+
+void LayerUtilsTest::test_displayMat()
+{
+    cv::Mat src(500, 500, CV_8UC3, cv::Scalar(127,127,127));
+    int offsetX = 1;
+    int offsetY = 0;
+    for (int i=offsetY;i<offsetY+50;i++)
+    {
+        for (int j=offsetX;j<offsetX+100;j++)
+        {
+            src.at<cv::Vec4b>(i,j) = cv::Vec4b(0,0,255);
+        }
+    }
+
+    cv::Mat dst = Core::displayMat(src, false, "SRC", false);
+    cv::cvtColor(dst, dst, cv::COLOR_RGB2BGR);
+//    Core::printMat(dst, "DST");
+    cv::destroyAllWindows();
+
+    QVERIFY(Core::isEqual(dst, src));
+
 }
 
 //*************************************************************************

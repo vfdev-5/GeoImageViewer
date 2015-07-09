@@ -13,6 +13,7 @@
 
 // OpenCV
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 // Project
 #include "Global.h"
@@ -57,7 +58,7 @@ cv::Mat GIV_DLL_EXPORT displayMat(const cv::Mat & inputImage, bool showMinMax=fa
 
 bool GIV_DLL_EXPORT isEqual(const cv::Mat & src, const cv::Mat & dst, double tol = 1e-5);
 
-void GIV_DLL_EXPORT printMat(const cv::Mat & inputImage, const QString &windowName=QString());
+void GIV_DLL_EXPORT printMat(const cv::Mat & inputImage, const QString &windowName=QString(), int limit=10);
 
 cv::Mat GIV_DLL_EXPORT computeMask(const cv::Mat &data, float noDataValue, cv::Mat * unmaskOutput);
 
@@ -66,6 +67,29 @@ cv::Mat GIV_DLL_EXPORT computeMask(const cv::Mat &data, float noDataValue, cv::M
   Inner contours are not vectorized
   */
 QVector<QPolygonF> GIV_DLL_EXPORT vectorizeAsPolygons(const cv::Mat & inputImage);
+
+//******************************************************************************
+// Conversion methods - DO NOT COPY INTERNAL DATA
+//******************************************************************************
+
+/*!
+    Method to convert cv::Mat of type CV_8UC4 into QImage of format Format_RGBA8888
+    Attention on big-endian systems.
+ */
+inline QImage fromMat(cv::Mat & rgbaImg)
+{
+    return QImage(rgbaImg.data, rgbaImg.cols, rgbaImg.rows, QImage::Format_RGBA8888);
+}
+
+/*!
+    Method to convert QImage of format Format_RGBA8888 into cv::Mat of type CV_8UC4
+    Attention on big-endian systems.
+ */
+inline cv::Mat fromQImage(QImage & image)
+{
+    return cv::Mat(image.height(), image.width(), CV_8UC4, image.bits());
+}
+
 
 //******************************************************************************
 // Geo Computation methods

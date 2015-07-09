@@ -3,6 +3,7 @@
 #include <QDockWidget>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QSettings>
 
 // Project
 #include "MainWindow.h"
@@ -55,10 +56,16 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionExit, SIGNAL(triggered()), this, SLOT(onExitActionTriggered()));
     connect(ui->actionOpen_Image, SIGNAL(triggered()), this, SLOT(onOpenImageActionTriggered()));
 
-
     //
-    showMaximized();
-
+    QSettings settings("GeoImageViewer_dot_com", "GIV");
+    if (settings.contains("MainWindow/geometry"))
+    {
+        restoreGeometry(settings.value("MainWindow/geometry").toByteArray());
+    }
+    else
+    {
+        showMaximized();
+    }
 
 }
 
@@ -74,6 +81,15 @@ MainWindow::~MainWindow()
 void MainWindow::onExitActionTriggered()
 {
     close();
+}
+
+//******************************************************************************
+
+void MainWindow::closeEvent(QCloseEvent * event)
+{
+    QSettings settings("GeoImageViewer_dot_com", "GIV");
+    settings.setValue("geometry", saveGeometry());
+    QMainWindow::closeEvent(event);
 }
 
 //******************************************************************************
@@ -100,6 +116,9 @@ QDockWidget * MainWindow::createDockWidget(QWidget *w, Qt::DockWidgetArea where)
     dock->setWidget(w);
     dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
     addDockWidget(where, dock);
+
+//    dock->setMaximumWidth(500);
+
     return dock;
 }
 

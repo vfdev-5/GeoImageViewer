@@ -8,6 +8,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 // Tests
+#include "../../Common.h"
 #include "ImageRendererTest.h"
 #include "Core/HistogramImageRenderer.h"
 #include "Core/ImageDataProvider.h"
@@ -15,22 +16,6 @@
 
 namespace Tests
 {
-
-bool testRGBAColor(const cv::Vec4b & p, int r, int g, int b, int a)
-{
-    return p[0] == r && p[1] == g && p[2] == b && p[3] == a;
-}
-
-bool testBGRAColor(const cv::Vec4b & p, int r, int g, int b, int a)
-{
-    return p[2] == r && p[1] == g && p[0] == b && p[3] == a;
-}
-
-
-bool testRGBAColor2(const QColor & p, int r, int g, int b, int a)
-{
-    return p.red() == r && p.green() == g && p.blue() == b && p.alpha() == a;
-}
 
 //*************************************************************************
 /*!

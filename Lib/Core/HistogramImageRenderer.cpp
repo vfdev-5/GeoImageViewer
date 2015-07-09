@@ -237,7 +237,20 @@ void setupRGBModeConf(const ImageDataProvider *provider, HistogramRendererConfig
     histConf->mode = HistogramRendererConfiguration::RGB;
 }
 
-
+//******************************************************************************
+/*!
+ * \brief HistogramImageRenderer::getDefaultMode Method return default mode (gray or rgb) depending on provided image info
+ * \param dataProvider
+ * \return RGB if dataProvider number of channels is more than 2 and data is not complex
+ */
+HistogramRendererConfiguration::Mode HistogramImageRenderer::getDefaultMode(const ImageDataProvider *dataProvider)
+{
+    if (dataProvider->getNbBands() > 2 && !dataProvider->inputIsComplex())
+    {
+        return Core::HistogramRendererConfiguration::RGB;
+    }
+    return Core::HistogramRendererConfiguration::GRAY;
+}
 
 //******************************************************************************
 /*!

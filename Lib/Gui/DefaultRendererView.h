@@ -41,7 +41,7 @@ protected slots:
     void on__min_editingFinished();
     void on__max_editingFinished();
 
-private:
+protected:
     Ui_DefaultRendererView *ui;
 
     void setupBandConfiguration(int index);

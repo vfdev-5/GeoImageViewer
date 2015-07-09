@@ -7,6 +7,7 @@
 #include <QGraphicsScene>
 
 // Project
+#include "LayerUtils.h"
 #include "GeoImageItem.h"
 #include "ImageDataProvider.h"
 #include "HistogramImageRenderer.h"
@@ -504,7 +505,7 @@ void TilesLoadTask::run()
 #ifdef RENDERER_TIMER_ON
                 StartTimer("render");
 #endif
-                r = _item->_renderer->render(data, _item->_rconf, true);
+                r = _item->_renderer->render(data, _item->_rconf);
 #ifdef RENDERER_TIMER_ON
                 StopTimer();
 #endif
@@ -514,7 +515,8 @@ void TilesLoadTask::run()
             // Here cv::Mat data is deleted
 
             // Data is copied into QPixmap
-            p = QPixmap::fromImage(QImage(r.data, r.cols, r.rows, QImage::Format_ARGB32).copy());
+//            p = QPixmap::fromImage(QImage(r.data, r.cols, r.rows, QImage::Format_ARGB32).copy());
+            p = QPixmap::fromImage(Core::fromMat(r).copy());
             tile = new QGraphicsPixmapItem(p);
             tile->setTransform(
                         QTransform::fromScale(t.scale, t.scale) *

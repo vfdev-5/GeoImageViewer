@@ -6,8 +6,10 @@
 
 // OpenCV
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 // Tests
+#include "../../Common.h"
 #include "ImageWriterTest.h"
 #include "Core/LayerUtils.h"
 #include "Core/FloatingDataProvider.h"
@@ -47,16 +49,22 @@ void ImageWriterTest::initTestCase()
 
     // create synthetic image:
     TEST_MATRIX = cv::Mat(WIDTH, HEIGHT, DEPTH, cv::Scalar(0));
+    _scribble = QImage(TEST_MATRIX.cols, TEST_MATRIX.rows, QImage::Format_ARGB32);
+    _scribble.fill(QColor(Qt::black));
     for (int i=0; i<TEST_MATRIX.rows;i++)
     {
         for (int j=0; j<TEST_MATRIX.cols;j++)
         {
-            TEST_MATRIX.at<ushort>(i,j) = (ushort) ( 100 + 1.5*i + 3.4*j +
-                                           (TEST_MATRIX.rows-1-i)*j*0.01 +
-                                           i*(TEST_MATRIX.rows-1-i)*(TEST_MATRIX.cols*0.5-1-j)*0.001 +
-                                           j*j*0.002);
+            double v = ( 100 + 1.5*i + 3.4*j +
+                         (TEST_MATRIX.rows-1-i)*j*0.01 +
+                         i*(TEST_MATRIX.rows-1-i)*(TEST_MATRIX.cols*0.5-1-j)*0.001 +
+                         j*j*0.002);
+            TEST_MATRIX.at<ushort>(i,j) = (ushort) v;
+            QRgb pixVal = qRgba((int) v, (int) v+1, (int) v+2, 255);
+            _scribble.setPixel(i,j, pixVal);
         }
     }
+
 
 //    QString p1 = Core::getProjectionStrFromEPSG();
 //    QString p2 = Core::getProjectionStrFromGeoCS();
@@ -117,7 +125,7 @@ void ImageWriterTest::initTestCase()
 
 //*************************************************************************
 
-void ImageWriterTest::test()
+void ImageWriterTest::test_write()
 {
     QString out = QFileInfo("Input:").absoluteFilePath() + "/test_image.tif";
 
@@ -135,8 +143,10 @@ void ImageWriterTest::test()
 
     // test geo info:
     QVERIFY( Core::compareProjections(provider->fetchProjectionRef(), _geoInfo->getProjectionRef()) );
-    QVERIFY( provider->fetchGeoExtent() == _geoInfo->getGeoExtent() );
-    QVERIFY( provider->fetchGeoTransform() == _geoInfo->getGeoTransform() );
+    QVERIFY( comparePolygons(provider->fetchGeoExtent(), _geoInfo->getGeoExtent()) );
+    QVERIFY( compareVectors(provider->fetchGeoTransform(), _geoInfo->getGeoTransform()) );
+    QVERIFY( provider->getPixelExtent() == _provider->getPixelExtent());
+
 
     delete provider;
     QVERIFY(QFile(out).remove());
@@ -144,14 +154,14 @@ void ImageWriterTest::test()
 
 //*************************************************************************
 
-void ImageWriterTest::test2()
+void ImageWriterTest::test_writeInBackground()
 {
-    QString out = QFileInfo("Input:").absoluteFilePath() + "/test_image_2.tif";
+    _outFilename = QFileInfo("Input:").absoluteFilePath() + "/test_image_2.tif";
 
     connect(_imageWriter, &Core::ImageWriter::imageWriteFinished,
             this, &Tests::ImageWriterTest::onImageWriteFinished);
     writeFinished = false;
-    _imageWriter->writeInBackground(out, _provider, _geoInfo);
+    _imageWriter->writeInBackground(_outFilename, _provider, _geoInfo);
 
     int i = 0;
     while (!writeFinished && i++ < 50)
@@ -160,12 +170,52 @@ void ImageWriterTest::test2()
 
 //*************************************************************************
 
+void ImageWriterTest::test_writeInBackground_cancel()
+{
+    _outFilename = QFileInfo("Input:").absoluteFilePath() + "/test_image_2.tif";
+
+    connect(_imageWriter, &Core::ImageWriter::imageWriteFinished,
+            this, &Tests::ImageWriterTest::onImageWriteCanceled);
+    writeFinished = false;
+    _imageWriter->writeInBackground(_outFilename, _provider, _geoInfo);
+
+    int i = 0;
+    while (!writeFinished && i++ < 50)
+    {
+        _imageWriter->cancel();
+        QTest::qWait(500);
+    }
+}
+
+//*************************************************************************
+
+void ImageWriterTest::test_scribble_writeInBackground()
+{
+    _outFilename = QFileInfo("Input:").absoluteFilePath() + "/test_image_3.tif";
+
+    connect(_imageWriter, &Core::ImageWriter::imageWriteFinished,
+            this, &Tests::ImageWriterTest::onImageWriteFinished2);
+    writeFinished = false;
+    _imageWriter->writeInBackground(_outFilename, &_scribble, _geoInfo);
+
+    int i = 0;
+    while (!writeFinished && i++ < 50)
+    {
+        QTest::qWait(500);
+    }
+}
+
+//*************************************************************************
+
 void ImageWriterTest::onImageWriteFinished(bool ok)
 {
     writeFinished = true;
+    disconnect(_imageWriter, &Core::ImageWriter::imageWriteFinished,
+            this, &Tests::ImageWriterTest::onImageWriteFinished);
+
     QVERIFY(ok);
 
-    QString out = QFileInfo("Input:").absoluteFilePath() + "/test_image_2.tif";
+    QString out = _outFilename;
 
     Core::GDALDataProvider * provider = new Core::GDALDataProvider();
     QVERIFY(provider->setup(out));
@@ -178,16 +228,65 @@ void ImageWriterTest::onImageWriteFinished(bool ok)
 
     // test geo info:
     QVERIFY( Core::compareProjections(provider->fetchProjectionRef(), _geoInfo->getProjectionRef()) );
-    QVERIFY( provider->fetchGeoExtent() == _geoInfo->getGeoExtent() );
-    QVERIFY( provider->fetchGeoTransform() == _geoInfo->getGeoTransform() );
-
+    QVERIFY( comparePolygons(provider->fetchGeoExtent(), _geoInfo->getGeoExtent()) );
+    QVERIFY( compareVectors(provider->fetchGeoTransform(), _geoInfo->getGeoTransform()) );
+    QVERIFY( provider->getPixelExtent() == _provider->getPixelExtent());
 
     delete provider;
 
     QVERIFY(QFile(out).remove());
 
+}
+
+//*************************************************************************
+
+void ImageWriterTest::onImageWriteCanceled(bool ok)
+{
+    writeFinished = true;
     disconnect(_imageWriter, &Core::ImageWriter::imageWriteFinished,
-            this, &Tests::ImageWriterTest::onImageWriteFinished);
+            this, &Tests::ImageWriterTest::onImageWriteCanceled);
+
+    QVERIFY(!ok);
+    if (QFile(_outFilename).exists())
+    {
+        QVERIFY(QFile(_outFilename).remove());
+    }
+
+}
+
+//*************************************************************************
+
+void ImageWriterTest::onImageWriteFinished2(bool ok)
+{
+    writeFinished = true;
+    disconnect(_imageWriter, &Core::ImageWriter::imageWriteFinished,
+            this, &Tests::ImageWriterTest::onImageWriteFinished2);
+    QVERIFY(ok);
+
+    QString out = _outFilename;
+
+    Core::GDALDataProvider * provider = new Core::GDALDataProvider();
+    QVERIFY(provider->setup(out));
+
+    cv::Mat m = Core::fromQImage(_scribble);
+    cv::Mat m2 = provider->getImageData();
+
+    if (m.depth() != m2.depth())
+    {
+        m2.convertTo(m2, m.depth());
+    }
+
+    QVERIFY(Core::isEqual(m,m2));
+
+    // test geo info:
+    QVERIFY( Core::compareProjections(provider->fetchProjectionRef(), _geoInfo->getProjectionRef()) );
+    QVERIFY( comparePolygons(provider->fetchGeoExtent(), _geoInfo->getGeoExtent()) );
+    QVERIFY( compareVectors(provider->fetchGeoTransform(), _geoInfo->getGeoTransform()) );
+    QVERIFY( provider->getPixelExtent() == _provider->getPixelExtent());
+
+    delete provider;
+    QVERIFY(QFile(out).remove());
+
 
 }
 

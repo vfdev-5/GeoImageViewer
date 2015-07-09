@@ -73,10 +73,14 @@ void ShapeViewer::clear()
         _layersView->setLayers(_layers);
 
 
-    changeTool(_toolsManager->getTool("navigation"));
-    if (_toolsView)
+    Tools::AbstractTool * navTool = _toolsManager->getTool("navigation");
+    if (_currentTool != navTool)
     {
-        _toolsView->setCurrentTool(_currentTool->getName());
+        changeTool(navTool);
+        if (_toolsView)
+        {
+            _toolsView->setCurrentTool(_currentTool->objectName());
+        }
     }
 
     BaseViewer::clear();
@@ -146,8 +150,21 @@ void ShapeViewer::changeTool(Tools::AbstractTool *newTool)
 void ShapeViewer::onItemCreated(QGraphicsItem * item)
 {
     SD_TRACE("onItemCreated");
+
+
     // create layer:
-    Core::BaseLayer * layer = new Core::BaseLayer(this);
+    Core::GeoShapeLayer * layer = new Core::GeoShapeLayer(this);
+
+    // get current layer on which item has been created:
+    Core::GeoShapeLayer * currentLayer = static_cast<Core::GeoShapeLayer*>(getCurrentLayer());
+    if (currentLayer)
+    {
+
+    }
+
+//    layer->setGeoBBox(
+
+//    Core::BaseLayer * layer = new Core::BaseLayer(this);
     layer->setType(_currentTool->getName());
 
     addLayer(layer, item);
@@ -250,6 +267,7 @@ bool ShapeViewer::eventFilter(QObject * o, QEvent * e)
 {
     if (o == &_scene)
     {
+
         if (_enableTools &&
                 _currentTool &&
                 _currentTool->dispatch(e, &_scene))
