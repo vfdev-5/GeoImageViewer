@@ -56,15 +56,15 @@ BaseViewer::BaseViewer(const QString &initialText, QWidget *parent) :
     _zoomMinLevel(-5),
     _zoomMaxLevel(5),
     _initialText(initialText),
-//    _pointInfo(new QLabel()),
+    //    _pointInfo(new QLabel()),
     _handScrolling(false),
     _lastMouseEvent(QEvent::None, QPointF(), QPointF(), QPointF(), Qt::NoButton, 0, 0)
 {
     _ui->setupUi(this);//    QVBoxLayout * layout = new QVBoxLayout(this);
-//    layout->addWidget(&_view);
-//    layout->
-//    layout->addWidget(_pointInfo);
-//    _pointInfo->setVisible(false);
+    //    layout->addWidget(&_view);
+    //    layout->
+    //    layout->addWidget(_pointInfo);
+    //    _pointInfo->setVisible(false);
 
 
     // setup size policy to be maximum
@@ -324,33 +324,40 @@ bool BaseViewer::navigationOnKeys(QEvent *e)
  */
 bool BaseViewer::scrollOnMouse(QEvent *e)
 {
-    if (e->type() == QEvent::MouseButtonPress)
+    // !!! DO NOT SCROLL ON RIGHT BUTTON BECAUSE OF CONTEXT MENU
+    QMouseEvent * mouseEvent = static_cast<QMouseEvent*>(e);
+    if (mouseEvent)
     {
-        _handScrolling = true;
-        _ui->_view->viewport()->setCursor(Qt::ClosedHandCursor);
-        _lastMouseEvent = storeMouseEvent(static_cast<QMouseEvent*>(e));
-        return true;
-    }
-    else if (e->type() == QEvent::MouseMove)
-    {
-        if (_handScrolling)
+        if (mouseEvent->type() == QEvent::MouseButtonPress &&
+                mouseEvent->button() == Qt::LeftButton)
         {
-            QMouseEvent * event = static_cast<QMouseEvent*>(e);
-            QScrollBar *hBar = _ui->_view->horizontalScrollBar();
-            QScrollBar *vBar = _ui->_view->verticalScrollBar();
-            QPoint delta = event->pos() - _lastMouseEvent.pos();
-            hBar->setValue(hBar->value() + (_ui->_view->isRightToLeft() ? delta.x() : -delta.x()));
-            vBar->setValue(vBar->value() - delta.y());
-            _lastMouseEvent = storeMouseEvent(event);
+            _handScrolling = true;
+            _ui->_view->viewport()->setCursor(Qt::ClosedHandCursor);
+            _lastMouseEvent = storeMouseEvent(mouseEvent);
             return true;
         }
-    }
-    else if (e->type() == QEvent::MouseButtonRelease)
-    {
-        _handScrolling = false;
-        _ui->_view->viewport()->setCursor(_cursor);
-        centerOnAtZoom(_zoomLevel);
-        return true;
+        else if (mouseEvent->type() == QEvent::MouseMove)
+        {
+            if (_handScrolling)
+            {
+                QScrollBar *hBar = _ui->_view->horizontalScrollBar();
+                QScrollBar *vBar = _ui->_view->verticalScrollBar();
+                QPoint delta = mouseEvent->pos() - _lastMouseEvent.pos();
+                hBar->setValue(hBar->value() + (_ui->_view->isRightToLeft() ? delta.x() : -delta.x()));
+                vBar->setValue(vBar->value() - delta.y());
+                _lastMouseEvent = storeMouseEvent(mouseEvent);
+                return true;
+            }
+        }
+        else if (mouseEvent->type() == QEvent::MouseButtonRelease &&
+                    mouseEvent->button() == Qt::LeftButton)
+        {
+
+            _handScrolling = false;
+            _ui->_view->viewport()->setCursor(_cursor);
+            centerOnAtZoom(_zoomLevel);
+            return true;
+        }
     }
     return false;
 }

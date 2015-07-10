@@ -42,6 +42,7 @@ public:
     { _geoExtent = ge; }
 
     bool create(const QString & name, const cv::Mat & src, const QRect & intersection=QRect());
+    void setupGeoInfo(const ImageDataProvider * src, const QRect & intersection=QRect());
 
     virtual bool isValid() const
     { return !_data.empty(); }

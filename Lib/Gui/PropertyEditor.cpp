@@ -53,13 +53,21 @@ QWidget * createPolygonWidget(const QPolygonF & p )
 
 QWidget * createVectorDWidget(const QVector<double> & v)
 {
-    QString vStr = "( ";
-    foreach (double el, v)
+    QString vStr;
+    if (!v.isEmpty())
     {
-        vStr.append(QString("%1, ").arg(el));
+        vStr = "( ";
+        foreach (double el, v)
+        {
+            vStr.append(QString("%1, ").arg(el));
+        }
+        vStr.remove(vStr.size()-2,2);
+        vStr.append(" )");
     }
-    vStr.remove(vStr.size()-2,2);
-    vStr.append(" )");
+    else
+    {
+        vStr = "Unknown";
+    }
     QLabel * l = new QLabel(vStr);
     l->setWordWrap(true);
     return l;

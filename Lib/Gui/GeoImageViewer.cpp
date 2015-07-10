@@ -462,19 +462,21 @@ void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
     }
 
     // Create new layer :
-    Core::GeoImageLayer * nLayer = new Core::GeoImageLayer(this);
-    nLayer->setType(_appliedFilter->getName());
-    nLayer->setImageName(provider->getImageName());
+    Core::GeoImageLayer * nLayer = createGeoImageLayer(_appliedFilter->getName(), provider);
 
-    nLayer->setNbBands(provider->getNbBands());
-    nLayer->setDepthInBytes(provider->getDepthInBytes());
-    nLayer->setIsComplex(provider->isComplex());
+//    Core::GeoImageLayer * nLayer = new Core::GeoImageLayer(this);
+//    nLayer->setType(_appliedFilter->getName());
 
-    nLayer->setGeoExtent(_processedLayer->getGeoExtent());
-    nLayer->setGeoBBox(_processedLayer->getGeoBBox());
-    // pixel extent is intersection
-    nLayer->setPixelExtent(_processedLayer->getPixelExtent());
-    nLayer->setProjectionRef(_processedLayer->getProjectionRef());
+//    nLayer->setImageName(provider->getImageName());
+//    nLayer->setNbBands(provider->getNbBands());
+//    nLayer->setDepthInBytes(provider->getDepthInBytes());
+//    nLayer->setIsComplex(provider->isComplex());
+
+//    nLayer->setGeoExtent(_processedLayer->getGeoExtent());
+//    nLayer->setGeoBBox(_processedLayer->getGeoBBox());
+//    nLayer->setPixelExtent(_processedLayer->getPixelExtent());
+//    nLayer->setProjectionRef(_processedLayer->getProjectionRef());
+
 
     addLayer(nLayer, nItem);
 
@@ -486,6 +488,7 @@ void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
 }
 
 //******************************************************************************
+
 /*!
  * \brief GeoImageViewer::setRendererView method to setup a renderer view: DefaultRendererView or HistogramRendererView ...
  * \param rendererView
@@ -497,6 +500,10 @@ void GeoImageViewer::setRendererView(AbstractRendererView *rendererView)
 
 //******************************************************************************
 
+/*!
+ * \brief GeoImageViewer::onCopyData Slot called on Selection tool signal copyToNewLayer()
+ * \param selection selection extent
+ */
 void GeoImageViewer::onCopyData(const QRectF &selection)
 {
     SD_TRACE("Copy data to new layer");

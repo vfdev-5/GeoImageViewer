@@ -225,6 +225,7 @@ void FilterTask::run()
     FiltersManager::get()->filterProgressValueChanged(60);
 
     _dstProvider->create(_srcProvider->getImageName() + " + " + _filter->getName(), dstMat);
+    _dstProvider->setupGeoInfo(_srcProvider);
 
     FiltersManager::get()->filterProgressValueChanged(100);
     FiltersManager::get()->taskFinished(_dstProvider);

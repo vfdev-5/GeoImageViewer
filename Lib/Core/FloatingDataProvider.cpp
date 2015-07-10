@@ -193,6 +193,21 @@ bool FloatingDataProvider::create(const QString &name, const cv::Mat &src, const
 }
 
 //******************************************************************************
+/*!
+ * \brief ImageDataProvider::copyGeoInfo Method to setup geo info : projection reference, geo extent, geo bbox, geo transform
+ * using ImageDataProvider source and optionaly intersection, if destination's intersection is different of the source's one.
+ * \param src
+ * \param intersection
+ */
+void FloatingDataProvider::setupGeoInfo(const ImageDataProvider *src, const QRect & intersection)
+{
+    this->_projectionRef = src->fetchProjectionRef();
+    this->_geoExtent = src->fetchGeoExtent(intersection);
+    QRect pixelExtent = intersection.isEmpty() ? this->_pixelExtent : intersection;
+    this->_geoTransform = Core::computeGeoTransform(this->_geoExtent, pixelExtent);
+}
+
+//******************************************************************************
 
 FloatingDataProvider* FloatingDataProvider::createEmptyDataProvider(const QString & name, int width, int height)
 {
@@ -280,9 +295,10 @@ FloatingDataProvider* FloatingDataProvider::createDataProvider(const ImageDataPr
     }
 
     // setup geo info
-    dst->_projectionRef = src->fetchProjectionRef();
-    dst->_geoExtent = src->fetchGeoExtent(intersection);
-    dst->_geoTransform = Core::computeGeoTransform(dst->_geoExtent, intersection);
+    dst->setupGeoInfo(src, intersection);
+//    dst->_projectionRef = src->fetchProjectionRef();
+//    dst->_geoExtent = src->fetchGeoExtent(intersection);
+//    dst->_geoTransform = Core::computeGeoTransform(dst->_geoExtent, intersection);
 
     return dst;
 }

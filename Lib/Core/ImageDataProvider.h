@@ -69,7 +69,7 @@ public:
     virtual cv::Mat getImageData(const QRect & srcPixelExtent=QRect(), int dstPixelWidth=0, int dstPixelHeight=0) const = 0 ;
     QVector<double> getPixelValue(const QPoint & pixelCoords, bool * isComplex = 0) const;
 
-    virtual QString fetchProjectionRef() const { return QString(); }
+    virtual QString fetchProjectionRef() const { return QString("Unknown"); }
     virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const
     { Q_UNUSED(pixelExtent); return QPolygonF(); }
     virtual QVector<double> fetchGeoTransform() const { return  QVector<double>(); }
