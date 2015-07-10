@@ -279,7 +279,12 @@ void GeoImageViewer::onSaveBaseLayer(Core::BaseLayer * layer)
 {
     if (qobject_cast<Core::GeoImageLayer*>(layer))
     {
-        writeGeoImageLayer(layer);
+        writeGeoImageLayer(qobject_cast<Core::GeoImageLayer*>(layer));
+    }
+    else if (qobject_cast<Core::GeoShapeLayer*>(layer))
+    {
+        SD_TRACE("Write geo shape layer");
+//        writeGeoShapeLayer(qobject_cast<Core::GeoShapeLayer*>(layer));
     }
 }
 
@@ -301,27 +306,32 @@ void GeoImageViewer::onCreateBaseLayer()
             prepareSceneAndView(r.width(), r.height());
         }
 
+        // Enlarge scene if neeeded
+        if (!_scene.sceneRect().contains(r))
+        {
+            QRectF nr = _scene.sceneRect().united(r);
+            double w = nr.width();
+            double h = nr.height();
+            _scene.setSceneRect(nr.adjusted(-0.25*w, -0.25*h, 0.25*w, 0.25*h));
+        }
+
         Core::DrawingsItem * item = new Core::DrawingsItem(r.width(), r.height());
         item->setPos(r.x(), r.y());
         item->setZValue(1000);
 
         _scene.addItem(item);
 
-//        Core::GeoShapeLayer * layer = new Core::GeoShapeLayer(this);
-        Core::GeoImageLayer * layer = new Core::GeoImageLayer(this);
-        layer->setType("Scribble : " + name);
-        layer->setEditable(true);
-        layer->setPixelExtent(r);
-
+        const Core::ImageDataProvider * provider = getDataProvider(getCurrentLayer());
+        Core::GeoImageLayer * layer = createScribble(name, item, provider);
         addLayer(layer, item);
     }
 }
 
 //******************************************************************************
 
-void GeoImageViewer::writeGeoImageLayer(Core::BaseLayer * layer)
+void GeoImageViewer::writeGeoImageLayer(Core::GeoImageLayer* layer)
 {
-    _processedLayer = qobject_cast<Core::GeoImageLayer*>(layer);
+    _processedLayer = layer;
     QGraphicsItem * item = _layerItemMap.value(_processedLayer, 0);
     if (!item)
     {
@@ -354,14 +364,10 @@ void GeoImageViewer::writeGeoImageLayer(Core::BaseLayer * layer)
         Core::DrawingsItem * dItem = qgraphicsitem_cast<Core::DrawingsItem*>(item);
         QImage & image = dItem->getImage();
 
-        cv::Mat t = Core::fromQImage(image);
-        Core::printMat(t, "t");
-        Core::displayMat(t, true, "Matrix to save");
-
-//        if (!_imageWriter->writeInBackground(filename, &image, _processedLayer))
-//        {
+        if (!_imageWriter->writeInBackground(filename, &image, _processedLayer))
+        {
             _progressDialog->close();
-//        }
+        }
     }
 }
 
@@ -464,20 +470,6 @@ void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
     // Create new layer :
     Core::GeoImageLayer * nLayer = createGeoImageLayer(_appliedFilter->getName(), provider);
 
-//    Core::GeoImageLayer * nLayer = new Core::GeoImageLayer(this);
-//    nLayer->setType(_appliedFilter->getName());
-
-//    nLayer->setImageName(provider->getImageName());
-//    nLayer->setNbBands(provider->getNbBands());
-//    nLayer->setDepthInBytes(provider->getDepthInBytes());
-//    nLayer->setIsComplex(provider->isComplex());
-
-//    nLayer->setGeoExtent(_processedLayer->getGeoExtent());
-//    nLayer->setGeoBBox(_processedLayer->getGeoBBox());
-//    nLayer->setPixelExtent(_processedLayer->getPixelExtent());
-//    nLayer->setProjectionRef(_processedLayer->getProjectionRef());
-
-
     addLayer(nLayer, nItem);
 
     // display item in Scene:
@@ -485,6 +477,14 @@ void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
 
     _appliedFilter = 0;
     _processedLayer = 0;
+}
+
+//******************************************************************************
+
+void GeoImageViewer::onDrawingFinalized(const QString & name, Core::DrawingsItem * item)
+{
+    Core::GeoImageLayer * layer = createScribble(name, item);
+    addLayer(layer, item);
 }
 
 //******************************************************************************
@@ -566,19 +566,6 @@ void GeoImageViewer::onCopyData(const QRectF &selection)
 
 //******************************************************************************
 
-void GeoImageViewer::createScribble(const QString &name, Core::DrawingsItem *item)
-{
-//    Core::GeoShapeLayer * layer = new Core::GeoShapeLayer(this);
-    Core::GeoImageLayer * layer = new Core::GeoImageLayer(this);
-    layer->setType("Scribble : " + name);
-    layer->setEditable(true);
-    layer->setPixelExtent(QRect(item->pos().toPoint(), item->boundingRect().size().toSize()));
-
-    addLayer(layer, item);
-}
-
-//******************************************************************************
-
 void GeoImageViewer::initFilterTools()
 {
     foreach (Tools::AbstractTool * tool, _toolsManager->getTools())
@@ -589,8 +576,10 @@ void GeoImageViewer::initFilterTools()
             if (ftool)
             {
                 ftool->setGraphicsSceneAndView(&_scene, _ui->_view);
-                connect(ftool, SIGNAL(drawingsFinalized(const QString&, Core::DrawingsItem*)), this, SLOT(createScribble(const QString&, Core::DrawingsItem*)));
-                connect(ftool, SIGNAL(itemCreated(QGraphicsItem*)), this, SLOT(onItemCreated(QGraphicsItem*)));
+                connect(ftool, SIGNAL(drawingsFinalized(const QString&, Core::DrawingsItem*)),
+                        this, SLOT(onDrawingFinalized(QString,Core::DrawingsItem*)));
+                connect(ftool, SIGNAL(itemCreated(QGraphicsItem*)),
+                        this, SLOT(onItemCreated(QGraphicsItem*)));
             }
         }
     }
@@ -736,6 +725,33 @@ Core::GeoImageLayer * GeoImageViewer::createGeoImageLayer(const QString &type, C
     layer->setGeoTransform(provider->fetchGeoTransform());
     // !!! NEED TO ADD METADATA
 //    layer->setMetadata(imageDataProvider->fetchMetadata());
+    return layer;
+}
+
+//******************************************************************************
+
+Core::GeoImageLayer * GeoImageViewer::createScribble(const QString &name, Core::DrawingsItem *item, const Core::ImageDataProvider * provider)
+{
+    Core::GeoImageLayer * layer = new Core::GeoImageLayer(this);
+    layer->setType(tr("Scribble : ") + name);
+    layer->setEditable(true);
+    layer->setImageName(name);
+    layer->setLocation(tr("No location"));
+
+    layer->setNbBands(4);
+    layer->setDepthInBytes(1);
+    layer->setIsComplex(false);
+
+    layer->setPixelExtent(QRect(item->pos().toPoint(), item->boundingRect().size().toSize()));
+
+    if (provider)
+    {
+        layer->setGeoExtent(provider->fetchGeoExtent());
+        layer->setGeoBBox(layer->getGeoExtent().boundingRect());
+        layer->setProjectionRef(provider->fetchProjectionRef());
+        layer->setGeoTransform(provider->fetchGeoTransform());
+    }
+
     return layer;
 }
 
