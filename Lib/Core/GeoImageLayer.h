@@ -53,14 +53,11 @@ class GIV_DLL_EXPORT GeoImageLayer : public GeoShapeLayer
 //    PROPERTY_ACCESSORS(double, noDataValue, getNoDataValue, setNoDataValue)
 //    Q_CLASSINFO("noDataValue","label:NoData Value")
 
-    Q_PROPERTY(QString projectionRef READ getProjectionRef)
-    PROPERTY_ACCESSORS(QString, projectionRef, getProjectionRef, setProjectionRef)
     Q_PROPERTY(QVector<double> geoTransform READ getGeoTransform)
     PROPERTY_ACCESSORS(QVector<double>, geoTransform, getGeoTransform, setGeoTransform)
 //    Q_PROPERTY(QList<MetadataItem> metadata READ getMetadata)
     PROPERTY_ACCESSORS(QList< MetadataItem >, metadata, getMetadata, setMetadata)
 
-    Q_CLASSINFO("projectionRef","label:Projection reference")
     Q_CLASSINFO("geoTransform","label:Geo transform")
     Q_CLASSINFO("metadata","label:Image metadata")
 

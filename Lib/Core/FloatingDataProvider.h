@@ -29,7 +29,8 @@ public:
 
     virtual QString fetchProjectionRef() const
     { return _projectionRef; }
-    virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const;
+//    virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const;
+    virtual QPolygonF fetchGeoExtent(const QVector<QPoint> & points=QVector<QPoint>()) const;
     virtual QVector<double> fetchGeoTransform() const
     { return _geoTransform; }
 

@@ -96,10 +96,26 @@ inline cv::Mat fromQImage(QImage & image)
 //******************************************************************************
 /*!
  * \brief computeGeoExtent method
+ * \param dataset, points
+ * \return Geo Extent in LatLong computed for the pixelExtent using image projection info
+ */
+QPolygonF GIV_DLL_EXPORT computeGeoExtent(GDALDataset *dataset, const QVector<QPoint> & points=QVector<QPoint>());
+
+/*!
+ * \brief computeGeoExtent method
  * \param dataset, pixelExtent
  * \return Geo Extent in LatLong computed for the pixelExtent using image projection info
  */
-QPolygonF GIV_DLL_EXPORT computeGeoExtent(GDALDataset *dataset, const QRect & pixelExtent = QRect());
+inline QPolygonF computeGeoExtent(GDALDataset *dataset, const QRect & pixelExtent = QRect())
+{
+    QVector<QPoint> pts;
+    if (!pixelExtent.isEmpty())
+    {
+        pts << pixelExtent.topLeft() << pixelExtent.topRight()
+            << pixelExtent.bottomRight() << pixelExtent.bottomLeft();
+    }
+    return computeGeoExtent(dataset, pts);
+}
 
 /*!
  * \brief computeGeoTransform method

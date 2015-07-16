@@ -14,6 +14,7 @@ class ImageWriter;
 class ImageDataProvider;
 class GeoImageItem;
 class GeoImageLayer;
+class GeoShapeLayer;
 class DrawingsItem;
 }
 
@@ -66,6 +67,7 @@ protected slots:
 protected:
 
     void writeGeoImageLayer(Core::GeoImageLayer *layer);
+    void writeGeoShapeLayer(Core::GeoShapeLayer *layer);
     void filterGeoImageLayer(Core::BaseLayer*);
 
     const Core::ImageDataProvider *getDataProvider(const Core::BaseLayer * layer) const;
@@ -86,6 +88,7 @@ protected:
 
     virtual QVector<double> getPixelValues(const QPoint &point, bool * isComplex = 0) const;
     virtual QPointF computePointOnItem(const QPointF &scenePos);
+    virtual QPolygonF computeGeoExtentFromLayer(const QPolygonF & inputShape, const Core::GeoShapeLayer * backgroundLayer);
 
     Core::ImageOpener * _imageOpener;
     Core::ImageWriter * _imageWriter;

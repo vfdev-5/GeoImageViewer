@@ -70,8 +70,18 @@ public:
     QVector<double> getPixelValue(const QPoint & pixelCoords, bool * isComplex = 0) const;
 
     virtual QString fetchProjectionRef() const { return QString("Unknown"); }
-    virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const
-    { Q_UNUSED(pixelExtent); return QPolygonF(); }
+    virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent) const
+    {
+        QVector<QPoint> points;
+        if (!pixelExtent.isEmpty())
+        {
+            points << pixelExtent.topLeft() << pixelExtent.topRight()
+                << pixelExtent.bottomRight() << pixelExtent.bottomLeft();
+        }
+        return fetchGeoExtent(points);
+    }
+    virtual QPolygonF fetchGeoExtent(const QVector<QPoint> & points=QVector<QPoint>()) const
+    { Q_UNUSED(points); return QPolygonF(); }
     virtual QVector<double> fetchGeoTransform() const { return  QVector<double>(); }
 
     virtual bool isValid() const
@@ -99,7 +109,8 @@ public:
     bool setup(const QString & filepath);
 
     virtual QString fetchProjectionRef() const;
-    virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const;
+//    virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const;
+    virtual QPolygonF fetchGeoExtent(const QVector<QPoint> & points=QVector<QPoint>()) const;
     virtual QVector<double> fetchGeoTransform() const;
 
     virtual bool isValid() const
