@@ -7,6 +7,9 @@
 // Project
 #include "Global.h"
 
+
+class QGraphicsItem;
+
 namespace Core
 {
 
@@ -20,6 +23,8 @@ namespace Core
     - type of layer
     - z value
     - if can be saved
+
+  It has (owns) as attribute associated graphics item instance.
 
  */
 
@@ -42,19 +47,29 @@ class BaseLayer : public QObject
     Q_CLASSINFO("opacity","label:Transparency;minValue:0.0;maxValue:1.0")
 
 public:
-    explicit BaseLayer(QObject *parent = 0);
+    explicit BaseLayer(QGraphicsItem * item, QObject *parent = 0);
+    virtual ~BaseLayer();
 
     void setVisible(bool visible);
     void setOpacity(double opacity);
     void setZValue(int zValue);
 
+    const QGraphicsItem * getConstItem() const
+    { return _item; }
+
+    QGraphicsItem * getItem()
+    { return _item; }
+
     virtual bool canSave()
     { return false; }
 
-signals:
-    void layerStateChanged();
+//signals:
+//    void layerStateChanged();
 
 public slots:
+
+protected:
+    QGraphicsItem * _item;
 
 };
 

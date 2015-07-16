@@ -47,7 +47,6 @@ public:
 protected slots:
     virtual void onToolChanged(const QString &);
     virtual void onItemCreated(QGraphicsItem*);
-    virtual void onBaseLayerStateChanged();
     virtual void onBaseLayerDestroyed(QObject *);
     virtual void onBaseLayerSelected(Core::BaseLayer*);
     virtual void onSaveBaseLayer(Core::BaseLayer*);
@@ -57,13 +56,10 @@ protected:
     virtual bool eventFilter(QObject *, QEvent *);
 
     void changeTool(Tools::AbstractTool * newTool);
-
-    void addLayer(Core::BaseLayer*, QGraphicsItem *item);
-    bool removeItem(Core::BaseLayer* layer);
+    void addLayer(Core::BaseLayer*);
 
     virtual QPointF computePointOnItem(const QPointF &scenePos);
 
-    Core::BaseLayer* createEmptyLayer(const QString &name, const QRect & extent);
     Core::BaseLayer *getCurrentLayer() const;
 
     Tools::ToolsManager * _toolsManager;
@@ -72,8 +68,9 @@ protected:
 
     bool _enableTools;
 
-    QHash<const Core::BaseLayer*, QGraphicsItem*> _layerItemMap;
     QList<Core::BaseLayer*> _layers;
+
+    Core::BaseLayer* _rootLayer;
 
     LayersView * _layersView;
 
