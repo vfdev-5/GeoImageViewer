@@ -20,7 +20,13 @@ namespace Gui
 
 void removeLayers(QList<Core::BaseLayer*> & layers)
 {
-    qDeleteAll(layers.begin(), layers.end());
+//    qDeleteAll(layers.begin(), layers.end());
+
+    // delete only the root (the first list item):
+    if (!layers.isEmpty())
+    {
+        delete layers[0];
+    }
     layers.clear();
 }
 
@@ -37,8 +43,8 @@ ShapeViewer::ShapeViewer(const QString &initialText, QWidget *parent) :
     _currentTool(0),
     _toolsView(0),
     _layersView(0),
-    _enableTools(true),
-    _rootLayer(0)
+    _enableTools(true)
+//    _rootLayer(0)
 {
     // init ToolsManager
     _toolsManager = Tools::ToolsManager::get();
@@ -272,12 +278,15 @@ Core::BaseLayer *ShapeViewer::getCurrentLayer() const
 
 //******************************************************************************
 
-//void ShapeViewer::addLayer(Core::BaseLayer * layer, QGraphicsItem * item)
 void ShapeViewer::addLayer(Core::BaseLayer * layer)
 {
     // create layer:
     connect(layer, SIGNAL(destroyed(QObject*)), this, SLOT(onBaseLayerDestroyed(QObject*)));
 
+    // if scene is empty -> this layer becomes the root layer,
+    // otherwise a leave of the selected (if layersView exists) or the last layer
+    Core::BaseLayer * currentLayer = getCurrentLayer();
+    layer->setParent(currentLayer);
     _layers.append(layer);
 
     if (_layersView)

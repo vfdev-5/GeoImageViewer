@@ -6,7 +6,7 @@
 
 // Project
 #include "Global.h"
-
+#include "LibExport.h"
 
 class QGraphicsItem;
 
@@ -30,7 +30,7 @@ namespace Core
 
 //******************************************************************************
 
-class BaseLayer : public QObject
+class GIV_DLL_EXPORT BaseLayer : public QObject
 {
     Q_OBJECT
 

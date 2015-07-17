@@ -70,7 +70,7 @@ protected:
 
     QList<Core::BaseLayer*> _layers;
 
-    Core::BaseLayer* _rootLayer;
+//    Core::BaseLayer* _rootLayer;
 
     LayersView * _layersView;
 

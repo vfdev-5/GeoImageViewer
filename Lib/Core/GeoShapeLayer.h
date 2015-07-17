@@ -27,7 +27,7 @@ namespace Core
 
 //******************************************************************************
 
-class GeoShapeLayer : public BaseLayer
+class GIV_DLL_EXPORT GeoShapeLayer : public BaseLayer
 {
 
     Q_OBJECT
