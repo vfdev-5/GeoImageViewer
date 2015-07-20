@@ -9,6 +9,7 @@
 #include "ShapeViewer.h"
 #include "AbstractToolsView.h"
 #include "LayersView.h"
+#include "Core/LayerUtils.h"
 #include "Core/Global.h"
 #include "Core/GeoShapeLayer.h"
 #include "Tools/ToolsManager.h"
@@ -141,8 +142,8 @@ void ShapeViewer::changeTool(Tools::AbstractTool *newTool)
     // add actions to menu:
     if (_currentTool->hasActions())
     {
-//        SD_TRACE("Add tool actions : nb= " + QString::number(_currentTool->getActions().size())
-//                 + " | menu.actionsNb= " + QString::number(_menu.actions().size()));
+        //        SD_TRACE("Add tool actions : nb= " + QString::number(_currentTool->getActions().size())
+        //                 + " | menu.actionsNb= " + QString::number(_menu.actions().size()));
         _menu.addSeparator();
         _menu.addActions(_currentTool->getActions());
     }
@@ -154,9 +155,10 @@ void ShapeViewer::onItemCreated(QGraphicsItem * item)
 {
     SD_TRACE("onItemCreated");
 
+    // get current layer on which item has been created:
+    Core::GeoShapeLayer * currentLayer = qobject_cast<Core::GeoShapeLayer*>(getCurrentLayer());
     // create layer:
-    Core::GeoShapeLayer * layer = new Core::GeoShapeLayer(item, this);
-    layer->setType(_currentTool->getName());
+    Core::GeoShapeLayer * layer = createGeoShapeLayer(_currentTool->getName(), item, currentLayer);
     addLayer(layer);
 }
 
@@ -223,8 +225,8 @@ bool ShapeViewer::eventFilter(QObject * o, QEvent * e)
             if (_ui->_pointInfo->isVisible())
             {
                 QGraphicsSceneMouseEvent * event = static_cast<QGraphicsSceneMouseEvent*>(e);
-//                QPointF pt = computePointOnItem(event->scenePos());
-//                if (pt.x() >= 0.0 || pt.y() >= 0.0)
+                //                QPointF pt = computePointOnItem(event->scenePos());
+                //                if (pt.x() >= 0.0 || pt.y() >= 0.0)
                 {
                     QPointF pt = event->scenePos();
                     QString info = QString("Pixel coordinates : %1, %2")
@@ -274,6 +276,75 @@ Core::BaseLayer *ShapeViewer::getCurrentLayer() const
     if (!_layers.isEmpty())
         return _layers.last();
     return 0;
+}
+
+//******************************************************************************
+/*!
+ * \brief ShapeViewer::createGeoShapeLayer Method to create an instance of GeoShapeLayer
+ * \param name
+ * \param item
+ * \param background is a layer on which new GeoShapeLayer is created. If pointer is not null, it allows to set projection, geoextent etc to the new GeoShapeLayer.
+ * background pointer can be null.
+ * \return
+ */
+Core::GeoShapeLayer *ShapeViewer::createGeoShapeLayer(const QString &name, QGraphicsItem *item, const Core::GeoShapeLayer *background)
+{
+    Core::GeoShapeLayer * layer = new Core::GeoShapeLayer(item, this);
+    layer->setType(name);
+    layer->setEditable(false);
+    if (background)
+    {
+        layer->setProjectionRef(background->getProjectionRef());
+        if (!background->getGeoExtent().isEmpty())
+        {
+            // convert item shape to a polygon :
+            QPolygonF poly = item->shape().toFillPolygon();
+
+            SD_TRACE(QString("poly : size=%1").arg(poly.size()));
+
+            layer->setGeoExtent(computeGeoExtentFromLayer(poly, background));
+            layer->setGeoBBox(layer->getGeoExtent().boundingRect());
+        }
+    }
+    return layer;
+}
+
+//******************************************************************************
+/*!
+ * \brief ShapeViewer::computeGeoExtentFromLayer
+ * \param inputShape polygon is in qgraphicsscene coordinates
+ * \param backgroundLayer
+ * \return geo extent as polygon
+ */
+QPolygonF ShapeViewer::computeGeoExtentFromLayer(const QPolygonF &inputShape, const Core::GeoShapeLayer *backgroundLayer)
+{
+    QPolygonF out;
+    const QGraphicsItem * item = backgroundLayer->getConstItem();
+    if (!item)
+    {
+        SD_TRACE("ShapeViewer::computeGeoExtentFromLayer : no graphicsitem in the backgroundLayer");
+        return out;
+    }
+    // compute geo transform for backgroundLayer :
+    const QPolygonF & geoExtent = backgroundLayer->getGeoExtent();
+    QRectF extent = item->boundingRect();
+    QVector<double> gt = Core::computeGeoTransform(geoExtent, extent.toRect());
+    if (gt.isEmpty())
+    {
+        SD_TRACE("ShapeViewer::computeGeoExtentFromLayer : geo transform is not computed");
+        return out;
+    }
+
+    foreach (QPointF pt, inputShape)
+    {
+        // X = gt[0] + px*gt[1] + py*gt[2]
+        // Y = gt[3] + px*gt[4] + py*gt[5]
+        QPointF gPt;
+        gPt.setX( gt[0] + pt.x() * gt[1] + pt.y() * gt[2] );
+        gPt.setY( gt[3] + pt.x() * gt[4] + pt.y() * gt[5] );
+        out.append(gPt);
+    }
+    return out;
 }
 
 //******************************************************************************
@@ -332,11 +403,11 @@ void ShapeViewer::setLayersView(LayersView *view)
     if (_layersView)
     {
         disconnect(_layersView, SIGNAL(layerSelected(Core::BaseLayer*)),
-                this, SLOT(onBaseLayerSelected(Core::BaseLayer*)));
+                   this, SLOT(onBaseLayerSelected(Core::BaseLayer*)));
         disconnect(_layersView, SIGNAL(saveLayer(Core::BaseLayer*)),
-                this, SLOT(onSaveBaseLayer(Core::BaseLayer*)));
+                   this, SLOT(onSaveBaseLayer(Core::BaseLayer*)));
         disconnect(_layersView, SIGNAL(createNewLayer()),
-                this, SLOT(onCreateBaseLayer()));
+                   this, SLOT(onCreateBaseLayer()));
 
     }
 
@@ -358,10 +429,10 @@ void ShapeViewer::setLayersView(LayersView *view)
 
 QPointF ShapeViewer::computePointOnItem(const QPointF &scenePos)
 {
-//    QGraphicsItem * item = _scene.itemAt(scenePos, QTransform());
-//    if (item)
-//    {
-//    }
+    //    QGraphicsItem * item = _scene.itemAt(scenePos, QTransform());
+    //    if (item)
+    //    {
+    //    }
     return QPointF(-1.0, -1.0);
 }
 

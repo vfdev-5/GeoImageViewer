@@ -305,15 +305,16 @@ FloatingDataProvider* FloatingDataProvider::createDataProvider(const ImageDataPr
 
 //******************************************************************************
 
-QPolygonF FloatingDataProvider::fetchGeoExtent(const QRect &pixelExtent) const
+//QPolygonF FloatingDataProvider::fetchGeoExtent(const QRect &pixelExtent) const
+QPolygonF FloatingDataProvider::fetchGeoExtent(const QVector<QPoint> & points) const
 {
-    if (pixelExtent.isEmpty())
+    if (points.isEmpty())
     {
         return _geoExtent;
     }
     else
     {
-        // compute geo extent for given pixelExtent :
+        // compute geo extent for given points :
         return QPolygonF();
     }
 }

@@ -375,6 +375,52 @@ void GeoImageViewer::writeGeoImageLayer(Core::GeoImageLayer* layer)
 
 //******************************************************************************
 
+void GeoImageViewer::writeGeoShapeLayer(Core::GeoShapeLayer* layer)
+{
+    /*
+    _processedLayer = layer;
+    QGraphicsItem * item = _layerItemMap.value(_processedLayer, 0);
+    if (!item)
+    {
+        SD_TRACE("GeoImageViewer::writeGeoImageLayer : item is null");
+        return;
+    }
+
+    QString filename = QFileDialog::getSaveFileName(this,
+                                                    tr("Save into a file"),
+                                                    QString(),
+                                                    tr("Images (*.tif)"));
+    if (filename.isEmpty())
+        return;
+
+    _progressDialog->setLabelText("Save image ...");
+    _progressDialog->setValue(0);
+    _progressDialog->show();
+
+    if (item->type() == Core::GeoImageItem::Type)
+    {
+        Core::GeoImageItem * giItem = qgraphicsitem_cast<Core::GeoImageItem*>(item);
+        const Core::ImageDataProvider * provider = giItem->getConstDataProvider();
+        if (!_imageWriter->writeInBackground(filename, provider, _processedLayer))
+        {
+            _progressDialog->close();
+        }
+    }
+    else if (item->type() == Core::DrawingsItem::Type)
+    {
+        Core::DrawingsItem * dItem = qgraphicsitem_cast<Core::DrawingsItem*>(item);
+        QImage & image = dItem->getImage();
+
+        if (!_imageWriter->writeInBackground(filename, &image, _processedLayer))
+        {
+            _progressDialog->close();
+        }
+    }
+    */
+}
+
+//******************************************************************************
+
 void GeoImageViewer::onToolChanged(const QString & toolName)
 {
     ShapeViewer::onToolChanged(toolName);
@@ -765,19 +811,6 @@ Core::GeoImageLayer * GeoImageViewer::createScribble(const QString &name, Core::
 
 //******************************************************************************
 
-//const Core::GeoImageItem * GeoImageViewer::getGeoImageItem(const Core::BaseLayer * layer) const
-//{
-//    const Core::GeoImageLayer * image = qobject_cast<const Core::GeoImageLayer*>(layer);
-//    if (!image)
-//    {
-//        return 0;
-//    }
-//    // static cast is ensured with non null conversion of BaseLayer into GeoImageLayer
-//    return qgraphicsitem_cast<const Core::GeoImageItem*>(_layerItemMap.value(image, 0));
-//}
-
-//******************************************************************************
-
 const Core::ImageDataProvider * GeoImageViewer::getDataProvider(const Core::BaseLayer * layer) const
 {
     if (!layer) return 0;
@@ -829,6 +862,38 @@ QPointF GeoImageViewer::computePointOnItem(const QPointF &scenePos)
 //    {
 //    }
     return ShapeViewer::computePointOnItem(scenePos);
+}
+
+//******************************************************************************
+/*!
+ * \brief GeoImageViewer::computeGeoExtentFromLayer
+ * \param inputShape polygon is in qgraphicsscene coordinates
+ * \param backgroundLayer
+ * \return geo extent as polygon
+ */
+QPolygonF GeoImageViewer::computeGeoExtentFromLayer(const QPolygonF &inputShape, const Core::GeoShapeLayer *backgroundLayer)
+{
+    const Core::GeoImageLayer * imageLayer = qobject_cast<const Core::GeoImageLayer*>(backgroundLayer);
+    if (imageLayer)
+    {
+        QPolygonF out;
+        // There are possibilities that associated graphicsitem is GeoImageItem or DrawingItem
+        const QGraphicsItem * item = backgroundLayer->getConstItem();
+        if (!item)
+        {
+            SD_TRACE("GeoImageViewer::computeGeoExtentFromLayer : no graphicsitem associated to specified backgroundLayer");
+            return out;
+        }
+
+        if (qgraphicsitem_cast<const Core::GeoImageItem*>(item))
+        {
+            const Core::GeoImageItem* gIItem = qgraphicsitem_cast<const Core::GeoImageItem*>(item);
+            return gIItem->getConstDataProvider()->fetchGeoExtent(inputShape.toPolygon());
+        }
+
+    }
+
+    return ShapeViewer::computeGeoExtentFromLayer(inputShape, backgroundLayer);
 }
 
 //******************************************************************************

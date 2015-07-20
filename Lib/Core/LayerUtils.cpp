@@ -19,12 +19,13 @@ namespace Core
 
 //******************************************************************************
 
-QPolygonF computeGeoExtent(GDALDataset * inputDataset, const QRect & pixelExtent)
+//QPolygonF computeGeoExtent(GDALDataset * inputDataset, const QRect & pixelExtent)
+QPolygonF computeGeoExtent(GDALDataset * inputDataset, const QVector<QPoint> & pts0)
 {
     QPolygonF gPts;
     QVector<QPoint> pts; // topLeft, topRight, bottomRight, bottomLeft
 
-    if (pixelExtent.isEmpty())
+    if (pts0.isEmpty())
     {
         int width = inputDataset->GetRasterXSize();
         int height = inputDataset->GetRasterYSize();
@@ -32,17 +33,19 @@ QPolygonF computeGeoExtent(GDALDataset * inputDataset, const QRect & pixelExtent
     }
     else
     {
-        pts << pixelExtent.topLeft() << pixelExtent.topRight()
-            << pixelExtent.bottomRight() << pixelExtent.bottomLeft();
+//        pts << pixelExtent.topLeft() << pixelExtent.topRight()
+//            << pixelExtent.bottomRight() << pixelExtent.bottomLeft();
+        pts=pts0;
     }
 
-    // Compute Spatial extent as 4 corners transformation into WGS84:
+    // Compute Spatial extent as 4 corners transformation into inputDataset projection:
     void * transformArg = 0;
-    OGRSpatialReference * dstSRS = static_cast<OGRSpatialReference*>( OSRNewSpatialReference( 0 ) );
-    dstSRS->SetWellKnownGeogCS( "WGS84" );
-    char *dstSRSWkt = 0;
-    dstSRS->exportToWkt(&dstSRSWkt);
-    char ** toOpions = CSLSetNameValue( 0, "DST_SRS", dstSRSWkt );
+//    OGRSpatialReference * dstSRS = static_cast<OGRSpatialReference*>( OSRNewSpatialReference( 0 ) );
+//    dstSRS->SetWellKnownGeogCS( "WGS84" );
+//    char *dstSRSWkt = 0;
+//    dstSRS->exportToWkt(&dstSRSWkt);
+//    char ** toOpions = CSLSetNameValue( 0, "DST_SRS", dstSRSWkt );
+    char ** toOpions = CSLSetNameValue( 0, "DST_SRS", inputDataset->GetProjectionRef() );
     GDALTransformerFunc Transformer = GDALGenImgProjTransform;
 
     transformArg = GDALCreateGenImgProjTransformer2(inputDataset, 0, toOpions);
@@ -57,15 +60,15 @@ QPolygonF computeGeoExtent(GDALDataset * inputDataset, const QRect & pixelExtent
             Transformer( transformArg, false, 1, &geoX, &geoY, &z, &isSuccess );
             if ( isSuccess )
             {
-                geoX = ( geoX > 180 ) ? geoX - 360 : geoX;
-                geoX = ( geoX < -180 ) ? geoX + 360 : geoX;
+//                geoX = ( geoX > 180 ) ? geoX - 360 : geoX;
+//                geoX = ( geoX < -180 ) ? geoX + 360 : geoX;
                 gPts << QPointF(geoX, geoY); // Points are Long/Lat
             }
         }
         GDALDestroyTransformer(transformArg);
     }
-    dstSRS->Release();
-    OGRFree(dstSRSWkt);
+//    dstSRS->Release();
+//    OGRFree(dstSRSWkt);
     return gPts;
 }
 

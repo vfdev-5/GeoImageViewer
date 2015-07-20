@@ -20,6 +20,7 @@ class AbstractTool;
 
 namespace Core {
 class BaseLayer;
+class GeoShapeLayer;
 }
 
 namespace Gui
@@ -61,6 +62,9 @@ protected:
     virtual QPointF computePointOnItem(const QPointF &scenePos);
 
     Core::BaseLayer *getCurrentLayer() const;
+    Core::GeoShapeLayer * createGeoShapeLayer(const QString &name, QGraphicsItem *item, const Core::GeoShapeLayer *background=0);
+
+    virtual QPolygonF computeGeoExtentFromLayer(const QPolygonF & inputShape, const Core::GeoShapeLayer * backgroundLayer);
 
     Tools::ToolsManager * _toolsManager;
     Tools::AbstractTool * _currentTool;
