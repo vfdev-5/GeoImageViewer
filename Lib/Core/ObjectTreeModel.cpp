@@ -1,9 +1,57 @@
 
+// Qt
+#include <QEvent>
+#include <QChildEvent>
+#include <QMimeData>
+
 // Project
+#include "Global.h"
 #include "ObjectTreeModel.h"
 
 namespace Core
 {
+
+QByteArray encode(const QModelIndexList & indexes)
+{
+    QByteArray encoded;
+    QDataStream stream(&encoded, QIODevice::WriteOnly);
+    foreach (QModelIndex modelIndex, indexes)
+    {
+        // write model index unique representation chain :
+        // before_root_parent.row, ..., parent.parent.row, parent.row, modelIndex.row, -1
+        QString indexChain;
+        QModelIndex index = modelIndex;
+        while(index.isValid())
+        {
+            indexChain.prepend(QString("%1 ").arg(index.row()));
+            index = index.parent();
+        }
+        indexChain.remove(indexChain.size()-1,1); // remove the last space char
+        stream << indexChain;
+//        SD_TRACE1("Stream string : %1", indexChain);
+    }
+    return encoded;
+}
+
+QModelIndexList decode(QByteArray & encoded, const QAbstractItemModel * model)
+{
+    QModelIndexList indices;
+    QDataStream stream(&encoded, QIODevice::ReadOnly);
+    while (!stream.atEnd())
+    {
+        QModelIndex index;
+        QString indexChain;
+        stream >> indexChain;
+        QStringList ilist = indexChain.split(" ");
+        foreach (QString i, ilist)
+        {
+            int irow = i.toInt();
+            index = model->index(irow, 0, index);
+        }
+        indices << index;
+    }
+    return indices;
+}
 
 //******************************************************************************
 /*!
@@ -18,6 +66,16 @@ ObjectTreeModel::ObjectTreeModel(QObject * root, QObject *parent) :
     QAbstractItemModel(parent),
     _root(root)
 {
+
+    // install event filter on the whole tree of children
+    QObjectList stack = QObjectList();
+    stack << _root;
+    while(!stack.isEmpty())
+    {
+        QObject * child = stack.takeLast();
+        child->installEventFilter(this);
+        stack << child->children();
+    }
 
 }
 
@@ -104,6 +162,210 @@ QVariant ObjectTreeModel::data(const QModelIndex &index, int role) const
         }
     }
     return QVariant();
+}
+
+//******************************************************************************
+
+bool ObjectTreeModel::setData(const QModelIndex &index, const QVariant &value, int role)
+{
+    if (index.isValid() && role == Qt::EditRole)
+    {
+
+    }
+    return false;
+}
+
+//******************************************************************************
+
+Qt::ItemFlags ObjectTreeModel::flags(const QModelIndex &index) const
+{
+    if (!index.isValid())
+        return Qt::NoItemFlags;
+
+    // if item is not root :
+    Qt::ItemFlags flags = Qt::ItemIsSelectable |
+            Qt::ItemIsEditable |
+            Qt::ItemIsEnabled |
+            Qt::ItemIsUserCheckable;
+    if (_root != index.internalPointer())
+    {
+        flags |= Qt::ItemIsDragEnabled |
+                Qt::ItemIsDropEnabled;
+    }
+    return flags;
+}
+
+//******************************************************************************
+
+Qt::DropActions ObjectTreeModel::supportedDropActions() const
+{
+    return Qt::MoveAction;
+}
+
+//******************************************************************************
+
+bool ObjectTreeModel::insertRows(int row, int count, const QModelIndex &parent)
+{
+    SD_TRACE2("- insertRows : row=%1, count=%2", row, count);
+    SD_TRACE1("-- insertRows : parent.row=%1", parent.row());
+    return QAbstractItemModel::insertRows(row, count, parent);
+}
+
+//******************************************************************************
+
+bool ObjectTreeModel::moveRows(const QModelIndex &sourceParent, int sourceRow, int count, const QModelIndex &destinationParent, int destinationChild)
+{
+    SD_TRACE("moveRows");
+    return false;
+}
+
+//******************************************************************************
+
+QStringList ObjectTreeModel::mimeTypes() const
+{
+    QStringList types = QAbstractItemModel::mimeTypes();
+    types << "text/plain";
+    return types;
+}
+
+//******************************************************************************
+
+bool ObjectTreeModel::removeRows(int row, int count, const QModelIndex &parent)
+{
+//    if (parent.isValid())
+//    {
+//        for (int i=row;i<row+count;i++)
+//        {
+//            for (int j=0;j<columnCount(parent);j++)
+//            {
+//                QModelIndex child = parent.child(i,j);
+//                QObject * object = static_cast<QObject*>(child.internalPointer());
+//                if (!object)
+//                {
+//                    SD_TRACE2("ObjectTreeModel::removeRows : object is null for the model index : ", i, j);
+//                    continue;
+//                }
+//                object->setParent(0);
+//                delete object;
+//            }
+//        }
+//    }
+//    else
+//    {
+//    }
+    SD_TRACE2("- removeRows : row=%1, count=%2", row, count);
+    SD_TRACE1("-- removeRows : parent.row=%1", parent.row());
+    return QAbstractItemModel::removeRows(row, count, parent);
+}
+
+//******************************************************************************
+
+QMimeData *ObjectTreeModel::mimeData(const QModelIndexList &indexes) const
+{
+    if (indexes.count() <= 0)
+        return 0;
+//    QStringList types = mimeTypes();
+//    if (types.isEmpty())
+//        return 0;
+    QMimeData *data = new QMimeData();
+    QString format = "text/plain";
+    QByteArray encoded = encode(indexes);
+    data->setData(format, encoded);
+    return data;
+}
+
+//******************************************************************************
+
+bool ObjectTreeModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent)
+{
+//    SD_TRACE("dropMimeData");
+    if (!QAbstractItemModel::canDropMimeData(data, action, row, column, parent))
+    {
+        return false;
+    }
+
+    if (data && action == Qt::MoveAction)
+    {
+//        SD_TRACE2("- dropMimeData : dst row=%1, column=%2", row, column);
+//        SD_TRACE2("-- dropMimeData : parent row=%1, column=%2", parent.row(), parent.column());
+        int beginRow;
+        if (row > -1)
+        {
+            beginRow = row;
+        }
+        else if (parent.isValid())
+        {
+            beginRow = parent.row();
+        }
+        else
+        {
+            beginRow = rowCount(QModelIndex());
+        }
+
+        QObject * parentObject = static_cast<QObject*>(parent.internalPointer());
+        SD_TRACE_PTR("--- dropMimeData : dstParentObject", parentObject);
+        if (parentObject)
+        {
+            QByteArray encodedData = data->data("text/plain");
+            QModelIndexList indices = decode(encodedData, this);
+            foreach (QModelIndex index, indices)
+            {
+                QObject * object = static_cast<QObject*>(index.internalPointer());
+                SD_TRACE_PTR("--- dropMimeData : object", object);
+                if (object)
+                {
+                    object->setParent(parentObject);
+                }
+            }
+        }
+    }
+    return QAbstractItemModel::dropMimeData(data, action, row, column, parent);
+//    return false;
+}
+
+//******************************************************************************
+
+bool ObjectTreeModel::eventFilter(QObject * object, QEvent * event)
+{
+    if (event->type() == QEvent::ChildAdded)
+    {
+        QChildEvent * childEvent = static_cast<QChildEvent*>(event);
+        QObject * child = childEvent->child();
+        child->installEventFilter(this);
+
+        SD_TRACE_PTR("- Child : ", child);
+        SD_TRACE_PTR("- Child added to object", object);
+
+        // find parent's model index :
+        int row = object->children().indexOf(child);
+        QModelIndex parent = this->parent(createIndex(row, 0, child));
+        SD_TRACE_PTR("-- Child added : parent == object", parent.internalPointer());
+        SD_TRACE1("-- new object position=%1", row);
+
+        int count = object->children().count();
+        if (count == 0) count = 1;
+        beginInsertRows(parent, 0, count-1);
+        endInsertRows();
+
+    }
+    else if (event->type() == QEvent::ChildRemoved)
+    {
+        QChildEvent * childEvent = static_cast<QChildEvent*>(event);
+        QObject * child = childEvent->child();
+        child->removeEventFilter(this);
+
+        SD_TRACE_PTR("- Child : ", child);
+        SD_TRACE_PTR("- Child removed from object", object);
+        QObject * grandparent = object->parent();
+        int row = grandparent ? grandparent->children().indexOf(object) : 0;
+        QModelIndex parent = createIndex(row, 0, object);
+        int count = object->children().count();
+        if (count == 0) count = 1;
+        beginRemoveRows(parent, 0, count-1);
+        endRemoveRows();
+    }
+
+    return QAbstractItemModel::eventFilter(object, event);
 }
 
 //******************************************************************************

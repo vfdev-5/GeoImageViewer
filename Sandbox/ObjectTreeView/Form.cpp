@@ -1,4 +1,5 @@
-
+// Qt
+#include <qmath.h>
 
 // Project
 #include "Core/ObjectTreeModel.h"
@@ -17,18 +18,83 @@ Form::Form(QWidget *parent) :
     _ui->setupUi(this);
 
     // setup Objects
-    QObject * root = new Core::BaseLayer(0, this);
-    QObject * o1 = new Core::GeoImageLayer(0, root);
-    QObject * o2 = new Core::GeoShapeLayer(0, root);
+    Core::BaseLayer * invisibleRoot = new Core::BaseLayer(0, this);
+    _mainImage = new Core::GeoImageLayer(0, invisibleRoot);
+    _mainImage->setObjectName("Main image");
+    SD_TRACE_PTR("_mainImage", _mainImage);
+    QObject * o1 = new Core::GeoImageLayer(0, _mainImage);
+    o1->setObjectName("o1");
+    SD_TRACE_PTR("o1", o1);
     QObject * o12 = new Core::GeoShapeLayer(0, o1);
+    o12->setObjectName("o12");
+    SD_TRACE_PTR("o12", o12);
+    QObject * o2 = new Core::GeoShapeLayer(0, _mainImage);
+    o2->setObjectName("o2");
+    SD_TRACE_PTR("o2", o2);
+    QObject * o3 = new Core::BaseLayer(0, _mainImage);
+    o3->setObjectName("o3");
+    SD_TRACE_PTR("o3", o3);
 
     // setup model & view
-    Core::ObjectTreeModel * model = new Core::ObjectTreeModel(root, this);
-    _ui->_view->setModel(model);
-
+    _model = new Core::ObjectTreeModel(invisibleRoot, this);
+    _ui->_view->setModel(_model);
 }
 
 Form::~Form()
 {
     delete _ui;
 }
+
+void Form::on__add_clicked()
+{
+    // Random add
+//    QObjectList stack = QObjectList();
+//    stack << _mainImage;
+//    int count = qrand() % _mainImage->children().count();
+    QObject * o = 0;
+//    while(!stack.isEmpty() && count > 0)
+//    {
+//        QObject * child = stack.takeLast();
+//        o = child;
+//        stack << child->children();
+//        count--;
+//    }
+
+    o = _mainImage;
+    while (!o->children().isEmpty())
+    {
+        o = o->children().last();
+    }
+
+    QObject * oo = new Core::GeoShapeLayer(0, o);
+    oo->setObjectName("new object");
+
+}
+
+void Form::on__remove_clicked()
+{
+    // Random remove
+//    QObjectList stack = QObjectList();
+//    stack << _mainImage->children();
+//    int count = qrand() % _mainImage->children().count();
+    QObject * o = 0;
+//    while(!stack.isEmpty() && count > 0)
+//    {
+//        QObject * child = stack.takeLast();
+//        o = child;
+//        stack << child->children();
+//        count--;
+//    }
+
+    o = _mainImage;
+    while (!o->children().isEmpty())
+    {
+        o = o->children().last();
+    }
+    if (o != _mainImage)
+    {
+        o->setParent(0);
+        delete o;
+    }
+}
+
