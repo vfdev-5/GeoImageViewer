@@ -3,7 +3,6 @@
 
 // Qt
 #include <QObject>
-#include <QEvent>
 
 // Project
 #include "Lasso.h"

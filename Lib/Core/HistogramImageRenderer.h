@@ -54,6 +54,8 @@ public:
 
     static bool setupConfiguration(const ImageDataProvider *dataProvider, HistogramRendererConfiguration * conf, HistogramRendererConfiguration::Mode mode);
 
+    static HistogramRendererConfiguration::Mode getDefaultMode(const ImageDataProvider *dataProvider);
+
 protected:
     bool checkBeforeRender(int nbBands, const HistogramRendererConfiguration * conf);
 

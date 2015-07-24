@@ -12,11 +12,14 @@
 #include "Core/LayerUtils.h"
 
 // Tests
+#include "../../Common.h"
 #include "ColorTest.h"
 
 
 namespace Tests
 {
+
+#define VERBOSE false
 
 //*************************************************************************
 
@@ -24,30 +27,112 @@ void ColorTest::test()
 {
     cv::Mat m(10, 10, CV_8UC4, cv::Scalar(0));
 
-    // cv::Mat has BGRA format
+    // In Little-endian :
+    // cv::Mat stores pixels in the provided order : 30, 20, 10, 40, 3, 2, 1, 5, ...
     m.at<cv::Vec4b>(0,0) = cv::Vec4b(30,20,10,40);
     m.at<cv::Vec4b>(0,1) = cv::Vec4b(3,2,1,5);
 
+    if (VERBOSE)
+    {
+        uchar * srcPtr = m.data;
+        for (int i=0; i<20;i++)
+        {
+            std::cout << (int) srcPtr[i] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+
+    // According to Qt docs :
+    // QImage::Format_ARGB32 -> The image is stored using a 32-bit ARGB format (0xAARRGGBB).
     QImage im(m.data,
               m.cols,
               m.rows,
               QImage::Format_ARGB32);
 
+    // QImage stores its data as : 30, 20, 10, 40, 3, 2, 1, 5
+    if (VERBOSE)
+    {
+        uchar * srcPtr = im.bits();
+        for (int i=0; i<20;i++)
+        {
+            std::cout << (int) srcPtr[i] << " ";
+        }
+        std::cout << std::endl;
+    }
+    // Pixel format is 0xAARRGGBB =>
     QColor p;
     p = QColor::fromRgba(im.pixel(0,0));
-
+    if (VERBOSE) std::cout << "RGBA : " << p.red() << ", " << p.green() << ", " << p.blue() << ", " << p.alpha() << std::endl;
     QVERIFY(p.red() == 10
             && p.green() == 20
             && p.blue() == 30
             && p.alpha() == 40);
 
     p = QColor::fromRgba(im.pixel(1,0));
-
+    if (VERBOSE) std::cout << "RGBA : " << p.red() << ", " << p.green() << ", " << p.blue() << ", " << p.alpha() << std::endl;
     QVERIFY(p.red() == 1
             && p.green() == 2
             && p.blue() == 3
             && p.alpha() == 5
             );
+
+    // If tests are passed : pixels are interpreted as BGRA
+
+    cv::Mat m2;
+    cv::cvtColor(m, m2, cv::COLOR_RGBA2BGRA);
+
+    if (VERBOSE)
+    {
+        uchar * srcPtr = m2.data;
+        for (int i=0; i<20;i++)
+        {
+            std::cout << (int) srcPtr[i] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    QImage im2(m2.data,
+              m2.cols,
+              m2.rows,
+              QImage::Format_ARGB32);
+
+
+
+    p = QColor::fromRgba(im2.pixel(0,0));
+    if (VERBOSE) std::cout << "RGBA : " << p.red() << ", " << p.green() << ", " << p.blue() << ", " << p.alpha() << std::endl;
+    QVERIFY(p.red() == 30
+            && p.green() == 20
+            && p.blue() == 10
+            && p.alpha() == 40);
+
+    p = QColor::fromRgba(im2.pixel(1,0));
+    if (VERBOSE) std::cout << "RGBA : " << p.red() << ", " << p.green() << ", " << p.blue() << ", " << p.alpha() << std::endl;
+    QVERIFY(p.red() == 3
+            && p.green() == 2
+            && p.blue() == 1
+            && p.alpha() == 5
+            );
+
+
+    // QImage::Format_RGBA8888 -> The image is stored using a 32-bit byte-ordered RGBA format (8-8-8-8).
+    // Unlike ARGB32 this is a byte-ordered format, which means the 32bit encoding differs between big
+    // endian and little endian architectures, being respectively (0xRRGGBBAA) and (0xAABBGGRR).
+    // The order of the colors is the same on any architecture if read as bytes 0xRR,0xGG,0xBB,0xAA.
+
+    QImage im3(m.data,
+              m.cols,
+              m.rows,
+              QImage::Format_RGBA8888);
+
+    // Pixel format is 0xRRGGBBAA (b-e) and 0xAABBGGRR (l-e)
+    p = QColor::fromRgba(im3.pixel(0,0));
+    std::cout << "RGBA : " << p.red() << ", " << p.green() << ", " << p.blue() << ", " << p.alpha() << std::endl;
+    p = QColor::fromRgba(im3.pixel(1,0));
+    std::cout << "RGBA : " << p.red() << ", " << p.green() << ", " << p.blue() << ", " << p.alpha() << std::endl;
+
+
+
 
     /// QColor and QRgb
     uint v;

@@ -22,6 +22,9 @@ class DrawingsItem : public QGraphicsItem
 public:
     DrawingsItem(int width, int height, QColor bg = QColor(127,127,127,50), QGraphicsItem * parent = 0);
 
+    enum { Type = UserType + 3 };
+    int type() const { return Type; }
+
     virtual QRectF boundingRect() const;
     virtual void paint(QPainter * p, const QStyleOptionGraphicsItem *o, QWidget * w);
 

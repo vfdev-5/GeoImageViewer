@@ -215,7 +215,14 @@ void ColorManipulationView::drawSingleHistogram(int index)
     _paletteHistogramMap.insert(palette, h);
 
     setupColorPalette(palette, h->outputStops, h->xmin, h->xmax, h->isDiscrete);
-    zoomInterval(h->outputStops.first().first, h->outputStops.last().first);
+    if (h->outputStops.size() > 1)
+    {
+        zoomInterval(h->outputStops.first().first, h->outputStops.last().first);
+    }
+    else
+    {
+        zoomAll();
+    }
 
     // add action in menu
     _menu.addAction(&_zoomFitSliders);

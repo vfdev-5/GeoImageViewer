@@ -14,6 +14,7 @@ class ImageWriter;
 class ImageDataProvider;
 class GeoImageItem;
 class GeoImageLayer;
+class GeoShapeLayer;
 class DrawingsItem;
 }
 
@@ -61,17 +62,19 @@ protected slots:
     virtual void onFilterTriggered();
     virtual void onFilteringFinished(Core::ImageDataProvider *);
 
-    void createScribble(const QString & name, Core::DrawingsItem * item);
+    void onDrawingFinalized(const QString&, Core::DrawingsItem*);
 
 protected:
 
-    void writeGeoImageLayer(Core::BaseLayer* layer);
+    void writeGeoImageLayer(Core::GeoImageLayer *layer);
+    void writeGeoShapeLayer(Core::GeoShapeLayer *layer);
     void filterGeoImageLayer(Core::BaseLayer*);
 
     const Core::ImageDataProvider *getDataProvider(const Core::BaseLayer * layer) const;
     const Core::GeoImageItem * getGeoImageItem(const Core::BaseLayer * layer) const;
     Core::GeoImageItem * createGeoImageItem(Core::ImageDataProvider *, const QPointF &pos=QPointF());
     Core::GeoImageLayer * createGeoImageLayer(const QString & type, Core::ImageDataProvider * provider, const QRect &userPixelExtent = QRect());
+    Core::GeoImageLayer * createScribble(const QString & name, Core::DrawingsItem * item, const Core::ImageDataProvider *provider = 0);
 //    Core::GeoImageLayer * createEmptyGeoImageLayer(const QString & name, const QRect &extent);
 
     void prepareSceneAndView(int w, int h);
@@ -85,6 +88,7 @@ protected:
 
     virtual QVector<double> getPixelValues(const QPoint &point, bool * isComplex = 0) const;
     virtual QPointF computePointOnItem(const QPointF &scenePos);
+    virtual QPolygonF computeGeoExtentFromLayer(const QPolygonF & inputShape, const Core::GeoShapeLayer * backgroundLayer);
 
     Core::ImageOpener * _imageOpener;
     Core::ImageWriter * _imageWriter;

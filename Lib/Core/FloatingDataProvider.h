@@ -29,7 +29,8 @@ public:
 
     virtual QString fetchProjectionRef() const
     { return _projectionRef; }
-    virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const;
+//    virtual QPolygonF fetchGeoExtent(const QRect & pixelExtent=QRect()) const;
+    virtual QPolygonF fetchGeoExtent(const QVector<QPoint> & points=QVector<QPoint>()) const;
     virtual QVector<double> fetchGeoTransform() const
     { return _geoTransform; }
 
@@ -42,6 +43,7 @@ public:
     { _geoExtent = ge; }
 
     bool create(const QString & name, const cv::Mat & src, const QRect & intersection=QRect());
+    void setupGeoInfo(const ImageDataProvider * src, const QRect & intersection=QRect());
 
     virtual bool isValid() const
     { return !_data.empty(); }

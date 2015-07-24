@@ -5,19 +5,15 @@
 /*!
  * TODO :
  * 1) HistogramImageRenderer & HistogramRendererView
- *   1 - problem with "all bands" : switch on/off -> histograms are not correctly shown
- *   2 - possibility to choose Bands to RGB mapping for multiband images
- *   2 - choice of RGB / GRAY mode for multiband images
- *   2 - complex images
- *   1 - when edit slider value, value should be limited by histogram values and not visible min/max range
- *   1 - use view/model architecture
- *
- *   !!! RECODE CONCURRENT USAGE OF ImageRenderer between AbstractRendererView and GeoImageItem
- *
+ *   + problem with "all bands" : switch on/off -> histograms are not correctly shown
+ *   + possibility to choose Bands to RGB mapping for multiband images
+ *   + choice of RGB / GRAY mode for multiband images
+ *   + complex images
+ *   + when edit slider value, value should be limited by histogram values and not visible min/max range
  *
  * 2) Image loading/display
  *   + create overview file .ovr
- *   0 - support complex imagery  => GDAL does not work correctly with CSK L1A => pending
+ *   + support complex imagery  => GDAL does not work correctly with CSK L1A => pending
  *   + support subdataset imagery (netcdf,hdf5)
  *   + Message error
  * 3) Rendering stage
@@ -31,20 +27,19 @@
  * 6) Layer browser
  *   + layers view
  *   + display image info
- *   1 - action to save 'Image' layer into a file
+ *   + action to save 'Image' layer into a file
  *      + use a simple image writer
  *      + geo info is not written
- *   2 - use view/model architecture
- * 7) Selection tool
+  * 7) Selection tool
  *   + select a region
  *   + create a layer from zone
- *   3 - tool to manually detect dark objects
- *      -- IHM : Circle to select dark object, slider to define a threshold, mouse wheel changes size of circle
- *      -- Threshold algorithm : blur + define threhold region (0.0, middle, histogram max value) + morpho close
+ *   + tool to manually detect dark objects
+ *      + IHM : Circle to select dark object, slider to define a threshold, mouse wheel changes size of circle
+ *      + Threshold algorithm : blur + define threhold region (0.0, middle, histogram max value) + morpho close
  * 8) Layer pixel info
  *   1 - display pixel info : coordinates in pixels, geo, value
  * 9) Filters as plugins
- *   - Should apply filter on data ignoring NoDatValues
+ *   + Should apply filter on data ignoring NoDatValues
  *   + default blur filter
  *   + default filter dialog
  *   1 - 'lasso' filter to select a color uniform regions

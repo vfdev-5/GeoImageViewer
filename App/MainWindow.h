@@ -4,6 +4,7 @@
 
 // Qt
 #include <QMainWindow>
+#include <QShowEvent>
 
 // Project
 #include "Gui/GeoImageViewer.h"
@@ -33,6 +34,9 @@ public:
 protected slots:
     void onOpenImageActionTriggered();
     void onExitActionTriggered();
+
+protected:
+    void closeEvent(QCloseEvent * event);
 
 private:
 

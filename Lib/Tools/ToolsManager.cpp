@@ -9,7 +9,6 @@
 #include "ToolsManager.h"
 #include "RectangleTool.h"
 #include "SelectionTool.h"
-//#include "BrushTool.h"
 #include "MoveTool.h"
 
 
@@ -31,7 +30,6 @@ ToolsManager::ToolsManager()
     insertTool(new NavigationTool(this));
     insertTool(new MoveTool(this));
     insertTool(new RectangleShapeTool(this));
-//    insertTool(new BrushTool(this));
 }
 
 //******************************************************************************
@@ -60,28 +58,9 @@ void ToolsManager::loadPlugins(const QString &path)
         QObject * plugin = pair.second;
         if (!plugin || !loadPlugin(plugin))
         {
-//            SD_TRACE(loader.errorString());
             SD_TRACE("Failed to load plugin : " + fileName);
         }
     }
-
-//    QDir d(path);
-//    QStringList filters;
-//#ifdef _DEBUG
-//    filters << "*Plugin.d.dll" << "*Plugin.d.so" << "*Plugin.d.dylib";
-//#else
-//    filters << "*Plugin.dll" << "*Plugin.so" << "*Plugin.dylib";
-//#endif
-//    foreach (QString fileName, d.entryList(filters, QDir::Files))
-//    {
-//        QPluginLoader loader(d.absoluteFilePath(fileName));
-//        QObject * plugin = loader.instance();
-//        if (!plugin || !loadPlugin(plugin))
-//        {
-//            SD_TRACE(loader.errorString());
-//            SD_TRACE("Failed to load plugin : " + fileName);
-//        }
-//    }
 }
 
 //******************************************************************************

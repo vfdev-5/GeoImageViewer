@@ -68,19 +68,43 @@ bool ImageWriter::write(const QString &outputfilename, const ImageDataProvider *
 
 bool ImageWriter::writeInBackground(const QString &outputfilename, const ImageDataProvider *data, const GeoImageLayer *dataInfo)
 {
-
-    if (QFileInfo(outputfilename).exists())
+    if (!removeFile(outputfilename))
     {
-        if (!QFile(outputfilename).remove())
-        {
-            SD_ERR(tr("Failed to remove existing output file : %1").arg(outputfilename));
-            return false;
-        }
+        SD_ERR(tr("Failed to remove existing output file : %1").arg(outputfilename));
+        return false;
     }
 
     if (!_task)
         _task = new WriteImageTask(this);
 
+    _task->setOutputFile(outputfilename);
+    _task->setDataProvider(data);
+    _task->setDataInfo(dataInfo);
+    _isAsyncTask = true;
+
+    QThreadPool * pool = QThreadPool::globalInstance();
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 2, 0))
+    pool->clear();
+#endif
+    pool->waitForDone();
+    // Only one thread is possible due to GDAL reader (e.g. TIFF)
+    _isWorking=true;
+    pool->start(_task);
+    return true;
+}
+
+//******************************************************************************
+
+bool ImageWriter::writeInBackground(const QString &outputfilename, const QImage * data, const GeoImageLayer *dataInfo)
+{
+    if (!removeFile(outputfilename))
+    {
+        SD_ERR(tr("Failed to remove existing output file : %1").arg(outputfilename));
+        return false;
+    }
+
+    if (!_task)
+        _task = new WriteImageTask(this);
 
     _task->setOutputFile(outputfilename);
     _task->setDataProvider(data);
@@ -113,6 +137,20 @@ void ImageWriter::cancel()
 
 //******************************************************************************
 
+bool ImageWriter::removeFile(const QString &filename)
+{
+    if (QFileInfo(filename).exists())
+    {
+        if (!QFile(filename).remove())
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+//******************************************************************************
+
 void ImageWriter::taskFinished(bool ok)
 {
     _isWorking=false;
@@ -125,27 +163,27 @@ void ImageWriter::taskFinished(bool ok)
 
 #define Cancel() \
     if (_canceled) { \
+        _imageWriter->taskFinished(false); \
         return; \
     }
 
 void WriteImageTask::run()
 {
+
     _canceled=false;
 
-    if (_filename.isEmpty() || _dataProvider == 0)
+    if (_filename.isEmpty() ||
+            (_dataProvider == 0 && _sourceImage == 0) ||
+            _dataInfo == 0)
     {
+        SD_TRACE("WriteImageTask::run : filename is empty or no data providers or no data info");
         _imageWriter->taskFinished(false);
         return;
     }
 
 
+    bool res = false;
     Cancel();
-
-    // get data to write :
-    cv::Mat data = _dataProvider->getImageData();
-
-    Cancel();
-    _imageWriter->writeProgressValueChanged(50);
 
     // set Geo info
     QString projStr = _dataInfo->getProjectionRef();
@@ -153,12 +191,37 @@ void WriteImageTask::run()
     double nodatavalue = ImageDataProvider::NoDataValue;
     QList< QPair<QString, QString> > metadata = _dataInfo->getMetadata();
 
-    bool res = Core::writeToFile(_filename, data,
+    Cancel();
+    _imageWriter->writeProgressValueChanged(10);
+
+
+    cv::Mat data;
+    QImage im;
+    if (_dataProvider)
+    {
+        // get data to write :
+        data = _dataProvider->getImageData();
+    }
+    else if (_sourceImage)
+    {
+        im = _sourceImage->copy();
+        data = Core::fromQImage(im);
+//        Core::printMat(data, "data");
+    }
+
+    Cancel();
+    _imageWriter->writeProgressValueChanged(50);
+    res = Core::writeToFile(_filename, data,
                                  projStr, geoTransform,
                                  nodatavalue, metadata);
 
     _imageWriter->writeProgressValueChanged(100);
     _imageWriter->taskFinished(res);
+
+    // reset conf:
+    _dataProvider = 0;
+    _sourceImage = 0;
+    _dataInfo = 0;
 
 }
 

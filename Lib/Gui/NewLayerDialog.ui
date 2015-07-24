@@ -154,6 +154,13 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>_name</tabstop>
+  <tabstop>_width</tabstop>
+  <tabstop>_height</tabstop>
+  <tabstop>_x</tabstop>
+  <tabstop>_y</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>

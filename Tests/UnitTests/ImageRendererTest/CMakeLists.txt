@@ -26,6 +26,10 @@ file(GLOB_RECURSE SRC_FILES "*.cpp")
 file(GLOB_RECURSE INC_FILES "*.h")
 file(GLOB_RECURSE UI_FILES "*.ui")
 
+## add common test files
+list(APPEND INC_FILES "${TESTS_INC_FILES}")
+list(APPEND SRC_FILES "${TESTS_SRC_FILES}")
+
 ## create app :
 add_executable( ${PROJECT_NAME} ${SRC_FILES} ${INC_FILES} ${UI_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX ".d")

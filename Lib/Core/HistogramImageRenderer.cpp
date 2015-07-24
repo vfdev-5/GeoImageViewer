@@ -91,40 +91,35 @@ inline double normalize(double value, double vmin, double vmax)
 
     For RGB mode :
 
-    - normRGBHistStops : N arrays of RGB mode 'stops' which are used to map input data values to RGB colors.
-                         The difference from normHistStops is that there are only 2 'stops' possible for each channels.
-                         Precisely, each array contains 2 stops between black and red.
-                         The second array contains 2 stops between black and green. The third array contains 2 stops
-                         between black and blue.
-    - transferFunction : One transfer function which used to transform the input image value before the mapping to RGB color.
-
-    - isDiscreteValues : One boolean value used to indicate whether there is a gradient between to colors of the 'stops'. This
-                         conditions appears when RGB color is computed as an interpolation between to neighbours colors.
+    - normHistStops :    N arrays of RGB mode 'stops' which are used to map input data values to RGB colors.
+                         The difference from gray scale case is that there are only 2 'stops' possible for each channels.
+                         Precisely, each array contains 2 stops between black and white.
+    - transferFunction : by default, linear is used.
+    - isDiscreteValues : is false.
 
 
 
     \class HistogramImageRenderer
     \brief is derived from ImageRenderer and implements image rendering using band histograms.
     The configuration is set using class HistogramRendererConfiguration.
-    The renderer has two modes : gray and rgb
-    There are following cases managed when input image is :
+    The renderer has two modes : gray and rgb.
+
+    Static method setupConfiguration() helps to configure HistogramRendererConfiguration instances.
+    There are following cases are possible :
     1) 1 band and not complex then the HistogramRendererConfiguration is
         a) mode is GRAY only
         b) normHistStops is one array of default 'stops'. The number 'stops' and possible colors are not limited.
-        c) normRGBHistStops is empty
         d) Transfer functions and isDiscreteColours options are available
 
     2) M bands, complex imagery then the HistogramRendererConfiguration is
         a) mode is GRAY or RGB
-        b) normHistStops is M arrays of default 'stops'. The number 'stops' and possible colors are not limited.
-        c) normRGBHistStops is empty
-        d) Transfer functions and isDiscreteColours options are available
+        b) normHistStops can be M arrays of default gray or rgb 'stops'.
+        d) Transfer functions and isDiscreteColours options are available in gray mode
 
     3) N Bands, not complex imagery then the HistogramRendererConfiguration is
         a) mode is GRAY or RGB
-        b) normHistStops is N arrays of default 'stops'. The number 'stops' and possible colors are not limited.
-        c) normRGBHistStops is N arrays of default RGB 'stops'
-        d) Transfer functions and isDiscreteColours options are available
+        b) normHistStops is N arrays of default gray or rgb 'stops'.
+        d) Transfer functions and isDiscreteColours options are available in gray
 
 
 
@@ -204,10 +199,12 @@ void setupGrayModeConf(const ImageDataProvider *provider, HistogramRendererConfi
         {
             startValue=(histConf->qMinValues[i] - provider->getMinValues()[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
             endValue=(histConf->qMaxValues[i] - provider->getMinValues()[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
+            histConf->normHistStops << createStops(3, QColor(Qt::black), QColor(Qt::white), startValue, endValue);
         }
-        if (qAbs(endValue) < 1e-8)
-            endValue = 1.0;
-        histConf->normHistStops << createStops(3, QColor(Qt::black), QColor(Qt::white), startValue, endValue);
+        else
+        {
+            histConf->normHistStops << createStops(1, QColor(Qt::black), QColor(Qt::white), startValue, endValue);
+        }
 
     }
     histConf->mode = HistogramRendererConfiguration::GRAY;
@@ -229,16 +226,31 @@ void setupRGBModeConf(const ImageDataProvider *provider, HistogramRendererConfig
         {
             startValue=(histConf->qMinValues[i] - provider->getMinValues()[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
             endValue=(histConf->qMaxValues[i]- provider->getMinValues()[i]) / (provider->getMaxValues()[i] - provider->getMinValues()[i]);
+            histConf->normHistStops << createStops(2, QColor(Qt::black), QColor(Qt::white), startValue, endValue);
         }
-        if (qAbs(endValue) < 1e-8)
-            endValue = 1.0;
-        histConf->normHistStops << createStops(2, QColor(Qt::black), QColor(Qt::white), startValue, endValue);
+        else
+        {
+            histConf->normHistStops << createStops(1, QColor(Qt::black), QColor(Qt::white), startValue, endValue);
+        }
     }
     // by default choose : RGB mode if available
     histConf->mode = HistogramRendererConfiguration::RGB;
 }
 
-
+//******************************************************************************
+/*!
+ * \brief HistogramImageRenderer::getDefaultMode Method return default mode (gray or rgb) depending on provided image info
+ * \param dataProvider
+ * \return RGB if dataProvider number of channels is more than 2 and data is not complex
+ */
+HistogramRendererConfiguration::Mode HistogramImageRenderer::getDefaultMode(const ImageDataProvider *dataProvider)
+{
+    if (dataProvider->getNbBands() > 2 && !dataProvider->inputIsComplex())
+    {
+        return Core::HistogramRendererConfiguration::RGB;
+    }
+    return Core::HistogramRendererConfiguration::GRAY;
+}
 
 //******************************************************************************
 /*!
@@ -259,7 +271,7 @@ void renderPixel(float * srcPtr, uchar *dstPtr, const QVector<int> &mapping,
                         TransferFunction *transferFunction, bool isDiscreteValue,
                         const QVector<QGradientStops> & normHistStops);
 
-QVector<QGradientStops> computeRGBStops(const QVector<int> & mapping, const QVector< QPair<double, double> > & rgbStops);
+//QVector<QGradientStops> computeRGBStops(const QVector<int> & mapping, const QVector< QPair<double, double> > & rgbStops);
 
 cv::Mat HistogramImageRenderer::render(const cv::Mat &rawData, const ImageRendererConfiguration *conf, bool isBGRA)
 {
@@ -419,46 +431,50 @@ inline void renderPixel(float * srcPtr, uchar * dstPtr, const QVector<int> & map
     value = srcPtr[index];
     a=minValues[index];
     b=maxValues[index];
-//    tf = transferFunctions[index];
-    if (tf)
+    if (qAbs(a-b)<1e-8)
     {
-//        isDiscreteColors=isDiscreteValues[index];
+        dstPtr[0] = normHistStops[index].first().second.red();
+    }
+    else
+    {
+        if (tf)
+        {
+            /* Clamp value between band min/max and normalize between [0,1]*/
+            value = normalize(clamp(value, a, b),a, b);
+            /* Apply transfer function and normalize value in [0,1] */
+            value = tf->evaluate(value);
+            value = normalize(value, tf->evaluate(0.0), tf->evaluate(1.0));
 
-        /* Clamp value between band min/max and normalize between [0,1]*/
-        value = normalize(clamp(value, a, b),a, b);
-        /* Apply transfer function and normalize value in [0,1] */
-        value = tf->evaluate(value);
-        value = normalize(value, tf->evaluate(0.0), tf->evaluate(1.0));
-
-        l = normHistStops[index].size();
-        fStop = normHistStops[index][0];
-        lStop = normHistStops[index][l-1];
-        if (value < fStop.first)
-        {
-            dstPtr[0]=fStop.second.red();
-        }
-        else if (value >= lStop.first)
-        {
-            dstPtr[0]=lStop.second.red();
-        }
-        else
-        {
-            for (int j=0;j<l-1;j++)
+            l = normHistStops[index].size();
+            fStop = normHistStops[index][0];
+            lStop = normHistStops[index][l-1];
+            if (value < fStop.first)
             {
-                fStop = normHistStops[index][j];
-                lStop = normHistStops[index][j+1];
-                if (value >= fStop.first && value < lStop.first)
+                dstPtr[0]=fStop.second.red();
+            }
+            else if (value >= lStop.first)
+            {
+                dstPtr[0]=lStop.second.red();
+            }
+            else
+            {
+                for (int j=0;j<l-1;j++)
                 {
-//                    dstPtr[0]+=fStop.second.red();
-                    double nvalue = fStop.second.red();
-                    if (!isDiscreteColors)
+                    fStop = normHistStops[index][j];
+                    lStop = normHistStops[index][j+1];
+                    if (value >= fStop.first && value < lStop.first)
                     {
-                        alpha = (lStop.first - value)/(lStop.first - fStop.first);
-                        nvalue*=alpha;
-                        nvalue+=(1.0-alpha)*lStop.second.red();
+                        //                    dstPtr[0]+=fStop.second.red();
+                        double nvalue = fStop.second.red();
+                        if (!isDiscreteColors)
+                        {
+                            alpha = (lStop.first - value)/(lStop.first - fStop.first);
+                            nvalue*=alpha;
+                            nvalue+=(1.0-alpha)*lStop.second.red();
+                        }
+                        dstPtr[0] = (uchar) qRound(nvalue-0.05);
+                        break;
                     }
-                    dstPtr[0] = (uchar) qRound(nvalue-0.05);
-                    break;
                 }
             }
         }
@@ -469,45 +485,49 @@ inline void renderPixel(float * srcPtr, uchar * dstPtr, const QVector<int> & map
     value = srcPtr[index];
     a=minValues[index];
     b=maxValues[index];
-//    tf = transferFunctions[index];
-    if (tf)
+    if (qAbs(a-b)<1e-8)
     {
-//        isDiscreteColors=isDiscreteValues[index];
+        dstPtr[1] = normHistStops[index].first().second.green();
+    }
+    else
+    {
+        if (tf)
+        {
+            /* Clamp value between band min/max and normalize between [0,1]*/
+            value = normalize(clamp(value, a, b),a, b);
+            /* Apply transfer function and normalize value in [0,1] */
+            value = tf->evaluate(value);
+            value = normalize(value, tf->evaluate(0.0), tf->evaluate(1.0));
 
-        /* Clamp value between band min/max and normalize between [0,1]*/
-        value = normalize(clamp(value, a, b),a, b);
-        /* Apply transfer function and normalize value in [0,1] */
-        value = tf->evaluate(value);
-        value = normalize(value, tf->evaluate(0.0), tf->evaluate(1.0));
-
-        l = normHistStops[index].size();
-        fStop = normHistStops[index][0];
-        lStop = normHistStops[index][l-1];
-        if (value < fStop.first)
-        {
-            dstPtr[1]=fStop.second.green();
-        }
-        else if (value >= lStop.first)
-        {
-            dstPtr[1]=lStop.second.green();
-        }
-        else
-        {
-            for (int j=0;j<l-1;j++)
+            l = normHistStops[index].size();
+            fStop = normHistStops[index][0];
+            lStop = normHistStops[index][l-1];
+            if (value < fStop.first)
             {
-                fStop = normHistStops[index][j];
-                lStop = normHistStops[index][j+1];
-                if (value >= fStop.first && value < lStop.first)
+                dstPtr[1]=fStop.second.green();
+            }
+            else if (value >= lStop.first)
+            {
+                dstPtr[1]=lStop.second.green();
+            }
+            else
+            {
+                for (int j=0;j<l-1;j++)
                 {
-                    double nvalue = fStop.second.green();
-                    if (!isDiscreteColors)
+                    fStop = normHistStops[index][j];
+                    lStop = normHistStops[index][j+1];
+                    if (value >= fStop.first && value < lStop.first)
                     {
-                        alpha = (lStop.first - value)/(lStop.first - fStop.first);
-                        nvalue*=alpha;
-                        nvalue+=(1.0-alpha)*lStop.second.green();
+                        double nvalue = fStop.second.green();
+                        if (!isDiscreteColors)
+                        {
+                            alpha = (lStop.first - value)/(lStop.first - fStop.first);
+                            nvalue*=alpha;
+                            nvalue+=(1.0-alpha)*lStop.second.green();
+                        }
+                        dstPtr[1] = (uchar) qRound(nvalue-0.05);
+                        break;
                     }
-                    dstPtr[1] = (uchar) qRound(nvalue-0.05);
-                    break;
                 }
             }
         }
@@ -518,50 +538,53 @@ inline void renderPixel(float * srcPtr, uchar * dstPtr, const QVector<int> & map
     value = srcPtr[index];
     a=minValues[index];
     b=maxValues[index];
-//    tf = transferFunctions[index];
-    if (tf)
+    if (qAbs(a-b)<1e-8)
     {
-//        isDiscreteColors=isDiscreteValues[index];
+        dstPtr[2] = normHistStops[index].first().second.blue();
+    }
+    else
+    {
+        if (tf)
+        {
+            /* Clamp value between band min/max and normalize between [0,1]*/
+            value = normalize(clamp(value, a, b),a, b);
+            /* Apply transfer function and normalize value in [0,1] */
+            value = tf->evaluate(value);
+            value = normalize(value, tf->evaluate(0.0), tf->evaluate(1.0));
 
-        /* Clamp value between band min/max and normalize between [0,1]*/
-        value = normalize(clamp(value, a, b),a, b);
-        /* Apply transfer function and normalize value in [0,1] */
-        value = tf->evaluate(value);
-        value = normalize(value, tf->evaluate(0.0), tf->evaluate(1.0));
-
-        l = normHistStops[index].size();
-        fStop = normHistStops[index][0];
-        lStop = normHistStops[index][l-1];
-        if (value < fStop.first)
-        {
-            dstPtr[2]=fStop.second.blue();
-        }
-        else if (value >= lStop.first)
-        {
-            dstPtr[2]=lStop.second.blue();
-        }
-        else
-        {
-            for (int j=0;j<l-1;j++)
+            l = normHistStops[index].size();
+            fStop = normHistStops[index][0];
+            lStop = normHistStops[index][l-1];
+            if (value < fStop.first)
             {
-                fStop = normHistStops[index][j];
-                lStop = normHistStops[index][j+1];
-                if (value >= fStop.first && value < lStop.first)
+                dstPtr[2]=fStop.second.blue();
+            }
+            else if (value >= lStop.first)
+            {
+                dstPtr[2]=lStop.second.blue();
+            }
+            else
+            {
+                for (int j=0;j<l-1;j++)
                 {
-                    double nvalue = fStop.second.blue();
-                    if (!isDiscreteColors)
+                    fStop = normHistStops[index][j];
+                    lStop = normHistStops[index][j+1];
+                    if (value >= fStop.first && value < lStop.first)
                     {
-                        alpha = (lStop.first - value)/(lStop.first - fStop.first);
-                        nvalue*=alpha;
-                        nvalue+=(1.0-alpha)*lStop.second.blue();
+                        double nvalue = fStop.second.blue();
+                        if (!isDiscreteColors)
+                        {
+                            alpha = (lStop.first - value)/(lStop.first - fStop.first);
+                            nvalue*=alpha;
+                            nvalue+=(1.0-alpha)*lStop.second.blue();
+                        }
+                        dstPtr[2] = (uchar) qRound(nvalue-0.05);
+                        break;
                     }
-                    dstPtr[2] = (uchar) qRound(nvalue-0.05);
-                    break;
                 }
             }
         }
     }
-
 #else
     ComputePixelValue(0, red);
     ComputePixelValue(1, green);
@@ -578,7 +601,7 @@ inline void renderPixel(float * srcPtr, uchar * dstPtr, const QVector<int> & map
 }
 
 //******************************************************************************
-
+/*
 inline QVector<QGradientStops> computeRGBStops(const QVector<int> & mapping, const QVector<QPair<double, double> > &rgbStops)
 {
 
@@ -594,23 +617,28 @@ inline QVector<QGradientStops> computeRGBStops(const QVector<int> & mapping, con
     }
     return out;
 }
-
+*/
 //******************************************************************************
 
 QGradientStops createStops(int nbStops, const QColor & startColor, const QColor & endColor, double startValue, double endValue)
 {
     QGradientStops outputStops(nbStops);
-    double step = (endValue - startValue)*1.0/(nbStops-1);
-    for (int i=0;i<nbStops;i++)
+    if (nbStops > 1)
     {
-        double alpha = i*1.0/(nbStops-1);
-        QColor cc;
-        cc.setRed(   (int) (startColor.red()   * (1.0 - alpha)  + alpha * endColor.red() ) );
-        cc.setGreen( (int) (startColor.green() * (1.0 - alpha)  + alpha * endColor.green() ) );
-        cc.setBlue(  (int) (startColor.blue()  * (1.0 - alpha)  + alpha * endColor.blue() ) );
-        double value = i*step + startValue;
-        outputStops[i] = QGradientStop(value, cc);
+        double step = (endValue - startValue)*1.0/(nbStops-1);
+        for (int i=0;i<nbStops;i++)
+        {
+            double alpha = i*1.0/(nbStops-1);
+            QColor cc;
+            cc.setRed(   (int) (startColor.red()   * (1.0 - alpha)  + alpha * endColor.red() ) );
+            cc.setGreen( (int) (startColor.green() * (1.0 - alpha)  + alpha * endColor.green() ) );
+            cc.setBlue(  (int) (startColor.blue()  * (1.0 - alpha)  + alpha * endColor.blue() ) );
+            double value = i*step + startValue;
+            outputStops[i] = QGradientStop(value, cc);
+        }
+        return outputStops;
     }
+    outputStops[0] = QGradientStop(0.5*(startValue + endValue), endColor);
     return outputStops;
 }
 

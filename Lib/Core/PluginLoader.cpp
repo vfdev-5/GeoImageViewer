@@ -24,10 +24,13 @@ QList<Plugin> PluginLoader::loadAll(const QString &path)
     QDir d(path);
     foreach (QString fileName, d.entryList(PluginFilters, QDir::Files))
     {
-        SD_TRACE("Plugin filename : " + fileName);
         QPluginLoader loader(d.absoluteFilePath(fileName));
         QObject * plugin = loader.instance();
         out << QPair<QString,QObject*>(fileName, plugin);
+        if (!plugin)
+        {
+            SD_TRACE("Plugin \'" + fileName + "\' error : " + loader.errorString());
+        }
     }
     return out;
 }

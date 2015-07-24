@@ -9,6 +9,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 // Tests
+#include "../../Common.h"
 #include "DataProviderTest.h"
 #include "Core/LayerUtils.h"
 
@@ -17,45 +18,6 @@ namespace Tests
 
 int WIDTH  = 2000;
 int HEIGHT = 2000;
-
-bool compareVectors(const QVector<double> & v1, const QVector<double> & v2, double tol = 1e-8)
-{
-    if (v1.size() != v2.size())
-        return false;
-
-    for (int i=0;i<v1.size();i++)
-    {
-        if (qAbs(v1[i] - v2[i]) > tol)
-            return false;
-    }
-    return true;
-}
-
-bool comparePolygons(const QPolygonF & v1, const QPolygonF & v2, double tol = 1e-5)
-{
-    if (v1.size() != v2.size())
-        return false;
-
-    for (int i=0;i<v1.size();i++)
-    {
-        QPointF p = v1[i] - v2[i];
-        if (qSqrt(p.x()*p.x() + p.y()*p.y()) > tol)
-            return false;
-    }
-    return true;
-}
-
-void printGeoExtent(const QPolygonF & poly)
-{
-    SD_TRACE("---- Print GeoExtent ----");
-    foreach (QPointF p, poly)
-    {
-        SD_TRACE(QString("Point : %1, %2").arg(p.x()).arg(p.y()));
-    }
-    SD_TRACE("---- END Print GeoExtent ----");
-}
-
-
 
 cv::Mat computeMaskND(const cv::Mat & data, float noDataValue)
 {

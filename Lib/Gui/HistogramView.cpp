@@ -15,6 +15,45 @@ namespace Gui
 
 //*************************************************************************
 
+
+#if 0
+typedef QGraphicsLineItem HistogramBinItem;
+HistogramBinItem * createHistBinItem(double x1, double y1, double x2, double y2, double delta, const QPen & pen)
+{
+    Q_UNUSED(delta);
+    // Create line
+    QGraphicsLineItem * l = new QGraphicsLineItem(x1,y1,x2,y2);
+    l->setPen(pen);
+    return l;
+}
+void setColor(HistogramBinItem * item, const QPen & pen)
+{
+    item->setPen(pen);
+}
+
+#else
+typedef QGraphicsRectItem HistogramBinItem;
+HistogramBinItem * createHistBinItem(double x1, double y1, double x2, double y2, double delta, const QPen & pen)
+{
+    // Create rectangle
+    QGraphicsRectItem * r = new QGraphicsRectItem(QRectF(QPointF(x1,y1),QPointF(x2+delta,y2)));
+    r->setPen(pen);
+    r->setBrush(pen.brush());
+    return r;
+}
+
+void setColor(HistogramBinItem * item, const QPen & pen)
+{
+    item->setPen(pen);
+    item->setBrush(pen.brush());
+}
+
+#endif
+
+
+
+//*************************************************************************
+
 QGraphicsItemGroup * createAxesGroup(const QPen & pen)
 {
     QGraphicsItemGroup * axes = new QGraphicsItemGroup();
@@ -314,13 +353,12 @@ QGraphicsItemGroup * HistogramView::createHistogramGraphicsItem(const QVector<do
     for (int i=0; i<histSize; i++)
     {
         double value = data[i];
-        QGraphicsLineItem * l = new QGraphicsLineItem(
-                    i*1.0/histSize,
-                    1.0 - value - d,
-                    i*1.0/histSize,
-                    1.0 - d
-                    );
-        l->setPen(dataPen);
+        double x1 = i*1.0/histSize;
+        double y1 = 1.0 - value - d;
+        double x2 = i*1.0/histSize;
+        double y2 = 1.0 - d;
+        double delta = 1.0/histSize;
+        HistogramBinItem * l = createHistBinItem(x1,y1,x2,y2,delta,dataPen);
         group->addToGroup(l);
     }
     group->setZValue(0.0);
@@ -338,7 +376,7 @@ QPen getHGIPen(QGraphicsItemGroup * hgi)
     QList<QGraphicsItem*> items = hgi->childItems();
     if (items.isEmpty())
         return p;
-    QGraphicsLineItem * line = qgraphicsitem_cast<QGraphicsLineItem *>(items[0]);
+    HistogramBinItem * line = qgraphicsitem_cast<HistogramBinItem*>(items[0]);
     if (line)
         p = line->pen();
 
@@ -353,9 +391,12 @@ void HistogramView::drawHistogramGraphicsItem(HistogramItem * h, const QPen & da
     {
         foreach (QGraphicsItem * item, h->graphicsItem->childItems())
         {
-            QGraphicsLineItem * line = qgraphicsitem_cast<QGraphicsLineItem *>(item);
-            if (line)
-                line->setPen(dataPen);
+            HistogramBinItem * bin = qgraphicsitem_cast<HistogramBinItem*>(item);
+            if (bin)
+            {
+//                line->setPen(dataPen);
+                setColor(bin, dataPen);
+            }
         }
     }
 
@@ -394,6 +435,14 @@ void HistogramView::zoomInterval(double vXMin, double vXMax)
 
     _visibleZone.setX(vXMin);
     _visibleZone.setWidth(vXMax-vXMin);
+    _ui->_histogramView->fitInView(_visibleZone);
+}
+
+//*************************************************************************
+
+void HistogramView::zoomAll()
+{
+    _visibleZone = _histogramScene.sceneRect();
     _ui->_histogramView->fitInView(_visibleZone);
 }
 
@@ -459,8 +508,7 @@ void HistogramView::onZoomActionTriggered()
     }
     else if (sender() == &_zoomAll)
     {
-        _visibleZone = _histogramScene.sceneRect();
-        _ui->_histogramView->fitInView(_visibleZone);
+        zoomAll();
     }
 
 }

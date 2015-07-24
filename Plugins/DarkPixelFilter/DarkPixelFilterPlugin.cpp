@@ -94,10 +94,13 @@ cv::Mat DarkPixelFilterPlugin::filter(const cv::Mat &data) const
     std::vector<std::vector<cv::Point> > contours;
     cv::findContours(out, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
 
-    cv::Mat res = cv::Mat::zeros(out.size(), CV_8U);
+    cv::Mat res(out.size(), CV_32F);
+//    res.setTo(0.0);
+    res.setTo(_noDataValue);
+
     if (contours.size() > 0)
     {
-        SD_TRACE("contours.size() > 0");
+//        SD_TRACE("contours.size() > 0");
         double minArea = _minSize*_minSize;
         for (int i=0;i<contours.size();i++)
         {
@@ -105,16 +108,16 @@ cv::Mat DarkPixelFilterPlugin::filter(const cv::Mat &data) const
             if (contour.size() < 4)
                 continue;
             double s = cv::contourArea(contour);
-            SD_TRACE(QString("area=%1").arg(s));
+//            SD_TRACE(QString("area=%1").arg(s));
             if (s > minArea)
             {
-                SD_TRACE("s>minArea");
-                cv::drawContours(res, contours, i, cv::Scalar::all(255), CV_FILLED);
-                SD_TRACE("cv::drawContours");
+//                SD_TRACE("s>minArea");
+                cv::drawContours(res, contours, i, cv::Scalar::all(1.0), CV_FILLED);
+//                SD_TRACE("cv::drawContours");
             }
         }
         out = res;
-        SD_TRACE("out=res");
+//        SD_TRACE("out=res");
     }
     else
     {

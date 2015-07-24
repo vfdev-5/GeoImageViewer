@@ -54,6 +54,7 @@ public:
     void drawRgbHistogram(int r=0, int g=1, int b=2);
 
     void zoomInterval(double vXMin, double vXMax);
+    void zoomAll();
 
 public slots:
     void clear();

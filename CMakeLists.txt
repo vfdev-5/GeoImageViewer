@@ -18,6 +18,7 @@ set(CMAKE_AUTOUIC ON)
 # Find OpenCV, GDAL, Qt:
 find_package( OpenCV REQUIRED )
 find_package( GDAL REQUIRED )
+find_package( OpenGL REQUIRED )
 set( QT_COMPONENT_LIST Widgets OpenGL Test)
 find_package( Qt REQUIRED )
 

@@ -250,15 +250,28 @@ void OpenImageFileTask::run()
     // compute NoDataMask :
     cv::Mat mask = ImageDataProvider::computeMask(data);
 
+    int inputDepth = provider->getInputDepthInBytes();
+    int histSize = inputDepth > 1 ? 1000 : 256;
     if (!computeNormalizedHistogram(data, mask,
                                 minValues, maxValues,
                                 bandHistograms,
-                                1000, _reporter) )
+                                histSize, _reporter) )
     {
         ClearData();
         _imageOpener->taskFinished(0);
         return;
     }
+
+    // if input image depth is 8 bits -> min/max values should be [0,255] for all bands
+    if (inputDepth == 1)
+    {
+        int nbBands = data.channels();
+        minValues.clear();
+        minValues.fill(0, nbBands);
+        maxValues.clear();
+        maxValues.fill(255, nbBands);
+    }
+
 
     provider->setMinValues(minValues);
     provider->setMaxValues(maxValues);

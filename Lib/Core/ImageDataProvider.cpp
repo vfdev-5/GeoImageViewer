@@ -129,7 +129,6 @@ QVector<double> ImageDataProvider::getPixelValue(const QPoint &pixelCoords, bool
     return out;
 }
 
-
 //******************************************************************************
 //******************************************************************************
 
@@ -425,18 +424,27 @@ cv::Mat GDALDataProvider::getImageData(const QRect & srcPixelExtent, int dstPixe
 
 QString GDALDataProvider::fetchProjectionRef() const
 {
-    return _dataset->GetProjectionRef();
+    QString res = _dataset->GetProjectionRef();
+    return res.isEmpty() ? "Unknown" : res;
 }
 
 //******************************************************************************
 
-QPolygonF GDALDataProvider::fetchGeoExtent(const QRect &pixelExtent) const
+//QPolygonF GDALDataProvider::fetchGeoExtent(const QRect &pixelExtent) const
+//{
+//    return computeGeoExtent(_dataset, pixelExtent);
+//}
+
+QPolygonF GDALDataProvider::fetchGeoExtent(const QVector<QPoint> & points) const
 {
-    return computeGeoExtent(_dataset, pixelExtent);
+    return computeGeoExtent(_dataset, points);
 }
 
 //******************************************************************************
-
+/*!
+ * \brief GDALDataProvider::fetchGeoTransform
+ * \return
+ */
 QVector<double> GDALDataProvider::fetchGeoTransform() const
 {
     QVector<double> out(6);

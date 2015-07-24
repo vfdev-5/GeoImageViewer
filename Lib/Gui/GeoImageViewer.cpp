@@ -206,6 +206,7 @@ void GeoImageViewer::onImageWriteFinished(bool ok)
     {
         SD_ERR(tr("Failed to write file"));
     }
+    _processedLayer = 0;
 }
 
 //******************************************************************************
@@ -278,7 +279,12 @@ void GeoImageViewer::onSaveBaseLayer(Core::BaseLayer * layer)
 {
     if (qobject_cast<Core::GeoImageLayer*>(layer))
     {
-        writeGeoImageLayer(layer);
+        writeGeoImageLayer(qobject_cast<Core::GeoImageLayer*>(layer));
+    }
+    else if (qobject_cast<Core::GeoShapeLayer*>(layer))
+    {
+        SD_TRACE("Write geo shape layer");
+//        writeGeoShapeLayer(qobject_cast<Core::GeoShapeLayer*>(layer));
     }
 }
 
@@ -300,40 +306,43 @@ void GeoImageViewer::onCreateBaseLayer()
             prepareSceneAndView(r.width(), r.height());
         }
 
+        // Enlarge scene if neeeded
+        if (!_scene.sceneRect().contains(r))
+        {
+            QRectF nr = _scene.sceneRect().united(r);
+            double w = nr.width();
+            double h = nr.height();
+            _scene.setSceneRect(nr.adjusted(-0.25*w, -0.25*h, 0.25*w, 0.25*h));
+        }
+
         Core::DrawingsItem * item = new Core::DrawingsItem(r.width(), r.height());
         item->setPos(r.x(), r.y());
         item->setZValue(1000);
 
         _scene.addItem(item);
 
-        Core::GeoShapeLayer * layer = new Core::GeoShapeLayer(this);
-        layer->setType("Scribble : " + name);
-        layer->setEditable(true);
-        layer->setPixelExtent(r);
-
+        const Core::ImageDataProvider * provider = getDataProvider(getCurrentLayer());
+        Core::GeoImageLayer * layer = createScribble(name, item, provider);
         addLayer(layer, item);
     }
 }
 
 //******************************************************************************
 
-void GeoImageViewer::writeGeoImageLayer(Core::BaseLayer * layer)
+void GeoImageViewer::writeGeoImageLayer(Core::GeoImageLayer* layer)
 {
-    _processedLayer = qobject_cast<Core::GeoImageLayer*>(layer);
-    Core::GeoImageItem * item = static_cast<Core::GeoImageItem*>(_layerItemMap.value(_processedLayer, 0));
+    _processedLayer = layer;
+    QGraphicsItem * item = _layerItemMap.value(_processedLayer, 0);
     if (!item)
     {
         SD_TRACE("GeoImageViewer::writeGeoImageLayer : item is null");
         return;
     }
 
-    const Core::ImageDataProvider * provider = item->getConstDataProvider();
-
     QString filename = QFileDialog::getSaveFileName(this,
                                                     tr("Save into a file"),
                                                     QString(),
                                                     tr("Images (*.tif)"));
-
     if (filename.isEmpty())
         return;
 
@@ -341,10 +350,71 @@ void GeoImageViewer::writeGeoImageLayer(Core::BaseLayer * layer)
     _progressDialog->setValue(0);
     _progressDialog->show();
 
-    if (!_imageWriter->writeInBackground(filename, provider, _processedLayer))
+    if (item->type() == Core::GeoImageItem::Type)
     {
-        _progressDialog->close();
+        Core::GeoImageItem * giItem = qgraphicsitem_cast<Core::GeoImageItem*>(item);
+        const Core::ImageDataProvider * provider = giItem->getConstDataProvider();
+        if (!_imageWriter->writeInBackground(filename, provider, _processedLayer))
+        {
+            _progressDialog->close();
+        }
     }
+    else if (item->type() == Core::DrawingsItem::Type)
+    {
+        Core::DrawingsItem * dItem = qgraphicsitem_cast<Core::DrawingsItem*>(item);
+        QImage & image = dItem->getImage();
+
+        if (!_imageWriter->writeInBackground(filename, &image, _processedLayer))
+        {
+            _progressDialog->close();
+        }
+    }
+}
+
+//******************************************************************************
+
+void GeoImageViewer::writeGeoShapeLayer(Core::GeoShapeLayer* layer)
+{
+    /*
+    _processedLayer = layer;
+    QGraphicsItem * item = _layerItemMap.value(_processedLayer, 0);
+    if (!item)
+    {
+        SD_TRACE("GeoImageViewer::writeGeoImageLayer : item is null");
+        return;
+    }
+
+    QString filename = QFileDialog::getSaveFileName(this,
+                                                    tr("Save into a file"),
+                                                    QString(),
+                                                    tr("Images (*.tif)"));
+    if (filename.isEmpty())
+        return;
+
+    _progressDialog->setLabelText("Save image ...");
+    _progressDialog->setValue(0);
+    _progressDialog->show();
+
+    if (item->type() == Core::GeoImageItem::Type)
+    {
+        Core::GeoImageItem * giItem = qgraphicsitem_cast<Core::GeoImageItem*>(item);
+        const Core::ImageDataProvider * provider = giItem->getConstDataProvider();
+        if (!_imageWriter->writeInBackground(filename, provider, _processedLayer))
+        {
+            _progressDialog->close();
+        }
+    }
+    else if (item->type() == Core::DrawingsItem::Type)
+    {
+        Core::DrawingsItem * dItem = qgraphicsitem_cast<Core::DrawingsItem*>(item);
+        QImage & image = dItem->getImage();
+
+        if (!_imageWriter->writeInBackground(filename, &image, _processedLayer))
+        {
+            _progressDialog->close();
+        }
+    }
+    */
 }
 
 //******************************************************************************
@@ -444,19 +514,7 @@ void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
     }
 
     // Create new layer :
-    Core::GeoImageLayer * nLayer = new Core::GeoImageLayer(this);
-    nLayer->setType(_appliedFilter->getName());
-    nLayer->setImageName(provider->getImageName());
-
-    nLayer->setNbBands(provider->getNbBands());
-    nLayer->setDepthInBytes(provider->getDepthInBytes());
-    nLayer->setIsComplex(provider->isComplex());
-
-    nLayer->setGeoExtent(_processedLayer->getGeoExtent());
-    nLayer->setGeoBBox(_processedLayer->getGeoBBox());
-    // pixel extent is intersection
-    nLayer->setPixelExtent(_processedLayer->getPixelExtent());
-    nLayer->setProjectionRef(_processedLayer->getProjectionRef());
+    Core::GeoImageLayer * nLayer = createGeoImageLayer(_appliedFilter->getName(), provider);
 
     addLayer(nLayer, nItem);
 
@@ -468,6 +526,15 @@ void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
 }
 
 //******************************************************************************
+
+void GeoImageViewer::onDrawingFinalized(const QString & name, Core::DrawingsItem * item)
+{
+    Core::GeoImageLayer * layer = createScribble(name, item);
+    addLayer(layer, item);
+}
+
+//******************************************************************************
+
 /*!
  * \brief GeoImageViewer::setRendererView method to setup a renderer view: DefaultRendererView or HistogramRendererView ...
  * \param rendererView
@@ -479,6 +546,10 @@ void GeoImageViewer::setRendererView(AbstractRendererView *rendererView)
 
 //******************************************************************************
 
+/*!
+ * \brief GeoImageViewer::onCopyData Slot called on Selection tool signal copyToNewLayer()
+ * \param selection selection extent
+ */
 void GeoImageViewer::onCopyData(const QRectF &selection)
 {
     SD_TRACE("Copy data to new layer");
@@ -541,18 +612,6 @@ void GeoImageViewer::onCopyData(const QRectF &selection)
 
 //******************************************************************************
 
-void GeoImageViewer::createScribble(const QString &name, Core::DrawingsItem *item)
-{
-    Core::GeoShapeLayer * layer = new Core::GeoShapeLayer(this);
-    layer->setType("Scribble : " + name);
-    layer->setEditable(true);
-    layer->setPixelExtent(QRect(item->pos().toPoint(), item->boundingRect().size().toSize()));
-
-    addLayer(layer, item);
-}
-
-//******************************************************************************
-
 void GeoImageViewer::initFilterTools()
 {
     foreach (Tools::AbstractTool * tool, _toolsManager->getTools())
@@ -563,8 +622,10 @@ void GeoImageViewer::initFilterTools()
             if (ftool)
             {
                 ftool->setGraphicsSceneAndView(&_scene, _ui->_view);
-                connect(ftool, SIGNAL(drawingsFinalized(const QString&, Core::DrawingsItem*)), this, SLOT(createScribble(const QString&, Core::DrawingsItem*)));
-                connect(ftool, SIGNAL(itemCreated(QGraphicsItem*)), this, SLOT(onItemCreated(QGraphicsItem*)));
+                connect(ftool, SIGNAL(drawingsFinalized(const QString&, Core::DrawingsItem*)),
+                        this, SLOT(onDrawingFinalized(QString,Core::DrawingsItem*)));
+                connect(ftool, SIGNAL(itemCreated(QGraphicsItem*)),
+                        this, SLOT(onItemCreated(QGraphicsItem*)));
             }
         }
     }
@@ -601,12 +662,13 @@ bool GeoImageViewer::configureTool(Tools::AbstractTool *tool, Core::BaseLayer *l
             SD_WARN(tr("Please choose an editable layer or create a new one"));
             return false;
         }
-        Core::GeoShapeLayer * scribble = qobject_cast<Core::GeoShapeLayer*>(layer);
+//        Core::GeoShapeLayer * scribble = qobject_cast<Core::GeoShapeLayer*>(layer);
+        Core::GeoImageLayer * scribble = qobject_cast<Core::GeoImageLayer*>(layer);
         if (!scribble)
         {
             return false;
         }
-        // static cast is ensured with non null conversion of BaseLayer into GeoShapeLayer
+        // static cast is ensured with non null conversion of BaseLayer into GeoImageLayer // GeoShapeLayer
         Core::DrawingsItem * item = static_cast<Core::DrawingsItem*>(_layerItemMap.value(scribble, 0));
         if (!item)
         {
@@ -656,11 +718,7 @@ Core::GeoImageItem * GeoImageViewer::createGeoImageItem(Core::ImageDataProvider 
     // Create renderer conf:
     Core::HistogramRendererConfiguration * rconf = new Core::HistogramRendererConfiguration();
     // Setup default mode :
-    Core::HistogramRendererConfiguration::Mode mode = Core::HistogramRendererConfiguration::GRAY;
-    if (provider->getNbBands() > 2 && !provider->inputIsComplex())
-    {
-        mode = Core::HistogramRendererConfiguration::RGB;
-    }
+    Core::HistogramRendererConfiguration::Mode mode = Core::HistogramImageRenderer::getDefaultMode(provider);
 
     if (!Core::HistogramImageRenderer::setupConfiguration(provider, rconf, mode))
     {
@@ -675,8 +733,7 @@ Core::GeoImageItem * GeoImageViewer::createGeoImageItem(Core::ImageDataProvider 
     out->setPos(pos);
     out->setZValue(1000);
     _scene.addItem(out);
-    connect(this, SIGNAL(viewportChanged(int,QRectF)),
-            out, SLOT(updateItem(int, QRectF)));
+    connect(this, SIGNAL(viewportChanged(int,QRectF)), out, SLOT(updateItem(int, QRectF)));
 
     return out;
 }
@@ -719,6 +776,33 @@ Core::GeoImageLayer * GeoImageViewer::createGeoImageLayer(const QString &type, C
 
 //******************************************************************************
 
+Core::GeoImageLayer * GeoImageViewer::createScribble(const QString &name, Core::DrawingsItem *item, const Core::ImageDataProvider * provider)
+{
+    Core::GeoImageLayer * layer = new Core::GeoImageLayer(this);
+    layer->setType(tr("Scribble : ") + name);
+    layer->setEditable(true);
+    layer->setImageName(name);
+    layer->setLocation(tr("No location"));
+
+    layer->setNbBands(4);
+    layer->setDepthInBytes(1);
+    layer->setIsComplex(false);
+
+    layer->setPixelExtent(QRect(item->pos().toPoint(), item->boundingRect().size().toSize()));
+
+    if (provider)
+    {
+        layer->setGeoExtent(provider->fetchGeoExtent());
+        layer->setGeoBBox(layer->getGeoExtent().boundingRect());
+        layer->setProjectionRef(provider->fetchProjectionRef());
+        layer->setGeoTransform(provider->fetchGeoTransform());
+    }
+
+    return layer;
+}
+
+//******************************************************************************
+
 const Core::GeoImageItem * GeoImageViewer::getGeoImageItem(const Core::BaseLayer * layer) const
 {
     const Core::GeoImageLayer * image = qobject_cast<const Core::GeoImageLayer*>(layer);
@@ -727,7 +811,7 @@ const Core::GeoImageItem * GeoImageViewer::getGeoImageItem(const Core::BaseLayer
         return 0;
     }
     // static cast is ensured with non null conversion of BaseLayer into GeoImageLayer
-    return static_cast<const Core::GeoImageItem*>(_layerItemMap.value(image, 0));
+    return qgraphicsitem_cast<const Core::GeoImageItem*>(_layerItemMap.value(image, 0));
 }
 
 //******************************************************************************
@@ -776,6 +860,38 @@ QPointF GeoImageViewer::computePointOnItem(const QPointF &scenePos)
 //    {
 //    }
     return ShapeViewer::computePointOnItem(scenePos);
+}
+
+//******************************************************************************
+/*!
+ * \brief GeoImageViewer::computeGeoExtentFromLayer
+ * \param inputShape polygon is in qgraphicsscene coordinates
+ * \param backgroundLayer
+ * \return geo extent as polygon
+ */
+QPolygonF GeoImageViewer::computeGeoExtentFromLayer(const QPolygonF &inputShape, const Core::GeoShapeLayer *backgroundLayer)
+{
+    const Core::GeoImageLayer * imageLayer = qobject_cast<const Core::GeoImageLayer*>(backgroundLayer);
+    if (imageLayer)
+    {
+        QPolygonF out;
+        // There are possibilities that associated graphicsitem is GeoImageItem or DrawingItem
+        QGraphicsItem * item = _layerItemMap.value(backgroundLayer, 0);
+        if (!item)
+        {
+            SD_TRACE("GeoImageViewer::computeGeoExtentFromLayer : no graphicsitem associated to specified backgroundLayer");
+            return out;
+        }
+
+        if (qgraphicsitem_cast<Core::GeoImageItem*>(item))
+        {
+            Core::GeoImageItem* gIItem = qgraphicsitem_cast<Core::GeoImageItem*>(item);
+            return gIItem->getConstDataProvider()->fetchGeoExtent(inputShape.toPolygon());
+        }
+
+    }
+
+    return ShapeViewer::computeGeoExtentFromLayer(inputShape, backgroundLayer);
 }
 
 //******************************************************************************

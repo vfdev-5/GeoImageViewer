@@ -19,6 +19,9 @@ private slots:
     void test_OpencvOperations();
     void test_FileReadWriteMethods();
 //    void test_VectorizeAsPolygons();
+    void test_Mat2QImage();
+    void test_displayMat();
+
     void cleanupTestCase();
 
 private:
