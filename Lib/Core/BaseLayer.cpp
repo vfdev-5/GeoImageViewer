@@ -36,7 +36,8 @@ BaseLayer::BaseLayer(QGraphicsItem *item, QObject *parent) :
     _opacity(1.0),
     _zValue(0),
     _editable(false),
-    _item(item)
+    _item(item),
+    _type("Base layer")
 {
 }
 
@@ -62,7 +63,7 @@ void BaseLayer::setVisible(bool visible)
     if (_isVisible != visible)
     {
         _isVisible = visible;
-        _item->setVisible(_isVisible);
+        if (_item) _item->setVisible(_isVisible);
 //        emit layerStateChanged();
     }
 }
@@ -74,7 +75,7 @@ void BaseLayer::setOpacity(double opacity)
     if (_opacity != opacity)
     {
         _opacity = opacity;
-        _item->setOpacity(_opacity);
+        if (_item) _item->setOpacity(_opacity);
 //        emit layerStateChanged();
     }
 }
@@ -86,7 +87,7 @@ void BaseLayer::setZValue(int zValue)
     if (_zValue != zValue)
     {
         _zValue = zValue;
-        _item->setZValue(computeZValue(_zValue));
+        if (_item) _item->setZValue(computeZValue(_zValue));
 //        emit layerStateChanged();
     }
 }

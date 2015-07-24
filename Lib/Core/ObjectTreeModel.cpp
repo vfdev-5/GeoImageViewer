@@ -3,6 +3,7 @@
 #include <QEvent>
 #include <QChildEvent>
 #include <QMimeData>
+#include <QMetaProperty>
 
 // Project
 #include "Global.h"
@@ -56,12 +57,56 @@ QModelIndexList decode(QByteArray & encoded, const QAbstractItemModel * model)
 //******************************************************************************
 /*!
     \class ObjectTreeModel
-    \brief
+    \brief inherits QAbstractItemModel and represents a model for QTreeView
+    to display QObject parent/children tree structure.
+
+
+    Usage:
+
+    // Setup object's parent/children tree
+    QObject * invisibleRoot = new QObject(this); // parented to the main structure
+
+    QObject * mainObject = new ClassA(invisibleRoot);
+    // ClassA inherits from QObject
+    //  and has declared properties : labelA (QString)
+
+    QObject * child1 = new ClassB(mainObject);
+    // ClassB inherits from ClassA
+    //  and has declared properties : isVisible (Qt::CheckState)
+    QObject * child2 = new ClassB(mainObject);
+
+    QObject * child3 = new ClassC(mainObject);
+    // ClassC inherits from ClassA
+    //  and has declared properties : icon (QImage)
+    QObject * child11 = new ClassC(child1);
+
+    QObject * child31 = new ClassD(child3);
+    // ClassD inherits from ClassA
+    //  and has declared properties : ...
+    // ...etc
+
+    // Setup model/view structures
+    ObjectTreeModel * model = new ObjectTreeModel(invisbleRoot, this);
+    // setup a map between QObject property and a ObjectTreeModel role :
+    model->setRole(Qt::DisplayRole, "labelA");
+    model->setRole(Qt::EditRole, "labelA");
+    model->setRole(Qt::DecorationRole, "icon");
+    model->setRole(Qt::CheckStateRole, "isVisible");
+    // ...
+
+    QTreeView * view = new QTreeView(this);
+    view->setModel(model);
+
 
  */
 
 //******************************************************************************
 
+/*!
+ * \brief ObjectTreeModel::ObjectTreeModel
+ * \param root is the invisible root of the QObject parent/children tree structure
+ * \param parent
+ */
 ObjectTreeModel::ObjectTreeModel(QObject * root, QObject *parent) :
     QAbstractItemModel(parent),
     _root(root)
@@ -81,6 +126,13 @@ ObjectTreeModel::ObjectTreeModel(QObject * root, QObject *parent) :
 
 //******************************************************************************
 
+void ObjectTreeModel::setRole(int role, const QString &propertyName)
+{
+    _rolePropertyMap.insert(role, propertyName);
+}
+
+//******************************************************************************
+
 QModelIndex ObjectTreeModel::index(int row, int column, const QModelIndex &parent) const
 {
     QObject * parentObject=0;
@@ -95,6 +147,7 @@ QModelIndex ObjectTreeModel::index(int row, int column, const QModelIndex &paren
 
     if (parentObject && row < parentObject->children().count())
     {
+        // !!! Need to order
         return createIndex(row, column, parentObject->children().at(row));
     }
     return QModelIndex();
@@ -117,7 +170,11 @@ QModelIndex ObjectTreeModel::parent(const QModelIndex &child) const
     {
         return QModelIndex();
     }
-    return createIndex( parentObject2->children().indexOf(parentObject), 0, parentObject );
+
+    // !!! Need to order
+    int row = parentObject2->children().indexOf(parentObject);
+
+    return createIndex(row , 0, parentObject );
 }
 
 //******************************************************************************
@@ -145,20 +202,55 @@ int ObjectTreeModel::columnCount(const QModelIndex &parent) const
 
 //******************************************************************************
 
+#define IfDefaultDisplayRole()\
+if (role == Qt::DisplayRole) \
+{                               \
+    QString o = object->objectName(); \
+    if (o.isEmpty()) \
+        o = object->metaObject()->className(); \
+    return o; \
+}
+
 QVariant ObjectTreeModel::data(const QModelIndex &index, int role) const
 {
     if (!index.isValid())
         return QVariant();
 
-    if (role == Qt::DisplayRole)
+
+    QObject * object = static_cast<QObject*>(index.internalPointer());
+    if (index.column() == 0 && object)
     {
-        QObject * object = static_cast<QObject*>(index.internalPointer());
-        if (index.column() == 0 && object)
+        QString propertyName = _rolePropertyMap.value(role, "");
+        if (!propertyName.isEmpty())
         {
-            QString o = object->objectName();
-            if (o.isEmpty())
-                o = object->metaObject()->className();
-            return o;
+            const QMetaObject * metaObject = object->metaObject();
+            int propertyIndex = metaObject->indexOfProperty(propertyName.toLatin1().data());
+            if (propertyIndex < 0)
+            {
+                IfDefaultDisplayRole();
+//                SD_TRACE1("ObjectTreeModel::data : property %1 is not found", propertyName);
+                return QVariant();
+            }
+            QMetaProperty property = metaObject->property(propertyIndex);
+            if (!property.isValid())
+            {
+                IfDefaultDisplayRole();
+//                SD_TRACE("ObjectTreeModel::data : meta property is invalid");
+                return QVariant();
+            }
+
+            QVariant out = property.read(object);
+            // Special process for boolean type
+            if (out.isValid() && out.type() == QVariant::Bool)
+            {
+                bool b = out.toBool();
+                out = QVariant(b ? Qt::Checked : Qt::Unchecked);
+            }
+            return out;
+        }
+        else
+        {
+            IfDefaultDisplayRole();
         }
     }
     return QVariant();
@@ -166,11 +258,72 @@ QVariant ObjectTreeModel::data(const QModelIndex &index, int role) const
 
 //******************************************************************************
 
+#define IfDefaultEditRole()\
+if (role == Qt::EditRole) \
+{                               \
+    QString o = value.toString(); \
+    if (!o.isEmpty()) \
+    {                   \
+        object->setObjectName(o); \
+        emit dataChanged(index, index); \
+    }                       \
+    return true; \
+}
+
 bool ObjectTreeModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
-    if (index.isValid() && role == Qt::EditRole)
-    {
+    if (!index.isValid())
+        return false;
 
+    QObject * object = static_cast<QObject*>(index.internalPointer());
+    if (index.column() == 0 && object)
+    {
+        QString propertyName = _rolePropertyMap.value(role, "");
+        if (!propertyName.isEmpty())
+        {
+            const QMetaObject * metaObject = object->metaObject();
+            int propertyIndex = metaObject->indexOfProperty(propertyName.toLatin1().data());
+            if (propertyIndex < 0)
+            {
+                IfDefaultEditRole();
+//                SD_TRACE1("ObjectTreeModel::data : property %1 is not found", propertyName);
+                return false;
+            }
+            QMetaProperty property = metaObject->property(propertyIndex);
+            if (!property.isValid())
+            {
+                IfDefaultEditRole();
+////                SD_TRACE("ObjectTreeModel::data : meta property is invalid");
+                return false;
+            }
+
+            if (!property.isWritable())
+            {
+                SD_TRACE("ObjectTreeModel::setData : meta property is not writable");
+                return false;
+            }
+
+            // Special process for boolean type
+            QVariant out = value;
+            if (role == Qt::CheckStateRole)
+            {
+                Qt::CheckState s = (Qt::CheckState) out.value<int>();
+                out = QVariant(s == Qt::Checked ? true : false);
+            }
+
+            if (!property.write(object, out))
+            {
+                SD_TRACE("ObjectTreeModel::setData : meta property is not writable");
+                return false;
+            }
+
+            emit dataChanged(index, index);
+            return true;
+        }
+        else
+        {
+            IfDefaultEditRole();
+        }
     }
     return false;
 }
@@ -204,20 +357,20 @@ Qt::DropActions ObjectTreeModel::supportedDropActions() const
 
 //******************************************************************************
 
-bool ObjectTreeModel::insertRows(int row, int count, const QModelIndex &parent)
-{
-    SD_TRACE2("- insertRows : row=%1, count=%2", row, count);
-    SD_TRACE1("-- insertRows : parent.row=%1", parent.row());
-    return QAbstractItemModel::insertRows(row, count, parent);
-}
+//bool ObjectTreeModel::insertRows(int row, int count, const QModelIndex &parent)
+//{
+//    SD_TRACE2("- insertRows : row=%1, count=%2", row, count);
+//    SD_TRACE1("-- insertRows : parent.row=%1", parent.row());
+//    return QAbstractItemModel::insertRows(row, count, parent);
+//}
 
 //******************************************************************************
 
-bool ObjectTreeModel::moveRows(const QModelIndex &sourceParent, int sourceRow, int count, const QModelIndex &destinationParent, int destinationChild)
-{
-    SD_TRACE("moveRows");
-    return false;
-}
+//bool ObjectTreeModel::moveRows(const QModelIndex &sourceParent, int sourceRow, int count, const QModelIndex &destinationParent, int destinationChild)
+//{
+//    SD_TRACE("moveRows");
+//    return false;
+//}
 
 //******************************************************************************
 
@@ -230,8 +383,8 @@ QStringList ObjectTreeModel::mimeTypes() const
 
 //******************************************************************************
 
-bool ObjectTreeModel::removeRows(int row, int count, const QModelIndex &parent)
-{
+//bool ObjectTreeModel::removeRows(int row, int count, const QModelIndex &parent)
+//{
 //    if (parent.isValid())
 //    {
 //        for (int i=row;i<row+count;i++)
@@ -253,10 +406,10 @@ bool ObjectTreeModel::removeRows(int row, int count, const QModelIndex &parent)
 //    else
 //    {
 //    }
-    SD_TRACE2("- removeRows : row=%1, count=%2", row, count);
-    SD_TRACE1("-- removeRows : parent.row=%1", parent.row());
-    return QAbstractItemModel::removeRows(row, count, parent);
-}
+//    SD_TRACE2("- removeRows : row=%1, count=%2", row, count);
+//    SD_TRACE1("-- removeRows : parent.row=%1", parent.row());
+//    return QAbstractItemModel::removeRows(row, count, parent);
+//}
 
 //******************************************************************************
 
@@ -314,6 +467,11 @@ bool ObjectTreeModel::dropMimeData(const QMimeData *data, Qt::DropAction action,
                 SD_TRACE_PTR("--- dropMimeData : object", object);
                 if (object)
                 {
+                    // To explicitly change order of children
+                    if (object->parent() == parentObject)
+                    {
+                        object->setParent(0);
+                    }
                     object->setParent(parentObject);
                 }
             }
@@ -333,20 +491,17 @@ bool ObjectTreeModel::eventFilter(QObject * object, QEvent * event)
         QObject * child = childEvent->child();
         child->installEventFilter(this);
 
-        SD_TRACE_PTR("- Child : ", child);
-        SD_TRACE_PTR("- Child added to object", object);
+//        SD_TRACE_PTR("- Child : ", child);
+//        SD_TRACE_PTR("- Child added to object", object);
 
         // find parent's model index :
         int row = object->children().indexOf(child);
         QModelIndex parent = this->parent(createIndex(row, 0, child));
-        SD_TRACE_PTR("-- Child added : parent == object", parent.internalPointer());
-        SD_TRACE1("-- new object position=%1", row);
-
-        int count = object->children().count();
-        if (count == 0) count = 1;
-        beginInsertRows(parent, 0, count-1);
+//        SD_TRACE_PTR("-- Child added : parent == object", parent.internalPointer());
+//        SD_TRACE2("-- Child added : parent.row=%1, parent.column=%2", parent.row(), parent.column());
+//        SD_TRACE1("-- new object position=%1", row);
+        beginInsertRows(parent, row, row);
         endInsertRows();
-
     }
     else if (event->type() == QEvent::ChildRemoved)
     {
@@ -354,11 +509,13 @@ bool ObjectTreeModel::eventFilter(QObject * object, QEvent * event)
         QObject * child = childEvent->child();
         child->removeEventFilter(this);
 
-        SD_TRACE_PTR("- Child : ", child);
-        SD_TRACE_PTR("- Child removed from object", object);
+//        SD_TRACE_PTR("- Child : ", child);
+//        SD_TRACE_PTR("- Child removed from object", object);
         QObject * grandparent = object->parent();
         int row = grandparent ? grandparent->children().indexOf(object) : 0;
         QModelIndex parent = createIndex(row, 0, object);
+
+        // Inform that all children have been removed <= because we can not indicate from which row a child has been removed
         int count = object->children().count();
         if (count == 0) count = 1;
         beginRemoveRows(parent, 0, count-1);

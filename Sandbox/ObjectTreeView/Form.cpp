@@ -35,8 +35,23 @@ Form::Form(QWidget *parent) :
     o3->setObjectName("o3");
     SD_TRACE_PTR("o3", o3);
 
+    // Display children ordering :
+    _mainImage->dumpObjectTree();
+
+    // Reoder
+//    SD_TRACE(">>> Reorder");
+    o2->setParent(0);
+    o2->setParent(_mainImage);
+
+    // Display children ordering :
+    _mainImage->dumpObjectTree();
+
     // setup model & view
     _model = new Core::ObjectTreeModel(invisibleRoot, this);
+    _model->setRole(Qt::DisplayRole, "type");
+    _model->setRole(Qt::EditRole, "type");
+    _model->setRole(Qt::CheckStateRole, "isVisible");
+//    _model->setRole(Core::ObjectTreeModel::Ordering, "zValue");
     _ui->_view->setModel(_model);
 }
 
@@ -66,7 +81,8 @@ void Form::on__add_clicked()
         o = o->children().last();
     }
 
-    QObject * oo = new Core::GeoShapeLayer(0, o);
+//    QObject * oo = new Core::GeoShapeLayer(0, o);
+    QObject * oo = new QObject(o);
     oo->setObjectName("new object");
 
 }

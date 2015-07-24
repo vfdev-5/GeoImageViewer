@@ -39,7 +39,9 @@ class GIV_DLL_EXPORT BaseLayer : public QObject
     Q_PROPERTY(double opacity READ getOpacity WRITE setOpacity)
     PROPERTY_GETACCESSOR(double, opacity, getOpacity)
 
+    Q_PROPERTY(QString type READ getType WRITE setType)
     PROPERTY_ACCESSORS(QString, type, getType, setType)
+
     PROPERTY_GETACCESSOR(int, zValue, getZValue)
     PROPERTY_ACCESSORS(bool, editable, isEditable, setEditable)
 
