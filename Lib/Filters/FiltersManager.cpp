@@ -6,15 +6,18 @@
 #include <QThreadPool>
 
 // Project
+#include "AbstractFilter.h"
 #include "FiltersManager.h"
 #include "BlurFilter.h"
 #include "PowerFilter.h"
+#include "DifferentialFilter.h"
+#include "ConvertTo8U.h"
+#include "EditableFilter.h"
 #include "Core/Global.h"
 #include "Core/ImageDataProvider.h"
 #include "Core/FloatingDataProvider.h"
 #include "Core/LayerUtils.h"
 #include "Core/PluginLoader.h"
-
 
 namespace Filters
 {
@@ -51,6 +54,9 @@ public:
         _filter = filter;
     }
 
+    const AbstractFilter * getFilter() const
+    { return _filter; }
+
 protected:
     bool _canceled;
     const AbstractFilter * _filter;
@@ -71,6 +77,9 @@ FiltersManager::FiltersManager() :
     // Insert default filters :
     insertFilter(new BlurFilter());
     insertFilter(new PowerFilter());
+    insertFilter(new DifferentialFilter());
+    insertFilter(new ConvertTo8U());
+    insertFilter(new EditableFilter());
 }
 
 //******************************************************************************
@@ -139,6 +148,12 @@ void FiltersManager::applyFilterInBackground(const AbstractFilter *filter, const
     _task->setOutput(new Core::FloatingDataProvider());
     _isAsyncTask = true;
 
+    connect(filter, &AbstractFilter::progressValue, this, &FiltersManager::filterProgressValueChanged);
+    if (filter->isVerbose())
+    {
+        connect(filter, &AbstractFilter::verboseImage, this, &FiltersManager::onVerboseImage);
+    }
+
     QThreadPool * pool = QThreadPool::globalInstance();
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 2, 0))
     pool->clear();
@@ -151,8 +166,15 @@ void FiltersManager::applyFilterInBackground(const AbstractFilter *filter, const
 
 //******************************************************************************
 
+void disconnectFilter(const AbstractFilter * filter, QObject * receiver)
+{
+    filter->disconnect(receiver);
+}
+
 void FiltersManager::cancel()
 {
+    disconnectFilter(_task->getFilter(), this);
+
     _task->setFilter(0);
     QThreadPool * pool = QThreadPool::globalInstance();
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 2, 0))
@@ -164,8 +186,20 @@ void FiltersManager::cancel()
 
 //******************************************************************************
 
+void FiltersManager::onVerboseImage(const QString &winname, cv::Mat * img)
+{
+    SD_TRACE1("Verbose image : %1", winname);
+    Core::displayMat(*img, true, winname, false);
+
+    // it is receiver responsibility to delete img data
+    delete img;
+}
+
+//******************************************************************************
+
 void FiltersManager::taskFinished(Core::ImageDataProvider * provider)
 {
+    disconnectFilter(_task->getFilter(), this);
     _isWorking=false;
     if (_isAsyncTask)
         emit filteringFinished(provider);
@@ -201,6 +235,7 @@ void FilterTask::run()
     {
         SD_TRACE("FilterTask::run : src is too large");
         ClearData();
+        _filter->_errorMessage = QObject::tr("Provided image extent is larger than (2048x2048) pixels");
         FiltersManager::get()->taskFinished(0);
         return;
     }

@@ -69,13 +69,17 @@ cv::Mat DarkPixelFilterPlugin::filter(const cv::Mat &data) const
     // 1) Image -> 1/Image
     cv::divide(1.0,out,out,CV_32F);
 
+    if (_verbose) { verboseDisplayImage("Image -> 1/Image", out); }
+    emit progressValue(15);
+
+
     // 2) Convert to 8U
     double minVal, maxVal;
     cv::minMaxLoc(out, &minVal, &maxVal);
     cv::Mat out8U;
     out.convertTo(out8U, CV_8U, 255.0/(maxVal-minVal), -255.0*minVal/(maxVal-minVal));
     out = out8U;
-
+    emit progressValue(30);
 
     // 3) Adaptive thresholding
     int winsize = 131;
@@ -84,19 +88,29 @@ cv::Mat DarkPixelFilterPlugin::filter(const cv::Mat &data) const
     double c = -mean[0];
     cv::adaptiveThreshold(out, out, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, winsize, c);
 
+    if (_verbose) { verboseDisplayImage("Adaptive thresholding", out); }
+    emit progressValue(40);
+
     // 4) Morpho close + open
     cv::Mat k1=cv::Mat::ones(5,5,CV_8U);
     cv::Mat k2=cv::Mat::ones(3,3,CV_8U);
     cv::morphologyEx(out, out, cv::MORPH_CLOSE, k1);
+
+    if (_verbose) { verboseDisplayImage("Morpho close", out); }
+    emit progressValue(50);
+
     cv::morphologyEx(out, out, cv::MORPH_OPEN, k2);
+
+    if (_verbose) { verboseDisplayImage("Morpho open", out); }
+    emit progressValue(55);
 
     // 5) Find contours
     std::vector<std::vector<cv::Point> > contours;
     cv::findContours(out, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
 
     cv::Mat res(out.size(), CV_32F);
-//    res.setTo(0.0);
     res.setTo(_noDataValue);
+    emit progressValue(80);
 
     if (contours.size() > 0)
     {
@@ -105,7 +119,8 @@ cv::Mat DarkPixelFilterPlugin::filter(const cv::Mat &data) const
         for (int i=0;i<contours.size();i++)
         {
             std::vector<cv::Point> contour = contours[i];
-            if (contour.size() < 4)
+            // remove line and points
+            if (contour.size() < 3)
                 continue;
             double s = cv::contourArea(contour);
 //            SD_TRACE(QString("area=%1").arg(s));

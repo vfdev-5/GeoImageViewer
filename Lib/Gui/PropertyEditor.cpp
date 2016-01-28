@@ -85,7 +85,8 @@ QWidget * createVectorDWidget(const QVector<double> & v)
     allows to replace and configure property editor widget. In the example property with the name
     'size' will be labelled as 'Size' and minValue/maxValue properties of the editor spinbox will
     be set to 1 and 500
-
+    Other examples:
+    Q_CLASSINFO("type","label:Type of filtering;possibleValues:Small,Normal,Large")
 
 */
 
@@ -247,7 +248,12 @@ QWidget * PropertyEditor::editableWidget(const QVariant &value, const QHash<QStr
         if (options.contains("possibleValues"))
         {
             QComboBox * editor = new QComboBox();
-            // ....
+            foreach (QString item, options["possibleValues"].split(","))
+            {
+                editor->addItem(item);
+            }
+            editor->setCurrentText(value.toString());
+            connect(editor, SIGNAL(currentIndexChanged(QString)), this, SLOT(onStringPropertyChanged()));
             out = editor;
         }
         else
@@ -294,8 +300,6 @@ QWidget * PropertyEditor::editableWidget(const QVariant &value, const QHash<QStr
         connect(editor, SIGNAL(editingFinished()), this, SLOT(onDoublePropertyChanged()));
         out = editor;
     }
-
-
     return out;
 }
 
@@ -351,10 +355,19 @@ QWidget * PropertyEditor::readableWidget(const QVariant &value)
         SD_TRACE(QString("onPropertyChanged : failed to write new property value !")); \
     }
 
+//******************************************************************************
 
 void PropertyEditor::onStringPropertyChanged()
 {
-    OnPropertyChanged(QLineEdit, edit->text());
+    QObject * s = sender();
+    if (qobject_cast<QLineEdit*>(s))
+    {
+        OnPropertyChanged(QLineEdit, edit->text());
+    }
+    else if (qobject_cast<QComboBox*>(s))
+    {
+        OnPropertyChanged(QComboBox, edit->currentText());
+    }
 }
 
 //******************************************************************************

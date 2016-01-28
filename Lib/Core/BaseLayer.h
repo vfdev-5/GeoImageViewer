@@ -42,7 +42,8 @@ class GIV_DLL_EXPORT BaseLayer : public QObject
     Q_PROPERTY(QString type READ getType WRITE setType)
     PROPERTY_ACCESSORS(QString, type, getType, setType)
 
-    PROPERTY_GETACCESSOR(int, zValue, getZValue)
+    Q_PROPERTY(double zValue READ getZValue WRITE setZValue)
+    PROPERTY_GETACCESSOR(double, zValue, getZValue)
     PROPERTY_ACCESSORS(bool, editable, isEditable, setEditable)
 
     Q_CLASSINFO("isVisible","label:Visible")
@@ -54,7 +55,7 @@ public:
 
     void setVisible(bool visible);
     void setOpacity(double opacity);
-    void setZValue(int zValue);
+    void setZValue(double zValue);
 
     const QGraphicsItem * getConstItem() const
     { return _item; }
@@ -76,6 +77,8 @@ protected:
 };
 
 //******************************************************************************
+
+double GIV_DLL_EXPORT computeZValue(int parentZ, int row, int level);
 
 }
 

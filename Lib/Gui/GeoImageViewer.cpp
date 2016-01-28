@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QGraphicsItem>
 #include <QFileDialog>
+#include <QCloseEvent>
 
 // Project
 #include "GeoImageViewer.h"
@@ -13,6 +14,7 @@
 #include "SubdatasetDialog.h"
 #include "NewLayerDialog.h"
 #include "DefaultFilterDialog.h"
+#include "EditableFilterDialog.h"
 #include "LayersView.h"
 #include "AbstractToolsView.h"
 #include "Core/Global.h"
@@ -30,6 +32,8 @@
 #include "Tools/ThresholdFilterTool.h"
 #include "Tools/ToolsManager.h"
 #include "Filters/FiltersManager.h"
+#include "Filters/AbstractFilter.h"
+#include "Filters/EditableFilter.h"
 
 
 namespace Gui
@@ -53,7 +57,8 @@ GeoImageViewer::GeoImageViewer(QWidget *parent) :
     _imageOpener(new Core::ImageOpener(this)),
     _imageWriter(new Core::ImageWriter(this)),
     _processedLayer(0),
-    _appliedFilter(0)
+    _appliedFilter(0),
+    _editableFilterDialog(0)
 {
 
     // Init scene and loader
@@ -89,6 +94,14 @@ GeoImageViewer::GeoImageViewer(QWidget *parent) :
 
 GeoImageViewer::~GeoImageViewer()
 {
+    SD_TRACE("GIV : Destructor");
+    if (_editableFilterDialog)
+    {
+        SD_TRACE("GIV : Destructor -> close EditableFilterDialog");
+        _editableFilterDialog->close();
+        delete _editableFilterDialog;
+        _editableFilterDialog = 0;
+    }
 }
 
 //******************************************************************************
@@ -219,10 +232,10 @@ void GeoImageViewer::onProgressCanceled()
         _imageOpener->cancel();
     }
     else
-    if (_imageWriter->isWorking())
-    {
-        _imageWriter->cancel();
-    }
+        if (_imageWriter->isWorking())
+        {
+            _imageWriter->cancel();
+        }
     _processedLayer = 0;
     _appliedFilter = 0;
 }
@@ -234,7 +247,7 @@ void GeoImageViewer::onBaseLayerSelected(Core::BaseLayer * layer)
     ShapeViewer::onBaseLayerSelected(layer);
 
     // setup renderer view if layer is geo image layer
-//    const Core::GeoImageItem * imItem = getGeoImageItem(layer);
+    //    const Core::GeoImageItem * imItem = getGeoImageItem(layer);
     const Core::GeoImageItem * imItem = qgraphicsitem_cast<const Core::GeoImageItem*>(layer->getConstItem());
     if (imItem)
     {
@@ -253,7 +266,7 @@ void GeoImageViewer::onBaseLayerSelected(Core::BaseLayer * layer)
 
     // configure current tool :
     configureTool(_currentTool, layer);
-//    configureTool(_currentTool, getCurrentLayer());
+    //    configureTool(_currentTool, getCurrentLayer());
 
 }
 
@@ -285,7 +298,7 @@ void GeoImageViewer::onSaveBaseLayer(Core::BaseLayer * layer)
     else if (qobject_cast<Core::GeoShapeLayer*>(layer))
     {
         SD_TRACE("Write geo shape layer");
-//        writeGeoShapeLayer(qobject_cast<Core::GeoShapeLayer*>(layer));
+        //        writeGeoShapeLayer(qobject_cast<Core::GeoShapeLayer*>(layer));
     }
 }
 
@@ -334,12 +347,12 @@ void GeoImageViewer::writeGeoImageLayer(Core::GeoImageLayer* layer)
 {
     _processedLayer = layer;
     const QGraphicsItem * item = layer->getConstItem();
-//    QGraphicsItem * item = _layerItemMap.value(_processedLayer, 0);
-//    if (!item)
-//    {
-//        SD_TRACE("GeoImageViewer::writeGeoImageLayer : item is null");
-//        return;
-//    }
+    //    QGraphicsItem * item = _layerItemMap.value(_processedLayer, 0);
+    //    if (!item)
+    //    {
+    //        SD_TRACE("GeoImageViewer::writeGeoImageLayer : item is null");
+    //        return;
+    //    }
 
     QString filename = QFileDialog::getSaveFileName(this,
                                                     tr("Save into a file"),
@@ -438,9 +451,14 @@ void GeoImageViewer::onFilterTriggered()
 
 void GeoImageViewer::filterGeoImageLayer(Core::BaseLayer * layer)
 {
+    if (!layer)
+    {
+        SD_ERR("Please, select an image layer before applying a filter");
+        return;
+    }
+
     Core::GeoImageLayer * iLayer = qobject_cast<Core::GeoImageLayer*>(layer);
     const Core::GeoImageItem * item = qgraphicsitem_cast<const Core::GeoImageItem*>(layer->getConstItem());
-//    Core::GeoImageItem * item = static_cast<Core::GeoImageItem*>(_layerItemMap.value(iLayer, 0));
     if (!iLayer || !item)
     {
         SD_ERR("Please, select an image layer before applying a filter");
@@ -463,25 +481,38 @@ void GeoImageViewer::filterGeoImageLayer(Core::BaseLayer * layer)
 
     SD_TRACE("Filter \'" + f->getName() + "\' is triggered");
 
-    // Show Filter dialog
-    DefaultFilterDialog d(f->getName() + tr(" dialog"));
-    d.setFilter(f);
-    if (d.exec())
+    Filters::EditableFilter * ef = qobject_cast<Filters::EditableFilter*>(f);
+    if (!ef)
     {
-        _processedLayer = iLayer;
-        _appliedFilter = f;
-        SD_TRACE("Apply filter \'" + f->getName() + "\'");
 
-        // get data :
-        const Core::ImageDataProvider * provider = item->getConstDataProvider();
+        // Show Filter dialog
+        DefaultFilterDialog d(f->getName() + tr(" dialog"));
+        d.setFilter(f);
+        if (d.exec())
+        {
+            _processedLayer = iLayer;
+            _appliedFilter = f;
+            SD_TRACE("Apply filter \'" + f->getName() + "\'");
 
-        f->setNoDataValue(Core::ImageDataProvider::NoDataValue);
+            // get data :
+            const Core::ImageDataProvider * provider = item->getConstDataProvider();
 
-        _progressDialog->setLabelText(f->getName() + tr(". Processing ..."));
-        _progressDialog->setValue(0);
-        _progressDialog->show();
+            f->setNoDataValue(Core::ImageDataProvider::NoDataValue);
 
-        Filters::FiltersManager::get()->applyFilterInBackground(f, provider);
+            _progressDialog->setLabelText(f->getName() + tr(". Processing ..."));
+            _progressDialog->setValue(0);
+            _progressDialog->show();
+
+            Filters::FiltersManager::get()->applyFilterInBackground(f, provider);
+        }
+    }
+    else
+    {
+        if (!_editableFilterDialog)
+        {
+            _editableFilterDialog = new EditableFilterDialog(ef);
+        }
+        _editableFilterDialog->show();
     }
 }
 
@@ -491,7 +522,7 @@ void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
 {
     if (!provider)
     {
-//        SD_TRACE("GeoImageViewer::onFilteringFinished : provider is null");
+        //        SD_TRACE("GeoImageViewer::onFilteringFinished : provider is null");
         SD_ERR(tr("Filtering  with \'%1\' has failed.\n\nError message: %2")
                .arg(_appliedFilter->getName())
                .arg(_appliedFilter->getErrorMessage()));
@@ -500,7 +531,7 @@ void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
     }
 
     const Core::GeoImageItem * item = qgraphicsitem_cast<const Core::GeoImageItem*>(_processedLayer->getConstItem());
-//    Core::GeoImageItem * item = static_cast<Core::GeoImageItem*>(_layerItemMap.value(_processedLayer, 0));
+    //    Core::GeoImageItem * item = static_cast<Core::GeoImageItem*>(_layerItemMap.value(_processedLayer, 0));
     if (!item)
     {
         SD_TRACE("GeoImageViewer::onFilteringFinished : item is null . something wrong");
@@ -539,6 +570,20 @@ void GeoImageViewer::onDrawingFinalized(const QString & name, Core::DrawingsItem
 
 //******************************************************************************
 
+void GeoImageViewer::closeEvent(QCloseEvent *)
+{
+    SD_TRACE("GIV : CloseEvent");
+    // !!! IS NOT CALLED
+    if (_editableFilterDialog)
+    {
+        _editableFilterDialog->close();
+        delete _editableFilterDialog;
+        _editableFilterDialog = 0;
+    }
+}
+
+//******************************************************************************
+
 /*!
  * \brief GeoImageViewer::setRendererView method to setup a renderer view: DefaultRendererView or HistogramRendererView ...
  * \param rendererView
@@ -565,7 +610,7 @@ void GeoImageViewer::onCopyData(const QRectF &selection)
         return;
     }
     // static cast is ensured with non null conversion of BaseLayer into GeoImageLayer
-//    Core::GeoImageItem * item = static_cast<Core::GeoImageItem*>(_layerItemMap.value(iLayer, 0));
+    //    Core::GeoImageItem * item = static_cast<Core::GeoImageItem*>(_layerItemMap.value(iLayer, 0));
     const Core::GeoImageItem * item = qgraphicsitem_cast<const Core::GeoImageItem*>(iLayer->getConstItem());
     if (!item)
     {
@@ -669,11 +714,11 @@ bool GeoImageViewer::configureTool(Tools::AbstractTool *tool, Core::BaseLayer *l
         }
 
 
-//        Core::GeoImageLayer * scribble = qobject_cast<Core::GeoImageLayer*>(layer);
-//        if (!scribble)
-//        {
-//            return false;
-//        }
+        //        Core::GeoImageLayer * scribble = qobject_cast<Core::GeoImageLayer*>(layer);
+        //        if (!scribble)
+        //        {
+        //            return false;
+        //        }
         // static cast is ensured with non null conversion of BaseLayer into GeoImageLayer // GeoShapeLayer
         //Core::DrawingsItem * item = static_cast<Core::DrawingsItem*>(_layerItemMap.value(scribble, 0));
         Core::DrawingsItem * item = qgraphicsitem_cast<Core::DrawingsItem*>(layer->getItem());
@@ -698,7 +743,7 @@ bool GeoImageViewer::configureTool(Tools::AbstractTool *tool, Core::BaseLayer *l
             return false;
         }
 
-//        const Core::GeoImageItem* item = getGeoImageItem(layer);
+        //        const Core::GeoImageItem* item = getGeoImageItem(layer);
         const Core::GeoImageItem* item = qgraphicsitem_cast<const Core::GeoImageItem*>(layer->getConstItem());
         if (!item)
         {
@@ -778,7 +823,7 @@ Core::GeoImageLayer * GeoImageViewer::createGeoImageLayer(const QString &type, C
     layer->setProjectionRef(provider->fetchProjectionRef());
     layer->setGeoTransform(provider->fetchGeoTransform());
     // !!! NEED TO ADD METADATA
-//    layer->setMetadata(imageDataProvider->fetchMetadata());
+    //    layer->setMetadata(imageDataProvider->fetchMetadata());
     return layer;
 }
 
@@ -816,7 +861,7 @@ const Core::ImageDataProvider * GeoImageViewer::getDataProvider(const Core::Base
     if (!layer) return 0;
 
     const Core::GeoImageItem* item = qgraphicsitem_cast<const Core::GeoImageItem*>(layer->getConstItem());
-//    const Core::GeoImageItem* item = getGeoImageItem(layer);
+    //    const Core::GeoImageItem* item = getGeoImageItem(layer);
     if (!item)
     {
         return 0;
@@ -857,10 +902,10 @@ QVector<double> GeoImageViewer::getPixelValues(const QPoint & point, bool *isCom
 
 QPointF GeoImageViewer::computePointOnItem(const QPointF &scenePos)
 {
-//    QGraphicsItem * item = _scene.itemAt(scenePos, QTransform());
-//    if (item)
-//    {
-//    }
+    //    QGraphicsItem * item = _scene.itemAt(scenePos, QTransform());
+    //    if (item)
+    //    {
+    //    }
     return ShapeViewer::computePointOnItem(scenePos);
 }
 

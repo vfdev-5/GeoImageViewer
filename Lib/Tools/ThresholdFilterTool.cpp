@@ -84,7 +84,7 @@ void ThresholdFilterTool::onFinalize()
 
     std::vector<cv::Mat> iChannels(image.channels());
     cv::split(image, &iChannels[0]);
-    QVector<QPolygonF> contours = Core::vectorizeAsPolygons(iChannels[0]);
+    QVector<QPolygonF> contours = Core::vectorizeAsPolygons(iChannels[0], true);
 
     if (contours.isEmpty())
     {

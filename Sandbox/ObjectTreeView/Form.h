@@ -4,6 +4,7 @@
 // Qt
 #include <QWidget>
 #include <QObject>
+#include <QAction>
 
 
 // Project
@@ -25,10 +26,14 @@ protected slots:
     void on__add_clicked();
     void on__remove_clicked();
 
+    void onRemoveLayer();
+
 private:
     Ui_Form * _ui;
     QObject * _mainImage;
     Core::ObjectTreeModel * _model;
+
+    QAction _removeLayer;
 
 };
 

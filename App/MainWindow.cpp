@@ -9,6 +9,7 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 #include "Filters/FiltersManager.h"
+#include "Filters/AbstractFilter.h"
 
 
 //******************************************************************************
@@ -88,7 +89,7 @@ void MainWindow::onExitActionTriggered()
 void MainWindow::closeEvent(QCloseEvent * event)
 {
     QSettings settings("GeoImageViewer_dot_com", "GIV");
-    settings.setValue("geometry", saveGeometry());
+    settings.setValue("MainWindow/geometry", saveGeometry());
     QMainWindow::closeEvent(event);
 }
 

@@ -7,6 +7,7 @@
 
 class QProgressDialog;
 class QGraphicsItem;
+class QCloseEvent;
 
 namespace Core {
 class ImageOpener;
@@ -30,6 +31,7 @@ namespace Gui
 {
 
 class AbstractRendererView;
+class EditableFilterDialog;
 
 //******************************************************************************
 
@@ -66,6 +68,8 @@ protected slots:
 
 protected:
 
+    void closeEvent(QCloseEvent *);
+
     void writeGeoImageLayer(Core::GeoImageLayer *layer);
     void writeGeoShapeLayer(Core::GeoShapeLayer *layer);
     void filterGeoImageLayer(Core::BaseLayer*);
@@ -96,6 +100,8 @@ protected:
 
     Core::GeoImageLayer * _processedLayer;
     Filters::AbstractFilter * _appliedFilter;
+
+    EditableFilterDialog * _editableFilterDialog;
 
 
 };

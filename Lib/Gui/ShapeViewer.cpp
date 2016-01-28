@@ -355,9 +355,13 @@ void ShapeViewer::addLayer(Core::BaseLayer * layer)
     connect(layer, SIGNAL(destroyed(QObject*)), this, SLOT(onBaseLayerDestroyed(QObject*)));
 
     // if scene is empty -> this layer becomes the root layer,
-    // otherwise a leave of the selected (if layersView exists) or the last layer
-    Core::BaseLayer * currentLayer = getCurrentLayer();
-    layer->setParent(currentLayer);
+    // otherwise a leaf of the root
+    //    Core::BaseLayer * currentLayer = getCurrentLayer();
+    //    layer->setParent(currentLayer);
+    if (!_layers.isEmpty())
+    {
+        layer->setParent(_layers.first());
+    }
     _layers.append(layer);
 
     if (_layersView)

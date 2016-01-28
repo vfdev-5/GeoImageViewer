@@ -2,6 +2,7 @@
 #define OBJECTTREEMODEL_H
 
 // Qt
+#include <QEvent>
 #include <QAbstractItemModel>
 #include <QHash>
 
@@ -17,14 +18,12 @@ class GIV_DLL_EXPORT ObjectTreeModel : public QAbstractItemModel
 {
     Q_OBJECT
 public:
-
-//    enum ItemRole {
-//        Ordering = Qt::,
-//    };
+    static const QEvent::Type ChildConstructed;
 
     explicit ObjectTreeModel(QObject * root, QObject *parent = 0);
 
     void setRole(int, const QString & propertyName);
+    void setOrderingRole(const QString & propertyName, Qt::SortOrder order = Qt::DescendingOrder);
 
     virtual QModelIndex index(int row, int column, const QModelIndex &parent=QModelIndex()) const;
     virtual QModelIndex parent(const QModelIndex &child) const;
@@ -41,18 +40,26 @@ public:
     virtual QMimeData * mimeData(const QModelIndexList & indexes) const;
     virtual bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent);
 
-signals:
-
-public slots:
-
 protected:
-    bool eventFilter(QObject *, QEvent *);
-    QObject * _root;
 
+    inline const char * orderPropName() const
+    { return _orderingRole.data(); }
+
+    bool eventFilter(QObject *, QEvent *);
+    void onObjectReparented(QObject * child, QObject * parent);
+
+    QObject * _root;
     QHash<int, QString> _rolePropertyMap;
-    QList<double> _ordering;
+    QByteArray _orderingRole;
+    Qt::SortOrder _sortOrder;
+    QHash<QObject*, QList<QObject*> > _parentChildrenMap;
+
 
 };
+
+//******************************************************************************
+
+
 
 //******************************************************************************
 

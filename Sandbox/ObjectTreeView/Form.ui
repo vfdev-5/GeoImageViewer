@@ -43,7 +43,10 @@
       <bool>true</bool>
      </property>
      <property name="autoExpandDelay">
-      <number>0</number>
+      <number>-1</number>
+     </property>
+     <property name="indentation">
+      <number>20</number>
      </property>
      <attribute name="headerVisible">
       <bool>false</bool>
