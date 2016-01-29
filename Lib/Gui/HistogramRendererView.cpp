@@ -27,7 +27,8 @@ void setupStopsEndColor(QGradientStops & stops, const QColor &color)
 void configureAChannel(QSpinBox * spinbox, int currentValue, int minValue, int maxValue)
 {
     spinbox->setMinimum(minValue);
-    spinbox->setMaximum(maxValue);    spinbox->setValue(currentValue);
+    spinbox->setMaximum(maxValue);
+    spinbox->setValue(currentValue);
 }
 
 //*************************************************************************
