@@ -13,10 +13,9 @@
 #include "AbstractRendererView.h"
 #include "SubdatasetDialog.h"
 #include "NewLayerDialog.h"
-#include "DefaultFilterDialog.h"
-#include "EditableFilterDialog.h"
 #include "LayersView.h"
 #include "AbstractToolsView.h"
+#include "FilteringView.h"
 #include "Core/Global.h"
 #include "Core/ImageOpener.h"
 #include "Core/ImageWriter.h"
@@ -33,7 +32,6 @@
 #include "Tools/ToolsManager.h"
 #include "Filters/FiltersManager.h"
 #include "Filters/AbstractFilter.h"
-#include "Filters/EditableFilter.h"
 
 
 namespace Gui
@@ -56,9 +54,7 @@ GeoImageViewer::GeoImageViewer(QWidget *parent) :
     _rendererView(0),
     _imageOpener(new Core::ImageOpener(this)),
     _imageWriter(new Core::ImageWriter(this)),
-    _processedLayer(0),
-    _appliedFilter(0),
-    _editableFilterDialog(0)
+    _filteringView(new FilteringView(_progressDialog, this))
 {
 
     // Init scene and loader
@@ -94,14 +90,6 @@ GeoImageViewer::GeoImageViewer(QWidget *parent) :
 
 GeoImageViewer::~GeoImageViewer()
 {
-    SD_TRACE("GIV : Destructor");
-    if (_editableFilterDialog)
-    {
-        SD_TRACE("GIV : Destructor -> close EditableFilterDialog");
-        _editableFilterDialog->close();
-        delete _editableFilterDialog;
-        _editableFilterDialog = 0;
-    }
 }
 
 //******************************************************************************
@@ -237,7 +225,9 @@ void GeoImageViewer::onProgressCanceled()
             _imageWriter->cancel();
         }
     _processedLayer = 0;
-    _appliedFilter = 0;
+
+    // ??? What to do with _filteringView ???
+    //_appliedFilter = 0;
 }
 
 //******************************************************************************
@@ -268,6 +258,19 @@ void GeoImageViewer::onBaseLayerSelected(Core::BaseLayer * layer)
     configureTool(_currentTool, layer);
     //    configureTool(_currentTool, getCurrentLayer());
 
+    // configure filtering view
+    if (_filteringView->getSrcLayer()) // Filtering view is active
+    {
+        Core::GeoImageLayer * iLayer = qobject_cast<Core::GeoImageLayer*>(layer);
+        const Core::GeoImageItem * item = qgraphicsitem_cast<const Core::GeoImageItem*>(layer->getConstItem());
+        if (!iLayer || !item)
+        {
+            SD_ERR("Please, select an image layer before applying a filter");
+            return;
+        }
+        _filteringView->setSrcLayer(iLayer);
+    }
+
 }
 
 //******************************************************************************
@@ -285,6 +288,15 @@ void GeoImageViewer::onBaseLayerDestroyed(QObject * layerObj)
         _rendererView->disconnect(SIGNAL(renderConfigurationChanged(Core::ImageRendererConfiguration*)));
     }
 
+    if (layerObj == _filteringView->getSrcLayer())
+    {
+        _filteringView->reset();
+    }
+
+    if (layerObj == _filteringView->getDstLayer())
+    {
+        _filteringView->setDstLayer(0);
+    }
 }
 
 //******************************************************************************
@@ -347,7 +359,7 @@ void GeoImageViewer::writeGeoImageLayer(Core::GeoImageLayer* layer)
 {
     _processedLayer = layer;
     const QGraphicsItem * item = layer->getConstItem();
-    //    QGraphicsItem * item = _layerItemMap.value(_processedLayer, 0);
+    //    QGraphicsItem * item = _layerItemMap.value(_srcLayer, 0);
     //    if (!item)
     //    {
     //        SD_TRACE("GeoImageViewer::writeGeoImageLayer : item is null");
@@ -391,8 +403,8 @@ void GeoImageViewer::writeGeoImageLayer(Core::GeoImageLayer* layer)
 void GeoImageViewer::writeGeoShapeLayer(Core::GeoShapeLayer* layer)
 {
     /*
-    _processedLayer = layer;
-    QGraphicsItem * item = _layerItemMap.value(_processedLayer, 0);
+    _srcLayer = layer;
+    QGraphicsItem * item = _layerItemMap.value(_srcLayer, 0);
     if (!item)
     {
         SD_TRACE("GeoImageViewer::writeGeoImageLayer : item is null");
@@ -414,7 +426,7 @@ void GeoImageViewer::writeGeoShapeLayer(Core::GeoShapeLayer* layer)
     {
         Core::GeoImageItem * giItem = qgraphicsitem_cast<Core::GeoImageItem*>(item);
         const Core::ImageDataProvider * provider = giItem->getConstDataProvider();
-        if (!_imageWriter->writeInBackground(filename, provider, _processedLayer))
+        if (!_imageWriter->writeInBackground(filename, provider, _srcLayer))
         {
             _progressDialog->close();
         }
@@ -424,7 +436,7 @@ void GeoImageViewer::writeGeoShapeLayer(Core::GeoShapeLayer* layer)
         Core::DrawingsItem * dItem = qgraphicsitem_cast<Core::DrawingsItem*>(item);
         QImage & image = dItem->getImage();
 
-        if (!_imageWriter->writeInBackground(filename, &image, _processedLayer))
+        if (!_imageWriter->writeInBackground(filename, &image, _srcLayer))
         {
             _progressDialog->close();
         }
@@ -444,26 +456,6 @@ void GeoImageViewer::onToolChanged(const QString & toolName)
 
 void GeoImageViewer::onFilterTriggered()
 {
-    filterGeoImageLayer(getCurrentLayer());
-}
-
-//******************************************************************************
-
-void GeoImageViewer::filterGeoImageLayer(Core::BaseLayer * layer)
-{
-    if (!layer)
-    {
-        SD_ERR("Please, select an image layer before applying a filter");
-        return;
-    }
-
-    Core::GeoImageLayer * iLayer = qobject_cast<Core::GeoImageLayer*>(layer);
-    const Core::GeoImageItem * item = qgraphicsitem_cast<const Core::GeoImageItem*>(layer->getConstItem());
-    if (!iLayer || !item)
-    {
-        SD_ERR("Please, select an image layer before applying a filter");
-        return;
-    }
 
     QAction * a = qobject_cast<QAction*>(sender());
     if (!a)
@@ -472,66 +464,51 @@ void GeoImageViewer::filterGeoImageLayer(Core::BaseLayer * layer)
         return;
     }
 
-    Filters::AbstractFilter * f = qobject_cast<Filters::AbstractFilter*>(a->data().value<QObject*>());
-    if (!f)
+    Filters::AbstractFilter * filter = qobject_cast<Filters::AbstractFilter*>(a->data().value<QObject*>());
+    if (!filter)
     {
         SD_TRACE("GeoImageViewer::filterGeoImageLayer : failed to get filter");
         return;
     }
 
-    SD_TRACE("Filter \'" + f->getName() + "\' is triggered");
-
-    Filters::EditableFilter * ef = qobject_cast<Filters::EditableFilter*>(f);
-    if (!ef)
+    Core::GeoImageLayer * iLayer = qobject_cast<Core::GeoImageLayer*>(getCurrentLayer());
+    const Core::GeoImageItem * item = qgraphicsitem_cast<const Core::GeoImageItem*>(iLayer->getConstItem());
+    if (!iLayer || !item)
     {
-
-        // Show Filter dialog
-        DefaultFilterDialog d(f->getName() + tr(" dialog"));
-        d.setFilter(f);
-        if (d.exec())
-        {
-            _processedLayer = iLayer;
-            _appliedFilter = f;
-            SD_TRACE("Apply filter \'" + f->getName() + "\'");
-
-            // get data :
-            const Core::ImageDataProvider * provider = item->getConstDataProvider();
-
-            f->setNoDataValue(Core::ImageDataProvider::NoDataValue);
-
-            _progressDialog->setLabelText(f->getName() + tr(". Processing ..."));
-            _progressDialog->setValue(0);
-            _progressDialog->show();
-
-            Filters::FiltersManager::get()->applyFilterInBackground(f, provider);
-        }
+        SD_ERR("Please, select an image layer before applying a filter");
+        return;
     }
-    else
+
+    // Avoid multiple 'setups'
+    if (_filteringView->getFilter())
     {
-        if (!_editableFilterDialog)
-        {
-            _editableFilterDialog = new EditableFilterDialog(ef);
-        }
-        _editableFilterDialog->show();
+        _filteringView->reset();
     }
+
+    _filteringView->setSrcLayer(iLayer);
+    _filteringView->setup(filter);
+
 }
 
 //******************************************************************************
 
 void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
 {
+
+    Filters::AbstractFilter * filter = _filteringView->getFilter();
+
     if (!provider)
     {
         //        SD_TRACE("GeoImageViewer::onFilteringFinished : provider is null");
         SD_ERR(tr("Filtering  with \'%1\' has failed.\n\nError message: %2")
-               .arg(_appliedFilter->getName())
-               .arg(_appliedFilter->getErrorMessage()));
+               .arg(filter->getName())
+               .arg(filter->getErrorMessage()));
         _progressDialog->close();
         return;
     }
 
-    const Core::GeoImageItem * item = qgraphicsitem_cast<const Core::GeoImageItem*>(_processedLayer->getConstItem());
-    //    Core::GeoImageItem * item = static_cast<Core::GeoImageItem*>(_layerItemMap.value(_processedLayer, 0));
+    const Core::GeoImageItem * item = qgraphicsitem_cast<const Core::GeoImageItem*>(_filteringView->getSrcLayer()->getConstItem());
+
     if (!item)
     {
         SD_TRACE("GeoImageViewer::onFilteringFinished : item is null . something wrong");
@@ -548,16 +525,20 @@ void GeoImageViewer::onFilteringFinished(Core::ImageDataProvider * provider)
         return;
     }
 
-    // Create new layer :
-    Core::GeoImageLayer * nLayer = createGeoImageLayer(_appliedFilter->getName(), nItem, provider);
-
-    addLayer(nLayer);
+    if (!_filteringView->getDstLayer())
+    {
+        // Create new layer :
+        Core::GeoImageLayer * nLayer = createGeoImageLayer(filter->getName(), nItem, provider);
+        _filteringView->setDstLayer(nLayer);
+        addLayer(nLayer);
+    }
+    else
+    {
+        Core::BaseLayer::replaceItem(_filteringView->getDstLayer(), nItem);
+    }
 
     // display item in Scene:
     nItem->updateItem(_zoomLevel, getVisibleSceneRect());
-
-    _appliedFilter = 0;
-    _processedLayer = 0;
 }
 
 //******************************************************************************
@@ -566,20 +547,6 @@ void GeoImageViewer::onDrawingFinalized(const QString & name, Core::DrawingsItem
 {
     Core::GeoImageLayer * layer = createScribble(name, item);
     addLayer(layer);
-}
-
-//******************************************************************************
-
-void GeoImageViewer::closeEvent(QCloseEvent *)
-{
-    SD_TRACE("GIV : CloseEvent");
-    // !!! IS NOT CALLED
-    if (_editableFilterDialog)
-    {
-        _editableFilterDialog->close();
-        delete _editableFilterDialog;
-        _editableFilterDialog = 0;
-    }
 }
 
 //******************************************************************************

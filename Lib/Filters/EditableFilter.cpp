@@ -30,17 +30,13 @@ EditableFilter::EditableFilter(QObject *parent) :
     _sourceFilePath("Resources/EditableFunction/EditableFunction.cpp"),
     _cmakePath("cmake"),
     _postExecuteFunc(0),
-    _libFunc(0),
+    _libFilterFunc(0),
     _libraryLoader(new QLibrary(this))
 {
     _name = tr("Editable filter");
     _description = tr("Apply a custom code");
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-//    QString path = env.contains("PATH") ? env.value("PATH") : env.value("Path");
-//    env.clear();
-//    env.insert("PATH", path);
-//    env.insert("Path", path);
     _process->setProcessEnvironment(env);
 
     // Configure process:
@@ -55,9 +51,34 @@ EditableFilter::EditableFilter(QObject *parent) :
 
 //******************************************************************************
 
+QString EditableFilter::getCMakePath() const
+{
+    QString out(_cmakePath);
+    return out.replace(QString("\\\\"), QString("\\"));
+}
+
+//******************************************************************************
+
+void EditableFilter::setCMakePath(const QString &path)
+{
+    _cmakePath = path;
+    _cmakePath.replace(QString("\\"), QString("\\\\"));
+}
+
+//******************************************************************************
+
 cv::Mat EditableFilter::filter(const cv::Mat &src) const
 {
-    cv::Mat out;
+    int ow(0), oh(0), otype(0);
+    uchar * odata = 0;
+
+    if (!_libFilterFunc(
+                src.data, src.cols, src.rows, src.type(),
+                &odata, &ow, &oh, &otype))
+    {
+        SD_TRACE("EditableFilter : filter function is failed");
+    }
+    cv::Mat out(oh, ow, otype, odata);
     return out;
 }
 
@@ -65,11 +86,9 @@ cv::Mat EditableFilter::filter(const cv::Mat &src) const
 
 QString EditableFilter::getPATH() const
 {
-//    SD_TRACE("EditableFilter GET PATH");
-//    displayEnv();
     QProcessEnvironment env = _process->processEnvironment();
     QStringList keys;
-    keys << "PATH" << "Path";
+    keys << "PATH";
     foreach (QString key, keys)
     {
         if (env.contains(key)) return env.value(key).replace("\\\\", "\\");
@@ -85,16 +104,12 @@ void EditableFilter::setPATH(const QString &path)
     p.replace(QString("\\"), QString("\\\\"));
     QProcessEnvironment env = _process->processEnvironment();
     QStringList keys;
-    keys << "PATH" << "Path";
+    keys << "PATH";
     foreach (QString key, keys)
     {
         env.insert(key, p);
     }
     _process->setProcessEnvironment(env);
-
-//    SD_TRACE("EditableFilter SET PATH");
-//    displayEnv();
-
 }
 
 //******************************************************************************
@@ -113,6 +128,9 @@ void EditableFilter::onProcessError(QProcess::ProcessError error)
     case QProcess::FailedToStart:
         SD_TRACE("Process error : Failed to start");
         // -> program is not found => configure
+        SD_TRACE("Clear all tasks");
+        _tasks.clear();
+        SD_ERR(tr("CMake executable is not found. Please, configure CMake path"));
         emit badConfiguration();
         break;
     case QProcess::Crashed:
@@ -156,10 +174,14 @@ void EditableFilter::onProcessFinished(int exitCode, QProcess::ExitStatus exitSt
                     if (!(this->*_postExecuteFunc)())
                     {
                         SD_TRACE("Post execute function is failed");
+                        emit workFinished(false);
+                    }
+                    else
+                    {
+                        emit workFinished(true);
                     }
                 }
             }
-            emit workFinished(true);
             return;
         }
     }
@@ -232,8 +254,8 @@ void EditableFilter::onProcessReadyReadStandardOutput()
 
 void EditableFilter::runTestCmake()
 {
-    SD_TRACE("Start process : cmake --version");
     _tasks.append(QStringList() << _cmakePath << "--version");
+	SD_TRACE1("Append taks : %1 --version", _cmakePath);
     processTask();
 }
 
@@ -265,28 +287,27 @@ void EditableFilter::buildSourceFile()
         d.setPath("Resources");
         if (!d.mkdir("Build"))
         {
-            SD_TRACE("Failed to create 'Resources/Build' folder");
+            SD_ERR("Failed to create 'Resources/Build' folder");
             return;
         }
-        d.setPath("Build");
+        d.setPath("Resources/Build");
     }
 
     _process->setWorkingDirectory(d.absolutePath());
-    d.setPath("Resources");
+    d.setPath("Resources/EditableFunction");
 
     // Configure
-    SD_TRACE("1) Start process : cmake configure and generate project ");
     QStringList task;
     task << _cmakePath
          << "-DCMAKE_BUILD_TYPE=Release"
          << "-DCMAKE_INSTALL_PREFIX=../../";
 #if (defined WIN32 || defined _WIN32 || defined WINCE)
         // Force generator choice
-        SD_TRACE1("Cmake generator : %1", _cmakeGenerator);
         task << "-G" + _cmakeGenerator;
 #endif
     task << d.absolutePath();
     _tasks.append(task);
+	SD_TRACE3("Append task : %1 %2 %3", task[0] + " " + task[1], task[2] + " " + task[3], task[4]);
 
 
     // Build
@@ -298,8 +319,8 @@ void EditableFilter::buildSourceFile()
                   << "install"
                   << "--config"
                   << "Release");
-
-
+    task = _tasks.last();
+    SD_TRACE3("Append task : %1 %2 %3", task[0] + " " + task[1], task[2], task[3]);
     processTask();
 }
 
@@ -322,16 +343,16 @@ QString EditableFilter::readSourceFile()
     return program;
 }
 
-//******************************************************************************
+////******************************************************************************
 
-double EditableFilter::computeResult(double v)
-{
-    if (_libFunc)
-    {
-        return (*_libFunc)(v);
-    }
-    return -999999999999;
-}
+//double EditableFilter::computeResult(double v)
+//{
+//    if (_libFunc)
+//    {
+//        return (*_libFunc)(v);
+//    }
+//    return -999999999999;
+//}
 
 //******************************************************************************
 
@@ -348,6 +369,7 @@ bool EditableFilter::removeBuildCache()
         SD_TRACE("Failed to remove 'Resources/Build' folder");
         return false;
     }
+	_process->setWorkingDirectory("");
     return true;
 }
 
@@ -381,7 +403,6 @@ bool EditableFilter::loadLibrary()
 
     QStringList names;
     names << "EditableFunction";
-    names << "EditableFunction.dll";
 
     QDir d(".");
     SD_TRACE1("Working path : %1", d.absolutePath());
@@ -390,10 +411,11 @@ bool EditableFilter::loadLibrary()
         _libraryLoader->setFileName(d.absolutePath() + "/" + name);
         if (_libraryLoader->load())
         {
-            _libFunc = reinterpret_cast<double(*)(double)>(_libraryLoader->resolve("foo"));
-            if (!_libFunc)
+//            _libFunc = reinterpret_cast<double(*)(double)>(_libraryLoader->resolve("foo"));
+            _libFilterFunc = reinterpret_cast<LibFilterFunc>(_libraryLoader->resolve("filterFunc"));
+            if (!_libFilterFunc)
             {
-                SD_TRACE1("Lib function is null : %1", _libraryLoader->errorString());
+                SD_TRACE1("Lib filter function is null : %1", _libraryLoader->errorString());
             }
             else
             {
@@ -403,10 +425,11 @@ bool EditableFilter::loadLibrary()
         else
         {
             SD_TRACE1("Library is not loaded : %1", _libraryLoader->errorString());
+            SD_ERR(tr("Editable filter library was not loaded. Probably, it the problem of build configuration, e.g x86 / x64 problem"));
         }
     }
 
-    return _libFunc != 0;
+    return _libFilterFunc != 0;
 }
 
 //******************************************************************************
@@ -437,10 +460,19 @@ void EditableFilter::displayEnv() const
 
 //******************************************************************************
 
+QString StringListToString(const QStringList & list)
+{
+    QString out;
+    foreach (QString i, list)
+    {
+        out.append(i + " ");
+    }
+    return out;
+}
 void EditableFilter::processTask()
 {
-    SD_TRACE1("Process first task, remains %1", _tasks.size());
     QStringList task = _tasks.takeFirst();
+	SD_TRACE2("Process task: %1 | taskCount=%2", StringListToString(task), _tasks.size());
     _process->start(task.takeFirst(), task);
 }
 

@@ -102,4 +102,19 @@ void BaseLayer::setZValue(double zValue)
 
 //******************************************************************************
 
+void BaseLayer::replaceItem(BaseLayer *layer, QGraphicsItem *item)
+{
+    QGraphicsScene * scene = layer->_item->scene();
+    if (scene)
+    {
+        scene->removeItem(layer->_item);
+    }
+    delete layer->_item;
+    layer->_item = item;
+    layer->_item->setZValue(layer->_zValue);
+    layer->_item->setOpacity(layer->_opacity);
+}
+
+//******************************************************************************
+
 }

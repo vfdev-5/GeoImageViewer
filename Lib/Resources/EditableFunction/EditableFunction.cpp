@@ -1,6 +1,19 @@
+
+// Opencv
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+// Do not remove this include
 #include "EditableFunction.h"
-double foo(double v)
+
+cv::Mat filter(const cv::Mat & inputImg)
 {
-    std::cout << "Inside the test function" << std::endl;
-    return v;
+    std::cout << "DEBUG : Inside filter function" << std::endl;
+    cv::Mat out;
+
+    cv::blur(inputImg, out, cv::Size(3,3));
+
+
+
+    return out;
 }

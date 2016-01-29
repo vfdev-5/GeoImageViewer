@@ -1,6 +1,14 @@
 project( EditableFunction )
 cmake_minimum_required( VERSION 3.1.0 FATAL_ERROR)
 
+# Find OPENCV
+find_package( OpenCV 2.4.0 REQUIRED )
+
+## include & link to OpenCV :
+include_directories(${OpenCV_INCLUDE_DIRS})
+link_directories(${OpenCV_LIB_DIR})
+link_libraries(${OpenCV_LIBS})
+
 add_definitions("-DEF_EXPORT_DEF")
 
 ## build configuration

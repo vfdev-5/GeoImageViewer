@@ -5,6 +5,7 @@
 #include <QWidget>
 
 // Project
+#include "DefaultFilterDialog.h"
 #include "Core/LibExport.h"
 #include "ui_EditableFilterDialog.h"
 
@@ -23,7 +24,7 @@ class BuildConfigDialog;
 class BuildErrorWidget;
 class Highlighter;
 
-class GIV_DLL_EXPORT EditableFilterDialog : public QWidget
+class GIV_DLL_EXPORT EditableFilterDialog : public BaseFilterDialog
 {
     Q_OBJECT
 
@@ -34,9 +35,10 @@ class GIV_DLL_EXPORT EditableFilterDialog : public QWidget
 public slots:
     void on__configure_clicked();
     void on__apply_clicked();    
+    void on__refresh_clicked();
 
 protected:
-    virtual void closeEvent(QCloseEvent *);
+    virtual void closeEvent(QCloseEvent *event);
 
 protected slots:
     void onBadConfiguration();
@@ -45,10 +47,14 @@ protected slots:
 
 private:
 
+    void refreshCode();
+
     void setupEditor();
     void setUiEnabled(bool v);    
     void configure();
 
+    void getConfigFromSettings();
+    void setConfigToSettings();
     Ui_EditableFilterDialog *ui;
     BuildConfigDialog * _configDialog;
     BuildErrorWidget * _errorWidget;

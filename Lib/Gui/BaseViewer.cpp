@@ -52,6 +52,7 @@ QMouseEvent storeMouseEvent(QMouseEvent* event)
 BaseViewer::BaseViewer(const QString &initialText, QWidget *parent) :
     QWidget(parent),
     _ui(new Ui_BaseViewer),
+    _progressDialog(new QProgressDialog(this)),
     _zoomLevel(0),
     _zoomMinLevel(-5),
     _zoomMaxLevel(5),
@@ -92,7 +93,6 @@ BaseViewer::BaseViewer(const QString &initialText, QWidget *parent) :
     setupViewContextMenu();
 
     // setup progress dialog:
-    _progressDialog = new QProgressDialog(this);
     _progressDialog->setWindowModality(Qt::WindowModal);
     _progressDialog->setAutoClose(true);
     _progressDialog->setAutoReset(true);

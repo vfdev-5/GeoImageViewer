@@ -23,15 +23,11 @@ namespace Tools {
 class SelectionTool;
 }
 
-namespace Filters {
-class AbstractFilter;
-}
-
 namespace Gui
 {
 
 class AbstractRendererView;
-class EditableFilterDialog;
+class FilteringView;
 
 //******************************************************************************
 
@@ -68,14 +64,10 @@ protected slots:
 
 protected:
 
-    void closeEvent(QCloseEvent *);
-
     void writeGeoImageLayer(Core::GeoImageLayer *layer);
     void writeGeoShapeLayer(Core::GeoShapeLayer *layer);
-    void filterGeoImageLayer(Core::BaseLayer*);
 
     const Core::ImageDataProvider *getDataProvider(const Core::BaseLayer * layer) const;
-//    const Core::GeoImageItem * getGeoImageItem(const Core::BaseLayer * layer) const;
     Core::GeoImageItem * createGeoImageItem(Core::ImageDataProvider *, const QPointF &pos=QPointF());
     Core::GeoImageLayer * createGeoImageLayer(const QString & type, Core::GeoImageItem *item, Core::ImageDataProvider * provider, const QRect &userPixelExtent = QRect());
     Core::GeoImageLayer * createScribble(const QString & name, Core::DrawingsItem * item, const Core::ImageDataProvider *provider = 0);
@@ -98,11 +90,9 @@ protected:
 
     AbstractRendererView * _rendererView;
 
+    FilteringView * _filteringView;
+
     Core::GeoImageLayer * _processedLayer;
-    Filters::AbstractFilter * _appliedFilter;
-
-    EditableFilterDialog * _editableFilterDialog;
-
 
 };
 

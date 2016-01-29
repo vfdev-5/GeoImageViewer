@@ -50,11 +50,6 @@ Highlighter::Highlighter(QTextDocument *parent)
     rule.format = classFormat;
     highlightingRules.append(rule);
 
-    singleLineCommentFormat.setForeground(Qt::darkGreen);
-    rule.pattern = QRegExp("//[^\n]*");
-    rule.format = singleLineCommentFormat;
-    highlightingRules.append(rule);
-
     multiLineCommentFormat.setForeground(Qt::darkGreen);
 
     functionFormat.setFontItalic(true);
@@ -78,8 +73,13 @@ Highlighter::Highlighter(QTextDocument *parent)
     commentEndExpression = QRegExp("\\*/");
 
     quotationFormat.setForeground(Qt::darkGreen);
-    rule.pattern = QRegExp("(\".*\"|\'.*\')");
+    rule.pattern = QRegExp("(\".*\"|\'.*\'|<.*>)");
     rule.format = quotationFormat;
+    highlightingRules.append(rule);
+
+    singleLineCommentFormat.setForeground(Qt::darkGreen);
+    rule.pattern = QRegExp("//[^\n]*");
+    rule.format = singleLineCommentFormat;
     highlightingRules.append(rule);
 }
 

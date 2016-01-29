@@ -18,7 +18,7 @@ namespace Filters
 class GIV_DLL_EXPORT EditableFilter : public AbstractFilter
 {
     Q_OBJECT
-    PROPERTY_ACCESSORS(QString, cmakePath, getCMakePath, setCMakePath)
+    
     PROPERTY_ACCESSORS(QString, cmakeGenerator, getCMakeGenerator, setCMakeGenerator)
 
 public:
@@ -26,17 +26,19 @@ public:
 
     QString getPATH() const;
     void setPATH(const QString & path);
+	
+    QString getCMakePath() const;
+    void setCMakePath(const QString & path);
 
     void runTestCmake();
     void apply(const QString & program);
     QString readSourceFile();
 
-    double computeResult(double v);
     bool removeBuildCache();
 
 signals:
     void badConfiguration();
-    void workFinished(bool ok);
+    void workFinished(bool ok); //!< signal to notify that apply() method is done
     void buildError(QString);
 
 protected slots:
@@ -62,13 +64,16 @@ private:
 
     void processTask();
 
+	QString _cmakePath;
     QString _sourceFilePath;
     QProcess * _process;
     QList<QStringList> _tasks;
     QLibrary * _libraryLoader;
 
     bool (EditableFilter::*_postExecuteFunc)();
-    double (*_libFunc)(double);
+    typedef bool (*LibFilterFunc)(uchar * idata, int iw, int ih, int itype,
+                                   uchar ** odata, int * ow, int *oh, int *otype);
+    LibFilterFunc _libFilterFunc;
 
 };
 

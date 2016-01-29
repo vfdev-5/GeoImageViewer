@@ -66,6 +66,9 @@ public:
     virtual bool canSave()
     { return false; }
 
+
+    static void replaceItem(BaseLayer * layer, QGraphicsItem * item);
+
 //signals:
 //    void layerStateChanged();
 

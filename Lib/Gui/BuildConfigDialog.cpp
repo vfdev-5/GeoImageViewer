@@ -68,7 +68,7 @@ QString BuildConfigDialog::getGenerator() const
     QString g = QString("Visual Studio %1 %2")
             .arg(ui->_vsversion->value())
             .arg(ui->_vsyear->text());
-    if (ui->_arch64->isVisible())
+    if ((int)QSysInfo::WordSize == 64)
         g+=QString(" %1").arg(ui->_arch64->text());
 
     return g;

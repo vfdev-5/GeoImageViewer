@@ -1,5 +1,6 @@
 // Qt
 #include <QFont>
+#include <QSettings>
 
 // Project
 #include "Highlighter.h"
@@ -14,7 +15,7 @@ namespace Gui
 //******************************************************************************
 
 EditableFilterDialog::EditableFilterDialog(Filters::EditableFilter * f, QWidget *parent) :
-    QWidget(parent),
+    BaseFilterDialog(tr("Editable filter dialog"), parent),
     ui(new Ui_EditableFilterDialog),
     _configDialog(new BuildConfigDialog()),
     _errorWidget(new BuildErrorWidget()),
@@ -30,16 +31,11 @@ EditableFilterDialog::EditableFilterDialog(Filters::EditableFilter * f, QWidget 
     connect(_model, &Filters::EditableFilter::workFinished, this, &EditableFilterDialog::onWorkFinished);
     connect(_model, &Filters::EditableFilter::buildError, this, &EditableFilterDialog::onBuildError);
 
-    QString program = _model->readSourceFile();
-    if (!program.isEmpty())
-    {
-        ui->_code->setPlainText(program);
-        _model->runTestCmake();
-    }
-    else
-    {
-        setUiEnabled(false);
-    }
+    // Configure the model:
+    getConfigFromSettings();
+    _model->runTestCmake();
+
+    refreshCode();
 }
 
 //******************************************************************************
@@ -53,9 +49,10 @@ EditableFilterDialog::~EditableFilterDialog()
 
 //******************************************************************************
 
-void EditableFilterDialog::closeEvent(QCloseEvent *)
+void EditableFilterDialog::closeEvent(QCloseEvent * event)
 {
     _errorWidget->close();
+    QWidget::closeEvent(event);
 }
 
 //******************************************************************************
@@ -71,6 +68,10 @@ void EditableFilterDialog::onBadConfiguration()
 void EditableFilterDialog::onWorkFinished(bool ok)
 {
     setUiEnabled(true);
+    if (ok)
+    {
+        emit applyFilter();
+    }
 }
 
 //******************************************************************************
@@ -80,6 +81,21 @@ void EditableFilterDialog::onBuildError(const QString & err)
     _errorWidget->appendText(err);
     if (!_errorWidget->isVisible())
         _errorWidget->show();
+}
+
+//******************************************************************************
+
+void EditableFilterDialog::refreshCode()
+{
+    QString program = _model->readSourceFile();
+    if (!program.isEmpty())
+    {
+        ui->_code->setPlainText(program);
+    }
+    else
+    {
+        setUiEnabled(false);
+    }
 }
 
 //******************************************************************************
@@ -129,6 +145,13 @@ void EditableFilterDialog::on__apply_clicked()
 
 //******************************************************************************
 
+void EditableFilterDialog::on__refresh_clicked()
+{
+    refreshCode();
+}
+
+//******************************************************************************
+
 void EditableFilterDialog::configure()
 {
     SD_TRACE("Start build configuration dialog");
@@ -139,19 +162,61 @@ void EditableFilterDialog::configure()
 
     if (_configDialog->exec() == QDialog::Accepted)
     {
+        if (_model->getCMakeGenerator() != _configDialog->getGenerator())
+        {
+            if (!_model->removeBuildCache())
+            {
+                SD_ERR(tr("Failed to remove build cache. Please, remove manually the folder 'Build' at '<INSTALLATION_FOLDER>/Resources/Build'"));
+                return;
+            }
+        }
         _model->setCMakePath(_configDialog->getCMakePath());
         _model->setPATH(_configDialog->getPATH());
         _model->setCMakeGenerator(_configDialog->getGenerator());
-        if (_model->removeBuildCache())
-        {
-            _model->runTestCmake();
-        }
+		setConfigToSettings();
+		_model->runTestCmake();
     }
-    SD_TRACE1("CMake path : %1", _model->getCMakePath());
-    SD_TRACE1("CMake generator : %1", _model->getCMakeGenerator());
-    SD_TRACE1("PATH : %1", _model->getPATH());
 }
 
 //******************************************************************************
 
+void EditableFilterDialog::getConfigFromSettings()
+{
+    // Restore settings:
+    QSettings settings("GeoImageViewer_dot_com", "GIV");
+    if (settings.contains("EditableFilter/CMakePath"))
+    {
+        _model->setCMakePath(settings.value("EditableFilter/CMakePath").toString());
+    }
+    if (settings.contains("EditableFilter/PATH"))
+    {
+        _model->setPATH(settings.value("EditableFilter/PATH").toString());
+    }
+
+#if (defined WIN32 || defined _WIN32 || defined WINCE)
+    // Restore the generator
+    if (settings.contains("EditableFilter/CMakeGenerator"))
+    {
+        _model->setCMakeGenerator(settings.value("EditableFilter/CMakeGenerator").toString());
+    }
+    else
+    {
+        SD_TRACE("WIN32 : GENERATOR IS EMTPY");
+        configure();
+    }
+#endif
+
+}
+
+//******************************************************************************
+
+void EditableFilterDialog::setConfigToSettings()
+{
+    QSettings settings("GeoImageViewer_dot_com", "GIV");
+    settings.setValue("EditableFilter/CMakePath", _model->getCMakePath());
+    settings.setValue("EditableFilter/PATH", _model->getPATH());
+    settings.setValue("EditableFilter/CMakeGenerator", _model->getCMakeGenerator());
+}
+
+//******************************************************************************
 }

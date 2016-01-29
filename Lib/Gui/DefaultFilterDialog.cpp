@@ -1,7 +1,7 @@
 
 // Qt
 #include <QVBoxLayout>
-#include <QDialogButtonBox>
+#include <QPushButton>
 
 // Project
 #include "DefaultFilterDialog.h"
@@ -13,22 +13,27 @@ namespace Gui
 
 //******************************************************************************
 
-DefaultFilterDialog::DefaultFilterDialog(const QString &title, QWidget *parent) :
-    QDialog(parent),
-    _editor(new PropertyEditor())
+BaseFilterDialog::BaseFilterDialog(const QString &title, QWidget *parent) :
+    QWidget(parent)
 {
     setWindowTitle(title);
+}
+
+//******************************************************************************
+
+DefaultFilterDialog::DefaultFilterDialog(const QString &title, QWidget *parent) :
+    BaseFilterDialog(title, parent),
+    _editor(new PropertyEditor())
+{
     setLayout(new QVBoxLayout());
     layout()->addWidget(_editor);
 
     _editor->setNameFilter(QStringList() << "objectName");
 
-    QDialogButtonBox * buttons = new QDialogButtonBox(QDialogButtonBox::Ok
-                                                      | QDialogButtonBox::Cancel);
-    connect(buttons, SIGNAL(accepted()), this, SLOT(accept()));
-    connect(buttons, SIGNAL(rejected()), this, SLOT(reject()));
-    layout()->addWidget(buttons);
+    QPushButton * apply = new QPushButton(tr("Apply"));
+    layout()->addWidget(apply);
 
+    connect(apply, &QPushButton::clicked, this, &DefaultFilterDialog::applyFilter);
 }
 
 //******************************************************************************
