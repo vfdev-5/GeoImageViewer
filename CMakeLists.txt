@@ -21,7 +21,14 @@ find_package( GDAL REQUIRED )
 find_package( OpenGL REQUIRED )
 
 # This is works for Qt5 only 
-set( QT_COMPONENT_LIST Widgets OpenGL Test Qml Quick QuickWidgets)
+set( QT_COMPONENT_LIST Widgets OpenGL Test )
+
+if(WITH_SANDBOX)
+	set(QT_COMPONENT_LIST ${QT_COMPONENT_LIST} Qml Quick QuickWidgets)
+endif()
+
+message("QT_COMPONENT_LIST : ${QT_COMPONENT_LIST}")
+
 find_package( Qt REQUIRED )
 
 
@@ -32,8 +39,12 @@ find_package( Qt REQUIRED )
 add_subdirectory("Lib")
 add_subdirectory("Plugins")
 add_subdirectory("App")
-add_subdirectory("Sandbox")
 add_subdirectory("Tests")
+
+if(WITH_SANDBOX)
+	add_subdirectory("Sandbox")
+endif()
+
 
 if(WIN32)
     ## install opencv library dlls :
