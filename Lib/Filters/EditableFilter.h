@@ -71,9 +71,18 @@ private:
     QLibrary * _libraryLoader;
 
     bool (EditableFilter::*_postExecuteFunc)();
+
+    // Library functions:
     typedef bool (*LibFilterFunc)(uchar * idata, int iw, int ih, int itype,
                                    uchar ** odata, int * ow, int *oh, int *otype);
     LibFilterFunc _libFilterFunc;
+
+    typedef int (*LibVerboseStackCount)();
+    LibVerboseStackCount _libVerboseStackCount;
+
+    typedef bool (*LibVerboseStackNext)(uchar ** odata, int * ow, int *oh, int *otype,
+                                        char ** cstringTxt);
+    LibVerboseStackNext _libVerboseStackNext;
 
 };
 

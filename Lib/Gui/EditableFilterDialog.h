@@ -28,13 +28,13 @@ class GIV_DLL_EXPORT EditableFilterDialog : public BaseFilterDialog
 {
     Q_OBJECT
 
-    public:
-        explicit EditableFilterDialog(Filters::EditableFilter *f, QWidget *parent = 0);
+public:
+    explicit EditableFilterDialog(Filters::EditableFilter *f, QWidget *parent = 0);
     ~EditableFilterDialog();
 
 public slots:
     void on__configure_clicked();
-    void on__apply_clicked();    
+    void on__apply_clicked();
     void on__refresh_clicked();
 
 protected:
@@ -50,7 +50,7 @@ private:
     void refreshCode();
 
     void setupEditor();
-    void setUiEnabled(bool v);    
+    void setUiEnabled(bool v);
     void configure();
 
     void getConfigFromSettings();

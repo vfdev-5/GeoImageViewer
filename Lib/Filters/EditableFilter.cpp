@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QSysInfo>
 #include <QLibrary>
+#include <QCoreApplication>
 
 // Opencv
 #include <opencv2/imgproc/imgproc.hpp>
@@ -16,6 +17,17 @@
 
 namespace Filters
 {
+
+
+QString StringListToString(const QStringList & list)
+{
+    QString out;
+    foreach (QString i, list)
+    {
+        out.append(i + " ");
+    }
+    return out;
+}
 
 //******************************************************************************
 /*!
@@ -31,10 +43,22 @@ EditableFilter::EditableFilter(QObject *parent) :
     _cmakePath("cmake"),
     _postExecuteFunc(0),
     _libFilterFunc(0),
+    _libVerboseStackCount(0),
+    _libVerboseStackNext(0),
     _libraryLoader(new QLibrary(this))
 {
     _name = tr("Editable filter");
     _description = tr("Apply a custom code");
+    _verbose = true;
+
+    // Setup properly the working directory:
+    QFileInfo fi(QDir(QCoreApplication::arguments().first()).absolutePath());
+    SD_TRACE1("Working directory : %1", fi.absoluteDir().absolutePath());
+    if (!QDir::setCurrent(fi.absoluteDir().absolutePath()))
+    {
+        SD_TRACE("Failed to set working dir");
+    }
+
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     _process->setProcessEnvironment(env);
@@ -69,6 +93,14 @@ void EditableFilter::setCMakePath(const QString &path)
 
 cv::Mat EditableFilter::filter(const cv::Mat &src) const
 {
+    if (!_libFilterFunc ||
+            !_libVerboseStackCount ||
+            !_libVerboseStackNext)
+    {
+        return cv::Mat();
+    }
+
+
     int ow(0), oh(0), otype(0);
     uchar * odata = 0;
 
@@ -79,6 +111,23 @@ cv::Mat EditableFilter::filter(const cv::Mat &src) const
         SD_TRACE("EditableFilter : filter function is failed");
     }
     cv::Mat out(oh, ow, otype, odata);
+
+    // Handle verbose images
+    int count = _libVerboseStackCount();
+    for (int i=0; i<count; i++)
+    {
+        int w(0), h(0), type(0);
+        uchar * data = 0;
+        char * txt = 0;
+        if (!_libVerboseStackNext(&data, &w, &h, &type, &txt))
+        {
+            continue;
+        }
+        SD_TRACE1("Emit verboseImage(%1, ...)", QString(txt));
+        cv::Mat * vOut = new cv::Mat(oh, ow, otype, odata);
+        emit verboseImage(QString(txt), vOut);
+    }
+
     return out;
 }
 
@@ -180,6 +229,7 @@ void EditableFilter::onProcessFinished(int exitCode, QProcess::ExitStatus exitSt
                     {
                         emit workFinished(true);
                     }
+                    _postExecuteFunc = 0;
                 }
             }
             return;
@@ -307,7 +357,7 @@ void EditableFilter::buildSourceFile()
 #endif
     task << d.absolutePath();
     _tasks.append(task);
-	SD_TRACE3("Append task : %1 %2 %3", task[0] + " " + task[1], task[2] + " " + task[3], task[4]);
+    SD_TRACE1("Append task : %1", StringListToString(task));
 
 
     // Build
@@ -320,7 +370,7 @@ void EditableFilter::buildSourceFile()
                   << "--config"
                   << "Release");
     task = _tasks.last();
-    SD_TRACE3("Append task : %1 %2 %3", task[0] + " " + task[1], task[2], task[3]);
+    SD_TRACE1("Append task : %1", StringListToString(task));
     processTask();
 }
 
@@ -342,17 +392,6 @@ QString EditableFilter::readSourceFile()
     f.close();
     return program;
 }
-
-////******************************************************************************
-
-//double EditableFilter::computeResult(double v)
-//{
-//    if (_libFunc)
-//    {
-//        return (*_libFunc)(v);
-//    }
-//    return -999999999999;
-//}
 
 //******************************************************************************
 
@@ -411,16 +450,24 @@ bool EditableFilter::loadLibrary()
         _libraryLoader->setFileName(d.absolutePath() + "/" + name);
         if (_libraryLoader->load())
         {
-//            _libFunc = reinterpret_cast<double(*)(double)>(_libraryLoader->resolve("foo"));
             _libFilterFunc = reinterpret_cast<LibFilterFunc>(_libraryLoader->resolve("filterFunc"));
             if (!_libFilterFunc)
             {
                 SD_TRACE1("Lib filter function is null : %1", _libraryLoader->errorString());
             }
-            else
+
+            _libVerboseStackCount = reinterpret_cast<LibVerboseStackCount>(_libraryLoader->resolve("verboseStackCount"));
+            if (!_libVerboseStackCount)
             {
-                break;
+                SD_TRACE1("Lib verbose stack count function is null : %1", _libraryLoader->errorString());
             }
+
+            _libVerboseStackNext = reinterpret_cast<LibVerboseStackNext>(_libraryLoader->resolve("verboseStackNext"));
+            if (!_libVerboseStackNext)
+            {
+                SD_TRACE1("Lib verbose stack next function is null : %1", _libraryLoader->errorString());
+            }
+
         }
         else
         {
@@ -429,7 +476,7 @@ bool EditableFilter::loadLibrary()
         }
     }
 
-    return _libFilterFunc != 0;
+    return _libFilterFunc && _libVerboseStackCount && _libVerboseStackNext;
 }
 
 //******************************************************************************
@@ -460,15 +507,6 @@ void EditableFilter::displayEnv() const
 
 //******************************************************************************
 
-QString StringListToString(const QStringList & list)
-{
-    QString out;
-    foreach (QString i, list)
-    {
-        out.append(i + " ");
-    }
-    return out;
-}
 void EditableFilter::processTask()
 {
     QStringList task = _tasks.takeFirst();
