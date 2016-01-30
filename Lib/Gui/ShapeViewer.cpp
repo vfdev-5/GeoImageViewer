@@ -19,9 +19,16 @@
 namespace Gui
 {
 
-double computeZValue(int index)
+void removeLayers(QList<Core::BaseLayer*> & layers)
 {
-    return 10.0 + 2.0 * index;
+//    qDeleteAll(layers.begin(), layers.end());
+
+    // delete only the root (the first list item):
+    if (!layers.isEmpty())
+    {
+        delete layers[0];
+    }
+    layers.clear();
 }
 
 //******************************************************************************
@@ -38,6 +45,7 @@ ShapeViewer::ShapeViewer(const QString &initialText, QWidget *parent) :
     _toolsView(0),
     _layersView(0),
     _enableTools(true)
+//    _rootLayer(0)
 {
     // init ToolsManager
     _toolsManager = Tools::ToolsManager::get();
@@ -54,21 +62,16 @@ ShapeViewer::~ShapeViewer()
 {
     _currentTool = 0;
     Tools::ToolsManager::destroy();
+
+    // Need to destroy layers before graphicsscene is destroyed
+    removeLayers(_layers);
 }
 
 //******************************************************************************
 
 void ShapeViewer::clear()
 {
-    foreach (Core::BaseLayer * layer, _layers)
-    {
-        layer->setParent(0);
-        disconnect(layer, 0, 0, 0);
-        removeItem(layer);
-        delete layer;
-    }
-    _layers.clear();
-    _layerItemMap.clear();
+    removeLayers(_layers);
 
     if (_layersView)
         _layersView->setLayers(_layers);
@@ -153,52 +156,10 @@ void ShapeViewer::onItemCreated(QGraphicsItem * item)
     SD_TRACE("onItemCreated");
 
     // get current layer on which item has been created:
-    Core::GeoShapeLayer * currentLayer = static_cast<Core::GeoShapeLayer*>(getCurrentLayer());
-
+    Core::GeoShapeLayer * currentLayer = qobject_cast<Core::GeoShapeLayer*>(getCurrentLayer());
     // create layer:
     Core::GeoShapeLayer * layer = createGeoShapeLayer(_currentTool->getName(), item, currentLayer);
-
-    addLayer(layer, item);
-}
-
-//******************************************************************************
-
-void ShapeViewer::onBaseLayerStateChanged()
-{
-    Core::BaseLayer * layer = qobject_cast<Core::BaseLayer*>(sender());
-    if (!layer)
-        return;
-
-    QGraphicsItem * item = _layerItemMap.value(layer, 0);
-    if (!item)
-    {
-        SD_TRACE("onBaseLayerStateChanged : graphics item associated to base layer is not found");
-        return;
-    }
-
-    bool isVisible = item->isVisible();
-    double opacity = item->opacity();
-    double zValue = item->zValue();
-
-    if (isVisible != layer->isVisible())
-    {
-        item->setVisible(layer->isVisible());
-    }
-
-    if (opacity != layer->getOpacity())
-    {
-        item->setOpacity(layer->getOpacity());
-    }
-
-    if (zValue != layer->getZValue())
-    {
-        double z = computeZValue(layer->getZValue());
-        item->setZValue(
-                    computeZValue(
-                        layer->getZValue())
-                    );
-    }
-
+    addLayer(layer);
 }
 
 //******************************************************************************
@@ -209,14 +170,6 @@ void ShapeViewer::onBaseLayerDestroyed(QObject * layerObj)
     if (!layer)
         return;
 
-    if (!removeItem(layer))
-    {
-        SD_TRACE("ShapeViewer::onBaseLayerDestroyed : failed to remove layer");
-        return;
-    }
-
-    // remove layer from the map :
-    _layerItemMap.remove(layer);
     _layers.removeAll(layer);
 
     // if the last layer destroyed -> clear
@@ -334,9 +287,9 @@ Core::BaseLayer *ShapeViewer::getCurrentLayer() const
  * background pointer can be null.
  * \return
  */
-Core::GeoShapeLayer *ShapeViewer::createGeoShapeLayer(const QString &name, const QGraphicsItem *item, const Core::GeoShapeLayer *background)
+Core::GeoShapeLayer *ShapeViewer::createGeoShapeLayer(const QString &name, QGraphicsItem *item, const Core::GeoShapeLayer *background)
 {
-    Core::GeoShapeLayer * layer = new Core::GeoShapeLayer(this);
+    Core::GeoShapeLayer * layer = new Core::GeoShapeLayer(item, this);
     layer->setType(name);
     layer->setEditable(false);
     if (background)
@@ -366,10 +319,10 @@ Core::GeoShapeLayer *ShapeViewer::createGeoShapeLayer(const QString &name, const
 QPolygonF ShapeViewer::computeGeoExtentFromLayer(const QPolygonF &inputShape, const Core::GeoShapeLayer *backgroundLayer)
 {
     QPolygonF out;
-    QGraphicsItem * item = _layerItemMap.value(backgroundLayer, 0);
+    const QGraphicsItem * item = backgroundLayer->getConstItem();
     if (!item)
     {
-        SD_TRACE("ShapeViewer::computeGeoExtentFromLayer : no graphicsitem associated to specified backgroundLayer");
+        SD_TRACE("ShapeViewer::computeGeoExtentFromLayer : no graphicsitem in the backgroundLayer");
         return out;
     }
     // compute geo transform for backgroundLayer :
@@ -396,15 +349,20 @@ QPolygonF ShapeViewer::computeGeoExtentFromLayer(const QPolygonF &inputShape, co
 
 //******************************************************************************
 
-void ShapeViewer::addLayer(Core::BaseLayer * layer, QGraphicsItem * item)
+void ShapeViewer::addLayer(Core::BaseLayer * layer)
 {
-
     // create layer:
-    connect(layer, SIGNAL(layerStateChanged()), this, SLOT(onBaseLayerStateChanged()));
     connect(layer, SIGNAL(destroyed(QObject*)), this, SLOT(onBaseLayerDestroyed(QObject*)));
 
+    // if scene is empty -> this layer becomes the root layer,
+    // otherwise a leaf of the root
+    //    Core::BaseLayer * currentLayer = getCurrentLayer();
+    //    layer->setParent(currentLayer);
+    if (!_layers.isEmpty())
+    {
+        layer->setParent(_layers.first());
+    }
     _layers.append(layer);
-    _layerItemMap.insert(layer, item);
 
     if (_layersView)
     {
@@ -413,7 +371,6 @@ void ShapeViewer::addLayer(Core::BaseLayer * layer, QGraphicsItem * item)
     else
     {
         int count = _layers.size()-1;
-        item->setZValue(computeZValue(count));
         layer->setZValue(count);
     }
 }
@@ -470,30 +427,6 @@ void ShapeViewer::setLayersView(LayersView *view)
     connect(_layersView, SIGNAL(createNewLayer()),
             this, SLOT(onCreateBaseLayer()));
 
-}
-
-//******************************************************************************
-
-bool ShapeViewer::removeItem(Core::BaseLayer *layer)
-{
-    if (!layer)
-    {
-        SD_TRACE("ShapeViewer::removeItem : base layer is null");
-        return false;
-    }
-
-    // remove graphics item:
-    QGraphicsItem * item = _layerItemMap.value(layer, 0);
-    if (!item)
-    {
-        SD_TRACE("ShapeViewer::removeItem : no graphics item associated with base layer");
-        return false;
-    }
-
-    _scene.removeItem(item);
-    delete item;
-
-    return true;
 }
 
 //******************************************************************************

@@ -21,19 +21,29 @@ class PropertyEditor;
 
 //******************************************************************************
 
-class GIV_DLL_EXPORT DefaultFilterDialog : public QDialog
+class GIV_DLL_EXPORT BaseFilterDialog : public QWidget
+{
+    Q_OBJECT
+public:
+
+    explicit BaseFilterDialog(const QString & title, QWidget *parent = 0);
+    virtual void setFilter(Filters::AbstractFilter * filter) {}
+
+signals:
+    void applyFilter();
+
+};
+
+
+
+class GIV_DLL_EXPORT DefaultFilterDialog : public BaseFilterDialog
 {
     Q_OBJECT
 public:
     explicit DefaultFilterDialog(const QString & title, QWidget *parent = 0);
-    void setFilter(Filters::AbstractFilter * filter);
-
-signals:
-
-public slots:
+    virtual void setFilter(Filters::AbstractFilter * filter);
 
 protected:
-
     PropertyEditor * _editor;
 
 };

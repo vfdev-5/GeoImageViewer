@@ -34,7 +34,6 @@ protected slots:
 
 protected:
     virtual cv::Mat processData(const cv::Mat & data);
-
 };
 
 //******************************************************************************

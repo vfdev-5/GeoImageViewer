@@ -59,5 +59,7 @@ foreach(module ${modules})
     INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/Lib/${module} DESTINATION include FILES_MATCHING PATTERN "*.h" )
 endforeach()
 
+## install editable function resources
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/Lib/Resources/EditableFunction DESTINATION bin/Resources)
 
 

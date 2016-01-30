@@ -10,6 +10,7 @@
 // Project
 #include "Core/LibExport.h"
 #include "Core/Global.h"
+#include "FiltersManager.h"
 
 namespace Filters
 {
@@ -24,6 +25,11 @@ class GIV_DLL_EXPORT AbstractFilter : public QObject
     Q_PROPERTY_WITH_GETACCESSOR(QString, description, getDescription)
     PROPERTY_ACCESSORS(float, noDataValue, getNoDataValue, setNoDataValue)
 
+    Q_PROPERTY_WITH_ACCESSORS(bool, verbose, isVerbose, setVerbose)
+
+    // This is needed to access '_errorMessage' attribute
+    friend class FilterTask;
+
 public:
     AbstractFilter(QObject * parent = 0);
     virtual ~AbstractFilter() {}
@@ -37,10 +43,16 @@ public:
     QString getErrorMessage() const
     { return _errorMessage; }
 
+signals:
+    void progressValue(int) const;
+    //! Signal sends image copied data and the title of the verbose window. It is receiver responsibility to destroy the data
+    void verboseImage(const QString &, cv::Mat *) const;
 
 protected:
     virtual cv::Mat filter(const cv::Mat & src) const = 0;
     mutable QString _errorMessage;
+
+    void verboseDisplayImage(const QString & winname, const cv::Mat & img) const;
 
 };
 

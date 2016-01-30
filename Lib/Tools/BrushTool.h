@@ -21,9 +21,9 @@ class GIV_DLL_EXPORT BrushTool : public ImageCreationTool
     Q_OBJECT
 
     Q_PROPERTY_WITH_ACCESSORS(QColor, color, getColor, setColor)
+    Q_CLASSINFO("color","label:Color")
 
     PROPERTY_ACCESSORS(double, size, getSize, setSize)
-    Q_CLASSINFO("color","label:Color")
 
 
 public:

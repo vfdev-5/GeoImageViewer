@@ -8,7 +8,11 @@
 
 // Project
 #include "Core/LibExport.h"
-#include "AbstractFilter.h"
+
+namespace cv
+{
+class Mat;
+}
 
 namespace Core
 {
@@ -20,6 +24,7 @@ namespace Filters
 {
 
 class FilterTask;
+class AbstractFilter;
 
 //******************************************************************************
 
@@ -65,6 +70,8 @@ signals:
     void filteringFinished(Core::ImageDataProvider * provider);
     void filterProgressValueChanged(int);
 
+protected slots:
+    void onVerboseImage(const QString & winname, cv::Mat *);
 
 private:
     FiltersManager();

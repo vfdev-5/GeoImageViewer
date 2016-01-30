@@ -65,8 +65,10 @@ cv::Mat GIV_DLL_EXPORT computeMask(const cv::Mat &data, float noDataValue, cv::M
 /*!
   \brief vectorizeAsPolygons method to vectorize input image (should be 8-bit single-channel) as polygons.
   Inner contours are not vectorized
+  \param externalOnly, set true for only external contours extraction
+  \param approx, set true for approximativ contours
   */
-QVector<QPolygonF> GIV_DLL_EXPORT vectorizeAsPolygons(const cv::Mat & inputImage);
+QVector<QPolygonF> GIV_DLL_EXPORT vectorizeAsPolygons(const cv::Mat & inputImage, bool externalOnly=true, bool approx=true);
 
 //******************************************************************************
 // Conversion methods - DO NOT COPY INTERNAL DATA
@@ -164,7 +166,6 @@ bool GIV_DLL_EXPORT isGeoProjection(const QString & prStr);
  * \param
  * \return true if successful
  */
-//bool computeNormalizedHistogram(ImageLayer * layer, int histSize=1000, bool isRough=true, ProgressReporter *reporter=0);
 bool GIV_DLL_EXPORT computeNormalizedHistogram(const cv::Mat & data, const cv::Mat & noDataMask,
                                 QVector<double> & minValues, QVector<double> & maxValues,
                                 QVector< QVector<double> > & bandHistograms,

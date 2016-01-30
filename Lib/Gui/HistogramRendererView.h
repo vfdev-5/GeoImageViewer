@@ -61,6 +61,7 @@ protected:
     void setupRgbModeView();
 
     void setGrayHistogram(int index);
+    void updateUi(int index);
     void setRgbHistogram();
 
     void setRgbModeEnabled(bool value);

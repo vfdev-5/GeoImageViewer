@@ -24,11 +24,10 @@ namespace Core
 
 //******************************************************************************
 
-GeoImageLayer::GeoImageLayer(QObject *parent) :
-    GeoShapeLayer(parent)
+GeoImageLayer::GeoImageLayer(QGraphicsItem *item, QObject *parent) :
+    GeoShapeLayer(item, parent)
 {
     _type = "Geo Image";
-
 }
 
 //******************************************************************************

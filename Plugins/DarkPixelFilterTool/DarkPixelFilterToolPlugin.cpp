@@ -73,6 +73,9 @@ cv::Mat DarkPixelFilterToolPlugin::processData(const cv::Mat &data)
     // 1) Image -> 1.0/Image
     cv::divide(1.0,out,out,CV_32F);
 
+    // 1.2)
+    cv::blur(out, out, cv::Size(5, 5));
+
     // 2) Convert to 8U
     double minVal, maxVal;
     cv::minMaxLoc(out, &minVal, &maxVal);
@@ -87,11 +90,32 @@ cv::Mat DarkPixelFilterToolPlugin::processData(const cv::Mat &data)
     double c = -mean[0];
     cv::adaptiveThreshold(out, out, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, winsize, c);
 
+    // 5) Filter small objects:
+    std::vector<std::vector<cv::Point> > contours;
+    cv::Mat outCopy;
+    out.copyTo(outCopy);
+    cv::findContours(outCopy, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+    if (contours.size() > 0)
+    {
+        double minArea = _minSize*_minSize;
+        for (int i=0;i<contours.size();i++)
+        {
+            std::vector<cv::Point> contour = contours[i];
+            double s = cv::contourArea(contour);
+            // remove small objects
+            if (s < minArea)
+            {
+                cv::drawContours(out, contours, i, cv::Scalar::all(0), CV_FILLED);
+            }
+        }
+    }
+
     // 4) Morpho close + open
-    cv::Mat k1=cv::Mat::ones(5,5,CV_8U);
-    cv::Mat k2=cv::Mat::ones(3,3,CV_8U);
-    cv::morphologyEx(out, out, cv::MORPH_CLOSE, k1);
-    cv::morphologyEx(out, out, cv::MORPH_OPEN, k2);
+//        cv::Mat k1=cv::Mat::ones(_param5,_param5,CV_8U);
+        cv::Mat k1 = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
+//        cv::Mat k2=cv::Mat::ones(3,3,CV_8U);
+        cv::morphologyEx(out, out, cv::MORPH_CLOSE, k1);
+//        cv::morphologyEx(out, out, cv::MORPH_OPEN, k2);
 
 
     // Render to RGBA :

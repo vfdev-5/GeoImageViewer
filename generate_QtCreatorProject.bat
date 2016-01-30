@@ -49,7 +49,8 @@ set CMAKE_PARAMETERS=^
 ::%build_options%
 :: ----------------------------------------------------
 :: %CMAKE% %CMAKE_PARAMETERS% -G %CMAKE_GENERATOR% ../%SourceDir%
-
+:: Use of CMAKE_PREFIX_PATH
+:: https://blogs.kde.org/2008/12/12/how-get-cmake-find-what-you-want-it
 
 :: Put this as arguments: -DCMAKE_INSTALL_PREFIX=..\ -DCMAKE_BUILD_TYPE=Release
 %QTCREATOR% ../%SourceDir%/CMakeLists.txt

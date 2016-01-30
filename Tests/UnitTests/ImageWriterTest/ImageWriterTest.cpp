@@ -103,7 +103,7 @@ void ImageWriterTest::initTestCase()
 
 
     // Create a GeoItemLayer to store geo image info :
-    _geoInfo = new Core::GeoImageLayer(this);
+    _geoInfo = new Core::GeoImageLayer(0, this);
     _geoInfo->setType("Image");
     _geoInfo->setImageName(_provider->getImageName());
     _geoInfo->setNbBands(_provider->getInputNbBands());

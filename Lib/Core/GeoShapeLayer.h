@@ -27,7 +27,7 @@ namespace Core
 
 //******************************************************************************
 
-class GeoShapeLayer : public BaseLayer
+class GIV_DLL_EXPORT GeoShapeLayer : public BaseLayer
 {
 
     Q_OBJECT
@@ -45,8 +45,8 @@ class GeoShapeLayer : public BaseLayer
     Q_CLASSINFO("geoBBox","label:Geo bounding box")
 
 public:
-    GeoShapeLayer(QObject * parent = 0) :
-        BaseLayer(parent),
+    GeoShapeLayer(QGraphicsItem *item, QObject * parent = 0) :
+        BaseLayer(item, parent),
         _projectionRef("Unknown")
     {
         _type = "Geo Shape";

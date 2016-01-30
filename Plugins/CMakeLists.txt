@@ -9,9 +9,9 @@ file(GLOB PLUGINS_INC_FILES "PluginExport.h")
 
 ## Add subdirectories :
 #add_subdirectory("LassoFilter")
-#add_subdirectory("HistogramThresholdFilter")
+add_subdirectory("HistogramThresholdFilter")
 add_subdirectory("FloodThresholdFilterTool")
 add_subdirectory("DarkPixelFilterTool")
+add_subdirectory("DarkPixelFilterTool2")
 add_subdirectory("DarkPixelFilter")
-
 
