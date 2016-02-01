@@ -16,10 +16,12 @@
 #include <opencv2/core/core.hpp>
 
 //******************************************************************************
-// Local functions
+// Local variables & functions
 //******************************************************************************
 
 cv::Mat filter(const cv::Mat & inputImg);
+
+static float _noDataValue;
 
 //******************************************************************************
 // Exported functions
@@ -27,8 +29,12 @@ cv::Mat filter(const cv::Mat & inputImg);
 extern "C" double EF_EXPORT foo(double value);
 
 extern "C" bool EF_EXPORT filterFunc(uchar * inputData, int inputWidth, int inputHeight, int inputCvType,
+                                     float noDataValue,
                                         uchar ** outputData, int * outputWidth, int * outputHeight, int * outputCvType)
 {
+
+    _noDataValue = noDataValue;
+
     if (!inputData ||
             !outputData ||
             !outputWidth ||

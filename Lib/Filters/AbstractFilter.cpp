@@ -18,7 +18,8 @@ namespace Filters
 AbstractFilter::AbstractFilter(QObject *parent) :
     QObject(parent),
     _filterType(Type),
-    _verbose(false)
+    _verbose(false),
+    _noDataValue(0.0)
 {
 
 }

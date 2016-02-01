@@ -72,6 +72,7 @@ private:
 
     bool (EditableFilter::*_postExecuteFunc)();
     typedef bool (*LibFilterFunc)(uchar * idata, int iw, int ih, int itype,
+                                  float nodatavalue,
                                    uchar ** odata, int * ow, int *oh, int *otype);
     LibFilterFunc _libFilterFunc;
 

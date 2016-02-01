@@ -6,6 +6,9 @@
 // Do not remove this include
 #include "EditableFunction.h"
 
+// Predefined variables :
+// float _noDataValue
+
 cv::Mat filter(const cv::Mat & inputImg)
 {
     std::cout << "DEBUG : Inside filter function" << std::endl;
