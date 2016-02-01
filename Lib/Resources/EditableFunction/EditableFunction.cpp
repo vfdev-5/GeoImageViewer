@@ -6,6 +6,8 @@
 // Do not remove this include
 #include "EditableFunction.h"
 
+// Predefined variables :
+// float _noDataValue
 
 // Built-in functions :
 //

@@ -106,6 +106,7 @@ cv::Mat EditableFilter::filter(const cv::Mat &src) const
 
     if (!_libFilterFunc(
                 src.data, src.cols, src.rows, src.type(),
+                _noDataValue,
                 &odata, &ow, &oh, &otype))
     {
         SD_TRACE("EditableFilter : filter function is failed");

@@ -17,10 +17,12 @@
 #include <opencv2/core/core.hpp>
 
 //******************************************************************************
-// Local functions
+// Local variables & functions
 //******************************************************************************
 
 cv::Mat filter(const cv::Mat & inputImg);
+
+static float _noDataValue;
 
 typedef std::pair<std::string,cv::Mat> Message;
 //static std::vector<Message > _stack;
@@ -37,8 +39,12 @@ void verboseDisplayImage(const std::string & name, const cv::Mat & img)
 extern "C" double EF_EXPORT foo(double value);
 
 extern "C" bool EF_EXPORT filterFunc(uchar * inputData, int inputWidth, int inputHeight, int inputCvType,
-                                     uchar ** outputData, int * outputWidth, int * outputHeight, int * outputCvType)
+                                     float noDataValue,
+                                        uchar ** outputData, int * outputWidth, int * outputHeight, int * outputCvType)
 {
+
+    _noDataValue = noDataValue;
+
     if (!inputData ||
             !outputData ||
             !outputWidth ||
