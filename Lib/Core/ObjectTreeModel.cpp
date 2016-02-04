@@ -12,7 +12,7 @@
 // Project
 #include "Global.h"
 #include "ObjectTreeModel.h"
-#include "GeoShapeLayer.h" // !!! REMOVE
+//#include "GeoShapeLayer.h" // !!! REMOVE
 
 namespace Core
 {

@@ -7,6 +7,7 @@
 
 // Project
 #include "Core/LibExport.h"
+#include "Core/Global.h"
 
 namespace Filters
 {
@@ -24,10 +25,15 @@ class PropertyEditor;
 class GIV_DLL_EXPORT BaseFilterDialog : public QWidget
 {
     Q_OBJECT
+    PROPERTY_GETACCESSOR(QString, layerName, getLayerName)
+
 public:
 
     explicit BaseFilterDialog(const QString & title, QWidget *parent = 0);
     virtual void setFilter(Filters::AbstractFilter * filter) {}
+
+    virtual void setLayerName(const QString & name)
+    { _layerName = name; }
 
 signals:
     void applyFilter();

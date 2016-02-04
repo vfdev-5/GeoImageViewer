@@ -92,6 +92,57 @@ inline cv::Mat fromQImage(QImage & image)
     return cv::Mat(image.height(), image.width(), CV_8UC4, image.bits());
 }
 
+//******************************************************************************
+// Contours Manipulations
+//******************************************************************************
+
+inline void toStdContour(const QVector<QPoint> & c, std::vector<cv::Point> & out)
+{
+    out.clear();
+    out.resize(c.size());
+    for(int i=0; i< c.size(); i++)
+    {
+        out[i].x = c[i].x();
+        out[i].y = c[i].y();
+    }
+}
+
+inline void toQPolygon(const std::vector<cv::Point> & c, QPolygon & out)
+{
+    out.clear();
+    out.resize(c.size());
+    for(int i=0; i< c.size(); i++)
+    {
+        out[i].setX(c[i].x);
+        out[i].setY(c[i].y);
+    }
+}
+
+inline void toStdContours(const QVector<QPolygon> & cc, std::vector<std::vector<cv::Point> > & out)
+{
+    out.clear();
+    out.resize(cc.size());
+    for (int i=0; i<cc.size(); i++)
+    {
+        toStdContour(cc[i], out[i]);
+    }
+}
+
+inline void toQPolygons(const std::vector<std::vector<cv::Point> > & cc, QVector<QPolygon> & out)
+{
+    out.clear();
+    out.resize(cc.size());
+    for (int i=0; i<cc.size(); i++)
+    {
+        toQPolygon(cc[i], out[i]);
+    }
+}
+
+/*!
+  Method to join overlapping contour
+  */
+int GIV_DLL_EXPORT joinOvrlContours(QVector<QPolygon > &contours);
+
 
 //******************************************************************************
 // Geo Computation methods

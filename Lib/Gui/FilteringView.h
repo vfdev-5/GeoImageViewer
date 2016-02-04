@@ -29,13 +29,16 @@ class FilteringView : public QObject
 {
     Q_OBJECT
     PTR_PROPERTY_GETACCESSOR(Filters::AbstractFilter, filter, getFilter)
-    PTR_PROPERTY_ACCESSORS(Core::GeoImageLayer, srcLayer, getSrcLayer, setSrcLayer)
+    PTR_PROPERTY_GETACCESSOR(Core::GeoImageLayer, srcLayer, getSrcLayer)
     PTR_PROPERTY_ACCESSORS(Core::GeoImageLayer, dstLayer, getDstLayer, setDstLayer)
 
 public:
     explicit FilteringView(QProgressDialog * progress, QObject * parent = 0);
+    virtual ~FilteringView();
     void setup(Filters::AbstractFilter * f);
     void reset();
+    void setSrcLayer(Core::GeoImageLayer * layer);
+
 
 protected slots:
     void onApplyFilter();

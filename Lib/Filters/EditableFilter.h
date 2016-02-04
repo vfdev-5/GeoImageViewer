@@ -23,6 +23,7 @@ class GIV_DLL_EXPORT EditableFilter : public AbstractFilter
 
 public:
     EditableFilter(QObject *parent = 0);
+    virtual ~EditableFilter();
 
     QString getPATH() const;
     void setPATH(const QString & path);
@@ -73,17 +74,23 @@ private:
     bool (EditableFilter::*_postExecuteFunc)();
 
     // Library functions:
-    typedef bool (*LibFilterFunc)(uchar * idata, int iw, int ih, int itype,
+    typedef bool (*LibFilterFuncP1)(uchar * idata, int iw, int ih, int itype,
                                   float nodatavalue,
-                                   uchar ** odata, int * ow, int *oh, int *otype);
-    LibFilterFunc _libFilterFunc;
+                                  int * ow, int *oh, int *otype);
+    LibFilterFuncP1 _libFilterFuncP1;
+    typedef bool (*LibFilterFuncP2)(uchar * odata);
+    LibFilterFuncP2 _libFilterFuncP2;
+
 
     typedef int (*LibVerboseStackCount)();
     LibVerboseStackCount _libVerboseStackCount;
 
-    typedef bool (*LibVerboseStackNext)(uchar ** odata, int * ow, int *oh, int *otype,
-                                        char ** cstringTxt);
-    LibVerboseStackNext _libVerboseStackNext;
+    typedef bool (*LibVerboseStackNextP1)(int * ow, int *oh, int *otype, int * msgsize);
+    LibVerboseStackNextP1 _libVerboseStackNextP1;
+
+    typedef bool (*LibVerboseStackNextP2)(uchar * odata, char * msg);
+    LibVerboseStackNextP2 _libVerboseStackNextP2;
+
 
 };
 

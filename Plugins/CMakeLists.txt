@@ -14,4 +14,5 @@ add_subdirectory("FloodThresholdFilterTool")
 add_subdirectory("DarkPixelFilterTool")
 add_subdirectory("DarkPixelFilterTool2")
 add_subdirectory("DarkPixelFilter")
+add_subdirectory("DarkPixelFilter2")
 

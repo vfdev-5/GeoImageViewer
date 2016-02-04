@@ -331,7 +331,15 @@ bool isEqual(const cv::Mat &src, const cv::Mat &dst, double tol)
 }
 
 //******************************************************************************
+/*!
+    Method to compute the mask of the data ignoring pixels with noDataValue.
+    \param data input matrix can be of any depth and number of channels
+    \param unmask is optional output parameter to obtain no-data mask (complementary of returned mask)
 
+    \return output mask will have the same number of channels as \param data
+    mask pixel value equals 1 if there is a data different of noDataValue
+    in the corresponding channel in \param data.
+ */
 cv::Mat computeMask(const cv::Mat &data, float noDataValue, cv::Mat * unmask)
 {
     cv::Mat mask;
@@ -899,6 +907,39 @@ bool writeToFile(const QString &outputFilename0, const cv::Mat &image,
 
     return true;
 
+}
+
+//******************************************************************************
+
+int joinOvrlContours(QVector<QPolygon> &contours)
+{
+    int count = contours.size();
+    QVector< QPolygon >::iterator it1 = contours.begin();
+    QVector< QPolygon >::iterator it2;
+    for (;it1 != contours.end(); ++it1)
+    {
+        QPolygon & p1 = *it1;
+        it2 = ++it1;
+        for (;it2 != contours.end();)
+        {
+            QPolygon & p2 = *it2;
+
+            QPolygon ints = p1.intersected(p2);
+            if (ints.isEmpty())
+            {
+                ++it2;
+                continue;
+            }
+            p1 = p1.united(p2);
+            it2 = contours.erase(it2);
+
+            // !!! Iterator 1 will point to smth bad
+            // !!!!
+            it1 = contours.begin();
+            break;
+        }
+    }
+    return count - contours.size();
 }
 
 //******************************************************************************

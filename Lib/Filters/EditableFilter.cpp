@@ -42,9 +42,11 @@ EditableFilter::EditableFilter(QObject *parent) :
     _sourceFilePath("Resources/EditableFunction/EditableFunction.cpp"),
     _cmakePath("cmake"),
     _postExecuteFunc(0),
-    _libFilterFunc(0),
+    _libFilterFuncP1(0),
+    _libFilterFuncP2(0),
     _libVerboseStackCount(0),
-    _libVerboseStackNext(0),
+    _libVerboseStackNextP1(0),
+    _libVerboseStackNextP2(0),
     _libraryLoader(new QLibrary(this))
 {
     _name = tr("Editable filter");
@@ -75,6 +77,13 @@ EditableFilter::EditableFilter(QObject *parent) :
 
 //******************************************************************************
 
+EditableFilter::~EditableFilter()
+{
+    unloadLibrary();
+}
+
+//******************************************************************************
+
 QString EditableFilter::getCMakePath() const
 {
     QString out(_cmakePath);
@@ -93,40 +102,74 @@ void EditableFilter::setCMakePath(const QString &path)
 
 cv::Mat EditableFilter::filter(const cv::Mat &src) const
 {
-    if (!_libFilterFunc ||
+    if (!_libFilterFuncP1 ||
+            !_libFilterFuncP2 ||
             !_libVerboseStackCount ||
-            !_libVerboseStackNext)
+            !_libVerboseStackNextP1 ||
+            !_libVerboseStackNextP2)
     {
         return cv::Mat();
     }
 
-
-    int ow(0), oh(0), otype(0);
-    uchar * odata = 0;
-
-    if (!_libFilterFunc(
-                src.data, src.cols, src.rows, src.type(),
-                _noDataValue,
-                &odata, &ow, &oh, &otype))
+    cv::Mat out;
+    // Big try :
+    try
     {
-        SD_TRACE("EditableFilter : filter function is failed");
-    }
-    cv::Mat out(oh, ow, otype, odata);
 
-    // Handle verbose images
-    int count = _libVerboseStackCount();
-    for (int i=0; i<count; i++)
-    {
-        int w(0), h(0), type(0);
-        uchar * data = 0;
-        char * txt = 0;
-        if (!_libVerboseStackNext(&data, &w, &h, &type, &txt))
+        int ow(0), oh(0), otype(0);
+        if (!_libFilterFuncP1(
+                    src.data, src.cols, src.rows, src.type(),
+                    _noDataValue,
+                    &ow, &oh, &otype))
         {
-            continue;
+            SD_TRACE("EditableFilter : filter function p1 is failed");
+            return cv::Mat();
         }
-        SD_TRACE1("Emit verboseImage(%1, ...)", QString(txt));
-        cv::Mat * vOut = new cv::Mat(oh, ow, otype, odata);
-        emit verboseImage(QString(txt), vOut);
+
+        if (ow != 0 && oh != 0 && otype >= 0)
+        {
+            out = cv::Mat(oh, ow, otype); out.setTo(0.0);
+            if (!_libFilterFuncP2(out.data))
+            {
+                SD_TRACE("EditableFilter : filter function p2 is failed");
+                return cv::Mat();
+            }
+        }
+        else
+        {
+            SD_TRACE("EditableFilter : Resulting matrix is empty");
+            _errorMessage = tr("Resulting matrix is empty");
+        }
+
+        // Handle verbose images
+        int count = _libVerboseStackCount();
+        for (int i=0; i<count; i++)
+        {
+            int w(0), h(0), type(0), msgsize(0);
+            if (!_libVerboseStackNextP1(&w, &h, &type, &msgsize))
+            {
+                continue;
+            }
+
+            if (w==0 || h==0)
+                continue;
+
+            cv::Mat * vOut = new cv::Mat(h, w, type); vOut->setTo(0.0);
+            char * txt = new char[msgsize];
+            if (!_libVerboseStackNextP2(vOut->data, txt))
+            {
+                delete vOut;
+                delete txt;
+                continue;
+            }
+            std::string msg(txt, msgsize);
+            emit verboseImage(QString(msg.c_str()), vOut);
+        }
+    }
+    catch(...)
+    {
+        SD_TRACE("Editable filter has crashed");
+        _errorMessage = tr("Editable filter has crashed");
     }
 
     return out;
@@ -306,7 +349,7 @@ void EditableFilter::onProcessReadyReadStandardOutput()
 void EditableFilter::runTestCmake()
 {
     _tasks.append(QStringList() << _cmakePath << "--version");
-	SD_TRACE1("Append taks : %1 --version", _cmakePath);
+    SD_TRACE1("Append taks : %1 --version", _cmakePath);
     processTask();
 }
 
@@ -353,8 +396,8 @@ void EditableFilter::buildSourceFile()
          << "-DCMAKE_BUILD_TYPE=Release"
          << "-DCMAKE_INSTALL_PREFIX=../../";
 #if (defined WIN32 || defined _WIN32 || defined WINCE)
-        // Force generator choice
-        task << "-G" + _cmakeGenerator;
+    // Force generator choice
+    task << "-G" + _cmakeGenerator;
 #endif
     task << d.absolutePath();
     _tasks.append(task);
@@ -409,7 +452,7 @@ bool EditableFilter::removeBuildCache()
         SD_TRACE("Failed to remove 'Resources/Build' folder");
         return false;
     }
-	_process->setWorkingDirectory("");
+    _process->setWorkingDirectory("");
     return true;
 }
 
@@ -451,10 +494,16 @@ bool EditableFilter::loadLibrary()
         _libraryLoader->setFileName(d.absolutePath() + "/" + name);
         if (_libraryLoader->load())
         {
-            _libFilterFunc = reinterpret_cast<LibFilterFunc>(_libraryLoader->resolve("filterFunc"));
-            if (!_libFilterFunc)
+            _libFilterFuncP1 = reinterpret_cast<LibFilterFuncP1>(_libraryLoader->resolve("filterFuncP1"));
+            if (!_libFilterFuncP1)
             {
-                SD_TRACE1("Lib filter function is null : %1", _libraryLoader->errorString());
+                SD_TRACE1("Lib filter function p1 is null : %1", _libraryLoader->errorString());
+            }
+
+            _libFilterFuncP2 = reinterpret_cast<LibFilterFuncP2>(_libraryLoader->resolve("filterFuncP2"));
+            if (!_libFilterFuncP2)
+            {
+                SD_TRACE1("Lib filter function p2 is null : %1", _libraryLoader->errorString());
             }
 
             _libVerboseStackCount = reinterpret_cast<LibVerboseStackCount>(_libraryLoader->resolve("verboseStackCount"));
@@ -463,21 +512,27 @@ bool EditableFilter::loadLibrary()
                 SD_TRACE1("Lib verbose stack count function is null : %1", _libraryLoader->errorString());
             }
 
-            _libVerboseStackNext = reinterpret_cast<LibVerboseStackNext>(_libraryLoader->resolve("verboseStackNext"));
-            if (!_libVerboseStackNext)
+            _libVerboseStackNextP1 = reinterpret_cast<LibVerboseStackNextP1>(_libraryLoader->resolve("verboseStackNextP1"));
+            if (!_libVerboseStackNextP1)
             {
-                SD_TRACE1("Lib verbose stack next function is null : %1", _libraryLoader->errorString());
+                SD_TRACE1("Lib verbose stack next function p1 is null : %1", _libraryLoader->errorString());
+            }
+
+            _libVerboseStackNextP2 = reinterpret_cast<LibVerboseStackNextP2>(_libraryLoader->resolve("verboseStackNextP2"));
+            if (!_libVerboseStackNextP2)
+            {
+                SD_TRACE1("Lib verbose stack next function p2 is null : %1", _libraryLoader->errorString());
             }
 
         }
         else
         {
             SD_TRACE1("Library is not loaded : %1", _libraryLoader->errorString());
-            SD_ERR(tr("Editable filter library was not loaded. Probably, it the problem of build configuration, e.g x86 / x64 problem"));
+            SD_ERR(tr("Editable filter library was not loaded. Probably, it is a problem of build configuration, e.g x86 / x64 problem"));
         }
     }
 
-    return _libFilterFunc && _libVerboseStackCount && _libVerboseStackNext;
+    return _libFilterFuncP1 && _libFilterFuncP2 && _libVerboseStackCount && _libVerboseStackNextP1 && _libVerboseStackNextP2;
 }
 
 //******************************************************************************
@@ -511,7 +566,7 @@ void EditableFilter::displayEnv() const
 void EditableFilter::processTask()
 {
     QStringList task = _tasks.takeFirst();
-	SD_TRACE2("Process task: %1 | taskCount=%2", StringListToString(task), _tasks.size());
+    SD_TRACE2("Process task: %1 | taskCount=%2", StringListToString(task), _tasks.size());
     _process->start(task.takeFirst(), task);
 }
 

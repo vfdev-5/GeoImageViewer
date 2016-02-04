@@ -31,10 +31,17 @@ FilteringView::FilteringView(QProgressDialog *progress, QObject *parent) :
     _filter(0),
     _progressDialog(progress)
 {
-//    connect(Filters::FiltersManager::get(),
-//            &Filters::FiltersManager::filteringFinished,
-//            this,
-//            &FilteringView::onFilteringFinished);
+    //    connect(Filters::FiltersManager::get(),
+    //            &Filters::FiltersManager::filteringFinished,
+    //            this,
+    //            &FilteringView::onFilteringFinished);
+}
+
+//******************************************************************************
+
+FilteringView::~FilteringView()
+{
+    reset();
 }
 
 //******************************************************************************
@@ -65,6 +72,7 @@ void FilteringView::setup(Filters::AbstractFilter * f)
     {
         _filterDialog = new EditableFilterDialog(ef);
     }
+    _filterDialog->setLayerName(_srcLayer->getImageName());
     _filterDialog->installEventFilter(this);
 
     connect(_filterDialog, &DefaultFilterDialog::applyFilter, this, &FilteringView::onApplyFilter);
@@ -82,8 +90,20 @@ void FilteringView::reset()
     _srcLayer = 0;
     _dstLayer = 0;
     _filter = 0;
-    _filterDialog->deleteLater();
-    _filterDialog = 0;
+    if (_filterDialog)
+    {
+        _filterDialog->deleteLater();
+        _filterDialog = 0;
+    }
+}
+
+//******************************************************************************
+
+void FilteringView::setSrcLayer(Core::GeoImageLayer *layer)
+{
+    _srcLayer = layer;
+    if (_filterDialog)
+        _filterDialog->setLayerName(_srcLayer->getImageName());
 }
 
 //******************************************************************************
@@ -93,8 +113,8 @@ void FilteringView::onApplyFilter()
     SD_TRACE("Apply filter");
 
 
-//    Filters::EditableFilter * ef = qobject_cast<Filters::EditableFilter*>(_appliedFilter);
-//    SD_TRACE1("Compute result ef(123)=%1", ef->computeResult(123));
+    //    Filters::EditableFilter * ef = qobject_cast<Filters::EditableFilter*>(_appliedFilter);
+    //    SD_TRACE1("Compute result ef(123)=%1", ef->computeResult(123));
 
     const Core::GeoImageItem * item = qgraphicsitem_cast<const Core::GeoImageItem*>(_srcLayer->getConstItem());
     if (!item)

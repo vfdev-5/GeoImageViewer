@@ -90,6 +90,9 @@ void MainWindow::closeEvent(QCloseEvent * event)
 {
     QSettings settings("GeoImageViewer_dot_com", "GIV");
     settings.setValue("MainWindow/geometry", saveGeometry());
+
+//    _viewer.close();
+
     QMainWindow::closeEvent(event);
 }
 

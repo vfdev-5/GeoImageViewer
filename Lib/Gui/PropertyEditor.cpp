@@ -82,9 +82,10 @@ QWidget * createVectorDWidget(const QVector<double> & v)
     the object and Ui is automatically updated.
 
     Annotations as Q_CLASSINFO("size","label:Size;minValue:1;maxValue:500")
+    or Q_CLASSINFO("size","label:Size;minValue:1;maxValue:500;step:2")
     allows to replace and configure property editor widget. In the example property with the name
     'size' will be labelled as 'Size' and minValue/maxValue properties of the editor spinbox will
-    be set to 1 and 500
+    be set to 1 and 500 with step = 2 (or 1 by default)
     Other examples:
     Q_CLASSINFO("type","label:Type of filtering;possibleValues:Small,Normal,Large")
 
@@ -279,7 +280,15 @@ QWidget * PropertyEditor::editableWidget(const QVariant &value, const QHash<QStr
             int maxValue = options["maxValue"].toInt();
             editor->setMinimum(minValue);
             editor->setMaximum(maxValue);
-            editor->setSingleStep(1);
+            if (options.contains("step"))
+            {
+                int step = options["step"].toInt();
+                editor->setSingleStep(step);
+            }
+            else
+            {
+                editor->setSingleStep(1);
+            }
         }
         editor->setValue(value.toInt());
         connect(editor, SIGNAL(editingFinished()), this, SLOT(onIntPropertyChanged()));
@@ -294,7 +303,15 @@ QWidget * PropertyEditor::editableWidget(const QVariant &value, const QHash<QStr
             double maxValue = options["maxValue"].toDouble();
             editor->setMinimum(minValue);
             editor->setMaximum(maxValue);
-            editor->setSingleStep(qAbs(maxValue-minValue)*0.01);
+            if (options.contains("step"))
+            {
+                double step = options["step"].toDouble();
+                editor->setSingleStep(step);
+            }
+            else
+            {
+                editor->setSingleStep(qAbs(maxValue-minValue)*0.01);
+            }
         }
         editor->setValue(value.toDouble());
         connect(editor, SIGNAL(editingFinished()), this, SLOT(onDoublePropertyChanged()));

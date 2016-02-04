@@ -119,9 +119,8 @@ void EditableFilterDialog::setUiEnabled(bool v)
     ui->_apply->setEnabled(v);
     ui->_code->setEnabled(v);
     ui->_configure->setEnabled(v);
+    ui->_refresh->setEnabled(v);
 }
-
-
 
 //******************************************************************************
 

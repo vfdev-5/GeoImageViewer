@@ -22,6 +22,10 @@ private slots:
     void test_Mat2QImage();
     void test_displayMat();
 
+    void test_computeMask();
+    void test_joinContours();
+
+
     void cleanupTestCase();
 
 private:

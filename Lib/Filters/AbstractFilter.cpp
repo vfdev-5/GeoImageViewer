@@ -40,7 +40,6 @@ cv::Mat AbstractFilter::apply(const cv::Mat &src) const
         cv::Mat mask, unmask;
         mask = Core::computeMask(src, _noDataValue, &unmask);
 
-
         cv::Mat srcToProcess = src.mul(mask);
 
         // Apply filtering:
@@ -61,19 +60,24 @@ cv::Mat AbstractFilter::apply(const cv::Mat &src) const
 //            return res;
 //        }
 
-        // Write noDataValue:
-        unmask = unmask.mul(_noDataValue);
-        if (res.type() == unmask.type())
+        // Check output size with mask size
+        if (res.cols == unmask.cols &&
+                res.rows == unmask.rows &&
+                res.channels() == unmask.channels())
         {
-            res = unmask + res;
+            // Write noDataValue:
+            unmask = unmask.mul(_noDataValue);
+            if (res.type() == unmask.type())
+            {
+                res = unmask + res;
+            }
+            else
+            {
+                cv::Mat m;
+                unmask.convertTo(m, res.depth());
+                res = m + res;
+            }
         }
-        else
-        {
-            cv::Mat m;
-            unmask.convertTo(m, res.depth());
-            res = m + res;
-        }
-
         return res;
     }
     catch (const cv::Exception & e)
@@ -90,6 +94,7 @@ cv::Mat AbstractFilter::apply(const cv::Mat &src) const
 void AbstractFilter::verboseDisplayImage(const QString &winname, const cv::Mat &img) const
 {
     cv::Mat * out = new cv::Mat(img.clone());
+//    SD_TRACE1("verboseDisplayImage : *out->refcount=%1", *out->refcount); // *out->refcount == 1
     emit verboseImage(winname, out);
 }
 

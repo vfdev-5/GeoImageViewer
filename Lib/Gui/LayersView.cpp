@@ -118,6 +118,7 @@ void LayersView::addLayer(Core::BaseLayer *layer)
     QString layerName = tr("Layer %1 (%2)")
             .arg(index + 1)
             .arg(layer->getType());
+
     QListWidgetItem * item = new QListWidgetItem(layerName);
     item->setFlags(Qt::ItemIsSelectable |
                    Qt::ItemIsEditable |

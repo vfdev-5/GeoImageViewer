@@ -22,6 +22,14 @@ set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX ".d")
 ## installation :
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION . LIBRARY DESTINATION .)
 
+## install OPENCV Libraries for win32
+if(WIN32)
+	SET(version "${OpenCV_VERSION_MAJOR}${OpenCV_VERSION_MINOR}${OpenCV_VERSION_PATCH}")
+    get_filename_component(OpenCV_BIN_DIR "${OpenCV_LIB_PATH}/../bin" ABSOLUTE)
+    INSTALL(FILES ${OpenCV_BIN_DIR}/opencv_core${version}.dll ${OpenCV_BIN_DIR}/opencv_imgproc${version}.dll DESTINATION .)
+endif(WIN32)
+
+
 
 
 

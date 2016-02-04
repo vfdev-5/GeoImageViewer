@@ -4,8 +4,6 @@
 
 // Project
 #include "DarkPixelFilterPlugin.h"
-#include "Core/LayerUtils.h"
-
 
 namespace Plugins
 {

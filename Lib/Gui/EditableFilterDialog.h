@@ -32,6 +32,9 @@ public:
     explicit EditableFilterDialog(Filters::EditableFilter *f, QWidget *parent = 0);
     ~EditableFilterDialog();
 
+    virtual void setLayerName(const QString & layerName)
+    { ui->_layer->setText(layerName); BaseFilterDialog::setLayerName(layerName); }
+
 public slots:
     void on__configure_clicked();
     void on__apply_clicked();
