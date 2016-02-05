@@ -24,7 +24,7 @@ LayersView::LayersView(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    ui->_editor->setNameFilter(QStringList()
+    ui->_editor->setPropertyUnfilter(QStringList()
                                << "objectName"
                                << "filePath"
                                << "fileToOpen"

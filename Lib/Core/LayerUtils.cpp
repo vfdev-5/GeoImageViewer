@@ -916,10 +916,11 @@ int joinOvrlContours(QVector<QPolygon> &contours)
     int count = contours.size();
     QVector< QPolygon >::iterator it1 = contours.begin();
     QVector< QPolygon >::iterator it2;
-    for (;it1 != contours.end(); ++it1)
+    bool erase = false;
+    for (;it1 != contours.end();)
     {
         QPolygon & p1 = *it1;
-        it2 = ++it1;
+        it2 = it1+1;
         for (;it2 != contours.end();)
         {
             QPolygon & p2 = *it2;
@@ -931,12 +932,18 @@ int joinOvrlContours(QVector<QPolygon> &contours)
                 continue;
             }
             p1 = p1.united(p2);
-            it2 = contours.erase(it2);
-
-            // !!! Iterator 1 will point to smth bad
-            // !!!!
-            it1 = contours.begin();
+            contours.erase(it2);
+            erase = true;
             break;
+        }
+
+        if (erase)
+        {
+            erase = false;
+        }
+        else
+        {
+            ++it1;
         }
     }
     return count - contours.size();

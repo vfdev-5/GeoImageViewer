@@ -87,6 +87,14 @@ cv::Mat DarkPixelFilter2Plugin::filter(const cv::Mat &data) const
         }
     }
 
+    // -) Compute mask from specified value:
+    cv::Mat datamask;
+    if (_maskByValue > -12345)
+    {
+        datamask = out != _maskByValue;
+    }
+
+
     // -) Image -> 1/Image
     cv::divide(1.0,out,out,CV_32F);
 
@@ -102,14 +110,19 @@ cv::Mat DarkPixelFilter2Plugin::filter(const cv::Mat &data) const
     // -) Resize image
     int initW=out.cols, initH=out.rows;
     cv::resize(out, out, cv::Size(0, 0), _resizeFactor, _resizeFactor, cv::INTER_NEAREST);
+    if (!datamask.empty())
+    {
+        cv::resize(datamask, datamask, cv::Size(0, 0), _resizeFactor, _resizeFactor, cv::INTER_NEAREST);
+    }
+
     emit progressValue(25);
 
     // -) Convert to 8U
     {
         double minVal, maxVal;
-        cv::minMaxLoc(out, &minVal, &maxVal);
+        cv::minMaxLoc(out, &minVal, &maxVal, 0, 0,datamask);
         cv::Scalar mean, std;
-        cv::meanStdDev(out, mean, std);
+        cv::meanStdDev(out, mean, std, datamask);
         double nmin = mean.val[0] - 3.0*std.val[0];
         minVal = (nmin < minVal) ? minVal : nmin;
         double nmax = mean.val[0] + 3.0*std.val[0];
@@ -125,7 +138,7 @@ cv::Mat DarkPixelFilter2Plugin::filter(const cv::Mat &data) const
 
     // -) Only bright objects
     {
-        cv::Scalar mean = cv::mean(out);
+        cv::Scalar mean = cv::mean(out, datamask);
         cv::threshold(out, out, mean[0], 255, cv::THRESH_TOZERO);
         cv::Mat mask, m = out == 0;
         m.convertTo(mask, out.type(), mean[0]/255.0);
@@ -139,7 +152,7 @@ cv::Mat DarkPixelFilter2Plugin::filter(const cv::Mat &data) const
     // Y = (Ymin - Ymax) * (X - Xmin)/(Xmax - Xmin) + Ymax
     // transform sensivity [0.0 -> 1.0] into coeff [1.0 -> 0.3]
     double v = 1.0 - (0.7)*_sensivity;
-    cv::Scalar mean = cv::mean(out);
+    cv::Scalar mean = cv::mean(out, datamask);
     double c = -v*mean[0];
     cv::adaptiveThreshold(out, out, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, _atWinSize, c);
 

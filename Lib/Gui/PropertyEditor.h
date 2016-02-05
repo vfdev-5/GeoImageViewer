@@ -34,8 +34,12 @@ public:
 
     void setup(QObject * );
 
-    void setNameFilter(const QStringList & filter)
-    { _filter = filter; }
+    void setPropertyFilter(const QStringList & desiredProperties)
+    { _filterPos = desiredProperties; _filterNeg.clear(); }
+
+    void setPropertyUnfilter(const QStringList & nondesiredProperties)
+    { _filterNeg = nondesiredProperties; _filterPos.clear(); }
+
 
     QObject * getObject()
     { return _object; }
@@ -48,7 +52,8 @@ protected:
 
     QHash<QString, QHash<QString, QString> > getPropertyInfos(const QMetaObject *metaObject);
 
-    QStringList _filter;
+    QStringList _filterPos;
+    QStringList _filterNeg;
 
 protected slots:
     void onStringPropertyChanged();

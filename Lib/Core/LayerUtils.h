@@ -140,6 +140,7 @@ inline void toQPolygons(const std::vector<std::vector<cv::Point> > & cc, QVector
 
 /*!
   Method to join overlapping contour
+  \returns number of joined contours
   */
 int GIV_DLL_EXPORT joinOvrlContours(QVector<QPolygon > &contours);
 

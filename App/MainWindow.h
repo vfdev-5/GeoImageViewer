@@ -34,6 +34,7 @@ public:
 protected slots:
     void onOpenImageActionTriggered();
     void onExitActionTriggered();
+    void onSettingsActionTriggered();
 
 protected:
     void closeEvent(QCloseEvent * event);
@@ -51,8 +52,6 @@ private:
 #endif
     Gui::ToolsView _tools;
     Gui::LayersView _layers;
-
-
 
 };
 

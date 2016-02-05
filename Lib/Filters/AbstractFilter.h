@@ -27,6 +27,9 @@ class GIV_DLL_EXPORT AbstractFilter : public QObject
 
     Q_PROPERTY_WITH_ACCESSORS(bool, verbose, isVerbose, setVerbose)
 
+    Q_PROPERTY_WITH_ACCESSORS(float, maskByValue, getMaskByValue, setMaskByValue)
+    Q_CLASSINFO("maskByValue", "label:Mask from data value (default, -12345 and no mask);minValue:-12345;maxValue:100000")
+
     // This is needed to access '_errorMessage' attribute
     friend class FilterTask;
 

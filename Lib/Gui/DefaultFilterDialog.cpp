@@ -28,7 +28,7 @@ DefaultFilterDialog::DefaultFilterDialog(const QString &title, QWidget *parent) 
     setLayout(new QVBoxLayout());
     layout()->addWidget(_editor);
 
-    _editor->setNameFilter(QStringList() << "objectName");
+    _editor->setPropertyUnfilter(QStringList() << "objectName");
 
     QPushButton * apply = new QPushButton(tr("Apply"));
     layout()->addWidget(apply);

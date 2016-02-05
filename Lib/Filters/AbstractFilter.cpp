@@ -19,7 +19,8 @@ AbstractFilter::AbstractFilter(QObject *parent) :
     QObject(parent),
     _filterType(Type),
     _verbose(false),
-    _noDataValue(0.0)
+    _noDataValue(0.0),
+    _maskByValue(-12345)
 {
 
 }

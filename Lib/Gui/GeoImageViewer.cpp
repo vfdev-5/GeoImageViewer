@@ -51,6 +51,7 @@ namespace Gui
 
 GeoImageViewer::GeoImageViewer(QWidget *parent) :
     ShapeViewer(tr("Drag and drop an image"), parent),
+    _backgroundColor(Qt::darkGray),
     _rendererView(0),
     _imageOpener(new Core::ImageOpener(this)),
     _imageWriter(new Core::ImageWriter(this)),
@@ -151,7 +152,7 @@ void GeoImageViewer::prepareSceneAndView(int w, int h)
                 QRectF(0,0,w,h)
                 .adjusted(-0.25*w, -0.25*h, 0.25*w, 0.25*h)
                 );
-    _ui->_view->setBackgroundBrush(QBrush(Qt::black));
+    _ui->_view->setBackgroundBrush(QBrush(_backgroundColor));
     showPointInfo(true);
 
 }
@@ -558,6 +559,14 @@ void GeoImageViewer::onDrawingFinalized(const QString & name, Core::DrawingsItem
 void GeoImageViewer::setRendererView(AbstractRendererView *rendererView)
 {
     _rendererView = rendererView;
+}
+
+//******************************************************************************
+
+void GeoImageViewer::setBackgroundColor(const QColor &c)
+{
+    _backgroundColor = c;
+    _ui->_view->setBackgroundBrush(QBrush(_backgroundColor));
 }
 
 //******************************************************************************

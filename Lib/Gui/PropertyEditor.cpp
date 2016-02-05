@@ -79,7 +79,11 @@ QWidget * createVectorDWidget(const QVector<double> & v)
 /*!
   \class PropertyEditor
   \brief Widget that allows to display/edit object properties. Call setup() method on
-    the object and Ui is automatically updated.
+    the object and Ui is automatically updated. To filter names use the methods
+    setPropertyFilter() and setPropertyUnfilter(). The method setPropertyFilter() specifies
+    list of properties desired to be shown. The method setPropertyUnfilter() specifies
+    list of properties non-desired to be shown. Two filters can not work together.
+    Once one is specified, second is cleared
 
     Annotations as Q_CLASSINFO("size","label:Size;minValue:1;maxValue:500")
     or Q_CLASSINFO("size","label:Size;minValue:1;maxValue:500;step:2")
@@ -89,13 +93,20 @@ QWidget * createVectorDWidget(const QVector<double> & v)
     Other examples:
     Q_CLASSINFO("type","label:Type of filtering;possibleValues:Small,Normal,Large")
 
+    Availables options :
+    * label:<a label name> = property label name shown by PropertyEditor
+    * minValue:1,
+    * maxValue:20,
+    * step:2 = min/max values and step for spinboxes for int/float/double type properties
+    * possibleValues:a,b,c = enum values for string properties
+    //* optional:<any char> = creates a checkbox before the property widget representation
+
 */
 
 //******************************************************************************
 
 PropertyEditor::PropertyEditor(QWidget *parent) :
     QWidget(parent),
-//    _frame(0),
     _object(0)
 {
     _scrollArea = new QScrollArea(this);
@@ -149,7 +160,9 @@ void PropertyEditor::setup(QObject * object)
     {
         QMetaProperty property = metaObject->property(i);
         QString name = property.name();
-        if (!_filter.contains(name))
+
+        if ( (!_filterPos.isEmpty() && _filterPos.contains(name)) ||
+             (!_filterNeg.isEmpty() && !_filterNeg.contains(name)))
         {
 
             QHash<QString, QString> options = propertyOptionsMap.value(name);
@@ -294,7 +307,7 @@ QWidget * PropertyEditor::editableWidget(const QVariant &value, const QHash<QStr
         connect(editor, SIGNAL(editingFinished()), this, SLOT(onIntPropertyChanged()));
         out = editor;
     }
-    else if (value.type() == QVariant::Double)
+    else if (value.type() == QVariant::Double || value.type() == QMetaType::Float)
     {
         QDoubleSpinBox * editor = new QDoubleSpinBox();
         if (options.contains("minValue") && options.contains("maxValue"))
@@ -317,6 +330,12 @@ QWidget * PropertyEditor::editableWidget(const QVariant &value, const QHash<QStr
         connect(editor, SIGNAL(editingFinished()), this, SLOT(onDoublePropertyChanged()));
         out = editor;
     }
+
+//    if (options.contains("optional"))
+//    {
+////        QWidget * box =
+//    }
+
     return out;
 }
 

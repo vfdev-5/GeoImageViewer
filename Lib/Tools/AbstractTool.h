@@ -32,9 +32,8 @@ class GIV_DLL_EXPORT AbstractTool : public QObject
     PROPERTY_GETACCESSOR(int, toolType, getType)
     Q_PROPERTY_WITH_GETACCESSOR(QString, name, getName)
     Q_PROPERTY_WITH_GETACCESSOR(QString, description, getDescription)
-    Q_PROPERTY_WITH_GETACCESSOR(QIcon, icon, getIcon)
-    Q_PROPERTY_WITH_GETACCESSOR(QCursor, cursor, getCursor)
-
+    PROPERTY_GETACCESSOR(QIcon, icon, getIcon)
+    PROPERTY_GETACCESSOR(QCursor, cursor, getCursor)
     PROPERTY_GETACCESSOR(QList<QAction*>, actions, getActions)
 
 public:

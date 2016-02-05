@@ -1,8 +1,12 @@
 #ifndef GEOIMAGEVIEWER_H
 #define GEOIMAGEVIEWER_H
 
+// Qt
+#include <QColor>
+
 // Project
 #include "Core/LibExport.h"
+#include "Core/Global.h"
 #include "Gui/ShapeViewer.h"
 
 class QProgressDialog;
@@ -35,6 +39,10 @@ class GIV_DLL_EXPORT GeoImageViewer : public ShapeViewer
 {
     Q_OBJECT
 
+    Q_PROPERTY(QColor backgroundColor READ getBackgroundColor WRITE setBackgroundColor)
+    PROPERTY_GETACCESSOR(QColor, backgroundColor, getBackgroundColor)
+
+
 public:
     explicit GeoImageViewer(QWidget *parent = 0);
     ~GeoImageViewer();
@@ -42,6 +50,7 @@ public:
     void loadImage(const QUrl & url);
     virtual void clear();
     void setRendererView(AbstractRendererView * rendererView );
+    void setBackgroundColor(const QColor & c);
 
 protected slots:
     virtual void onProgressCanceled();

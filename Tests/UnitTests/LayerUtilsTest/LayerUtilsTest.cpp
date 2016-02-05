@@ -393,18 +393,81 @@ void LayerUtilsTest::test_joinContours()
         std::vector<std::vector<cv::Point> > cc;
         cv::Mat v1(10, 10, CV_8U, cv::Scalar::all(0));
         Core::toStdContours(contours, cc);
-        cv::drawContours(v1, cc, -1, cv::Scalar::all(1.0), CV_FILLED);
-        Core::printMat(v1, "Cross", 10);
+        for (int i=0;i<cc.size();i++)
+            cv::drawContours(v1, cc, i, cv::Scalar::all(i+1), CV_FILLED);
+//        Core::printMat(v1, "Cross", 10);
 
         int count = Core::joinOvrlContours(contours);
-        QVERIFY(count == 1);
+        QVERIFY(count > 0);
+        QVERIFY(contours.size() == 1);
 
         cv::Mat v2(10, 10, CV_8U, cv::Scalar::all(0));
         Core::toStdContours(contours, cc);
-        cv::drawContours(v2, cc, -1, cv::Scalar::all(1.0), CV_FILLED);
-        Core::printMat(v2, "Cross", 10);
+        for (int i=0;i<cc.size();i++)
+            cv::drawContours(v2, cc, i, cv::Scalar::all(i+1), CV_FILLED);
+//        Core::printMat(v2, "Cross", 10);
 
+        // Compare matrices
+        v1 = v1 > 0;
+        v2 = v2 > 0;
+        QVERIFY(cv::countNonZero(v1-v2) == 0);
 
+    }
+
+    // Test circular + smth overlapping
+    {
+        // Init
+        QVector< QPolygon > contours(7);
+        QPolygon & c0 = contours[0];
+        QPolygon & c1 = contours[1];
+        QPolygon & c2 = contours[2];
+        QPolygon & c3 = contours[3];
+        QPolygon & c4 = contours[4];
+        QPolygon & c5 = contours[5];
+        QPolygon & c6 = contours[6];
+
+        c0 << QPoint(8, 8) << QPoint(8, 10) << QPoint(10, 10)
+           << QPoint(10, 8) << QPoint(8, 8);
+
+        c1 << QPoint(0, 0) << QPoint(0, 2) << QPoint(6, 2)
+           << QPoint(6, 0) << QPoint(0, 0);
+
+        c2 << QPoint(4, 0) << QPoint(4, 6) << QPoint(6, 6)
+           << QPoint(6, 0) << QPoint(4, 0);
+
+        c3 << QPoint(0, 4) << QPoint(0, 6) << QPoint(6, 6)
+           << QPoint(6, 4) << QPoint(0, 4);
+
+        c4 << QPoint(0, 0) << QPoint(0, 6) << QPoint(2, 6)
+           << QPoint(2, 0) << QPoint(0, 0);
+
+        c5 << QPoint(8, 2) << QPoint(8, 6) << QPoint(10, 6)
+           << QPoint(10, 2) << QPoint(8, 2);
+
+        c6 << QPoint(8, 4) << QPoint(10, 4) << QPoint(10, 0)
+           << QPoint(8, 0) << QPoint(8, 4);
+
+        std::vector<std::vector<cv::Point> > cc;
+        cv::Mat v1(12, 12, CV_8U, cv::Scalar::all(0));
+        Core::toStdContours(contours, cc);
+        for (int i=0;i<cc.size();i++)
+            cv::drawContours(v1, cc, i, cv::Scalar::all(i+1), CV_FILLED);
+//        Core::printMat(v1, "Circular", 12);
+
+        int count = Core::joinOvrlContours(contours);
+        QVERIFY(count > 0);
+        QVERIFY(contours.size() == 3);
+
+        cv::Mat v2(12, 12, CV_8U, cv::Scalar::all(0));
+        Core::toStdContours(contours, cc);
+        for (int i=0;i<cc.size();i++)
+            cv::drawContours(v2, cc, i, cv::Scalar::all(i+1), CV_FILLED);
+//        Core::printMat(v2, "Circular", 12);
+
+        // Compare matrices
+        v1 = v1 > 0;
+        v2 = v2 > 0;
+        QVERIFY(cv::countNonZero(v1-v2) == 0);
 
     }
 
