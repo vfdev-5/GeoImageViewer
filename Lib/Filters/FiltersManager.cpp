@@ -188,10 +188,7 @@ void FiltersManager::cancel()
 
 void FiltersManager::onVerboseImage(const QString &winname, cv::Mat * img)
 {
-
-    SD_TRACE3("Verbose image : %1 | %2 | refcount=%3", winname, (int) img->data, (img->refcount) ? *img->refcount : 0);
     Core::displayMat(*img, true, winname, false);
-
     // it is receiver responsibility to delete img data
     delete img;
 }
