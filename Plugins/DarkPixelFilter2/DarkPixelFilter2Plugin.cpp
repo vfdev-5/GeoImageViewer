@@ -1,3 +1,5 @@
+// Qt
+#include <qmath.h>
 
 // Opencv
 #include <opencv2/imgproc/imgproc.hpp>
@@ -109,10 +111,19 @@ cv::Mat DarkPixelFilter2Plugin::filter(const cv::Mat &data) const
 
     // -) Resize image
     int initW=out.cols, initH=out.rows;
-    cv::resize(out, out, cv::Size(0, 0), _resizeFactor, _resizeFactor, cv::INTER_NEAREST);
+    double rf = _resizeFactor;
+    int newW = initW*rf;
+    int newH = initH*rf;
+    if (newW < 256 || newH < 256)
+    {
+        rf = qMax(256.0 / initW, 256.0 / initH);
+        SD_TRACE1("New resize factor : %1", rf);
+    }
+
+    cv::resize(out, out, cv::Size(0, 0), rf, rf, cv::INTER_NEAREST);
     if (!datamask.empty())
     {
-        cv::resize(datamask, datamask, cv::Size(0, 0), _resizeFactor, _resizeFactor, cv::INTER_NEAREST);
+        cv::resize(datamask, datamask, cv::Size(0, 0), rf, rf, cv::INTER_NEAREST);
     }
 
     emit progressValue(25);
@@ -167,6 +178,14 @@ cv::Mat DarkPixelFilter2Plugin::filter(const cv::Mat &data) const
     // -) Resize to initial
     cv::resize(out, out, cv::Size(initW, initH), 0, 0, cv::INTER_LINEAR);
     emit progressValue(60);
+
+    // -) Make contours smoother
+    {
+        int s = 7;
+        cv::blur(out, out, cv::Size(s, s));
+        cv::Mat k1 = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(s, s));
+        cv::morphologyEx(out, out, cv::MORPH_ERODE, k1);
+    }
 
     // -) Find contours
     std::vector<std::vector<cv::Point> > contours;

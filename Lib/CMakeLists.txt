@@ -10,7 +10,9 @@ include_directories(${GDAL_INCLUDE_DIR})
 link_libraries(${GDAL_LIBRARY})
 
 ## include & link to Qt :
-SET(INSTALL_QT_DLLS OFF)
+if(WIN32)
+    SET(INSTALL_QT_DLLS OFF)
+endif(WIN32)
 include(Qt)
 
 ## search files:
