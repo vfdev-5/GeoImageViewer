@@ -27,7 +27,8 @@ void setupStopsEndColor(QGradientStops & stops, const QColor &color)
 void configureAChannel(QSpinBox * spinbox, int currentValue, int minValue, int maxValue)
 {
     spinbox->setMinimum(minValue);
-    spinbox->setMaximum(maxValue);    spinbox->setValue(currentValue);
+    spinbox->setMaximum(maxValue);
+    spinbox->setValue(currentValue);
 }
 
 //*************************************************************************
@@ -155,7 +156,9 @@ void HistogramRendererView::setup(const Core::ImageRendererConfiguration *conf, 
     {
         _ui->_isGrayMode->setChecked(true);
         setupGrayModeView();
-        _ui->_histogramView->drawSingleHistogram(_ui->_grayChannel->value()-1);
+        int index = _ui->_grayChannel->value()-1;
+        _ui->_histogramView->drawSingleHistogram(index);
+        updateUi(index);
     }
 
 
@@ -283,13 +286,20 @@ void HistogramRendererView::on__isGrayMode_clicked(bool checked)
 void HistogramRendererView::setGrayHistogram(int index)
 {
     _ui->_histogramView->drawSingleHistogram(index);
-    _ui->_discreteColors->setChecked(_conf.isDiscreteValues[index]);
-    _ui->_transferFunction->setCurrentText(_conf.transferFunctions[index]->getName());
+    updateUi(index);
     // setup rendering configuration
     _conf.toRGBMapping[0]=index;
     _conf.toRGBMapping[1]=index;
     _conf.toRGBMapping[2]=index;
     emit renderConfigurationChanged(&_conf);
+}
+
+//*************************************************************************
+
+void HistogramRendererView::updateUi(int index)
+{
+    _ui->_discreteColors->setChecked(_conf.isDiscreteValues[index]);
+    _ui->_transferFunction->setCurrentText(_conf.transferFunctions[index]->getName());
 }
 
 //*************************************************************************

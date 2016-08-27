@@ -31,6 +31,10 @@ public:
     QImage & getImage()
     { return _image; }
 
+    const QImage & getImage() const
+    { return _image; }
+
+
 protected:
     QImage _image;
 };

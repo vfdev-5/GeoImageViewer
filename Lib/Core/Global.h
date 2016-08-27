@@ -18,6 +18,10 @@
 #   define SD_ERR(msg) std::cerr << QString(msg).toStdString() << std::endl;
 #else
 #   define SD_TRACE(msg) std::cout << QString(msg).toStdString() << std::endl;
+#   define SD_TRACE1(msg, arg1) std::cout << QString(msg).arg(arg1).toStdString() << std::endl;
+#   define SD_TRACE2(msg, arg1, arg2) std::cout << QString(msg).arg(arg1).arg(arg2).toStdString() << std::endl;
+#   define SD_TRACE3(msg, arg1, arg2, arg3) std::cout << QString(msg).arg(arg1).arg(arg2).arg(arg3).toStdString() << std::endl;
+#   define SD_TRACE_PTR(msg, ptr) std::cout << QString(msg + QString(" : 0x%1").arg((quintptr)ptr, QT_POINTER_SIZE, 16, QChar('0'))).toStdString() << std::endl;
 #   define SD_WARN(msg) std::cout << QString(msg).toStdString() << std::endl; \
                         QMessageBox::warning(0, QObject::tr("Warning"), msg);
 #   define SD_ERR(msg) std::cerr << QString(msg).toStdString() << std::endl; \
@@ -36,7 +40,7 @@
 //#define LAYERLOADER_SHOW_CACHE_INFO
 //#define LAYERLOADER_DISPLAY_TILES
 //#define LAYERLOADER_DISPLAY_VIEWPORT
-#define GEOIMAGEITEM_CACHE_VERBOSE
+//#define GEOIMAGEITEM_CACHE_VERBOSE
 //#define GEOIMAGEITEM_SHOW_CACHE_INFO
 //#define GEOIMAGEITEM_DISPLAY_TILES
 //#define GEOIMAGEITEM_DISPLAY_VIEWPORT

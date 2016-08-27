@@ -26,7 +26,7 @@ ToolsView::ToolsView(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    ui->_editor->setNameFilter(QStringList()
+    ui->_editor->setPropertyUnfilter(QStringList()
                                << "objectName"
                                << "icon"
                                << "cursor"

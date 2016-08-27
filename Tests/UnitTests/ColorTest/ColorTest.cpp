@@ -1,3 +1,5 @@
+// STD
+#include <iostream>
 
 // Qt
 #include <QDir>
@@ -93,9 +95,9 @@ void ColorTest::test()
     }
 
     QImage im2(m2.data,
-              m2.cols,
-              m2.rows,
-              QImage::Format_ARGB32);
+               m2.cols,
+               m2.rows,
+               QImage::Format_ARGB32);
 
 
 
@@ -121,9 +123,9 @@ void ColorTest::test()
     // The order of the colors is the same on any architecture if read as bytes 0xRR,0xGG,0xBB,0xAA.
 
     QImage im3(m.data,
-              m.cols,
-              m.rows,
-              QImage::Format_RGBA8888);
+               m.cols,
+               m.rows,
+               QImage::Format_RGBA8888);
 
     // Pixel format is 0xRRGGBBAA (b-e) and 0xAABBGGRR (l-e)
     p = QColor::fromRgba(im3.pixel(0,0));
@@ -189,7 +191,7 @@ void ColorTest::test2()
     oChannels[0] = oChannels[1] = oChannels[2] = m;
     cv::Mat out;
     cv::merge(oChannels, out);
-//    Core::printMat(out, "out");
+    //    Core::printMat(out, "out");
 
     QVERIFY(out.channels() == 3);
     QVERIFY(out.rows == 10);
@@ -198,6 +200,157 @@ void ColorTest::test2()
 
 
 
+}
+
+//*************************************************************************
+
+void ColorTest::test3()
+{
+    std::vector<cv::Mat> stack;
+    {
+        // INIT DATA
+        cv::Mat m1(10, 10, CV_8U, cv::Scalar(0));
+        m1.at<uchar>(0,0) = 10;
+        m1.at<uchar>(0,1) = 20;
+        m1.at<uchar>(1,0) = 30;
+        m1.at<uchar>(1,1) = 40;
+
+        Core::printMat(m1, "M1", 10);
+
+        cv::Mat m2(10, 10, CV_8U, cv::Scalar(5));
+        m2.at<uchar>(0,0) = 80;
+        m2.at<uchar>(0,1) = 50;
+        m2.at<uchar>(1,0) = 60;
+        m2.at<uchar>(1,1) = 70;
+
+        Core::printMat(m2, "M2", 10);
+
+        // PROCESS DATA
+        cv::Mat o1;
+        cv::threshold(m1, o1, 15, 50, CV_THRESH_BINARY);
+        // add data to stack
+        {
+            std::cout << "o1.ref=" << *o1.refcount << std::endl;
+            cv::Mat copy = o1.clone();
+            std::cout << "copy.ref=" << *copy.refcount << std::endl;
+            stack.push_back(copy);
+            std::cout << "push_back -> copy.ref=" << *copy.refcount << std::endl;
+        }
+
+        Core::printMat(o1, "O1", 10);
+
+        o1 += m2;
+        cv::threshold(o1, o1, 100, 100, CV_THRESH_BINARY);
+        // add data to stack
+        {
+            std::cout << "o1.ref=" << *o1.refcount << std::endl;
+            cv::Mat copy = o1.clone();
+            std::cout << "copy.ref=" << *copy.refcount << std::endl;
+            stack.push_back(copy);
+            std::cout << "push_back -> copy.ref=" << *copy.refcount << std::endl;
+        }
+    }
+
+    // CHECK DATA:
+    {
+        int counter=0;
+        while (stack.size()>0)
+        {
+            cv::Mat & m = stack.front();
+            std::cout << "m.ref=" << *m.refcount << std::endl;
+            Core::printMat(m, "M", 10);
+            if (counter == 0)
+            {
+                QVERIFY(m.at<uchar>(0,0) == 0);
+                QVERIFY(m.at<uchar>(0,1) == 50);
+                QVERIFY(m.at<uchar>(1,0) == 50);
+                QVERIFY(m.at<uchar>(1,1) == 50);
+                QVERIFY(m.at<uchar>(2,2) == 0);
+            }
+            else if (counter == 1)
+            {
+                QVERIFY(m.at<uchar>(0,0) == 0);
+                QVERIFY(m.at<uchar>(0,1) == 0);
+                QVERIFY(m.at<uchar>(1,0) == 100);
+                QVERIFY(m.at<uchar>(1,1) == 100);
+                QVERIFY(m.at<uchar>(2,2) == 0);
+            }
+            stack.erase(stack.begin());
+            counter++;
+        }
+    }
+}
+
+//*************************************************************************
+
+void ColorTest::test4()
+{
+    // PRETEST
+    {
+        uchar * data = new uchar[100]();
+        for (int i=0;i<100;i++)
+        {
+            data[i] = i;
+        }
+
+        cv::Mat m(10, 10, CV_8U, data);
+        QVERIFY(m.data == data);
+
+        Core::printMat(m, "M", 10);
+
+        cv::Mat m2(10, 10, CV_8U); m2.setTo(0.0);
+        memcpy(m2.data, data, 100*m2.elemSize());
+        QVERIFY(m2.data != data);
+
+        Core::printMat(m2, "M2", 10);
+
+        delete data;
+
+        Core::printMat(m2, "M2", 10);
+    }
+
+
+    // TEST
+    {
+        // INIT DATA
+        cv::Mat m1(10, 10, CV_8U, cv::Scalar(0));
+        for (int i=0;i<100;i++)
+        {
+            m1.data[i] = i;
+        }
+
+
+        int w, h, type;
+        uchar * data = 0;
+        {
+            uchar ** od = &data;
+
+            cv::Mat m2;
+            cv::blur(m1, m2, cv::Size(3, 3));
+            cv::threshold(m2, m2, 50, 255, CV_THRESH_BINARY);
+
+            Core::printMat(m2, "M2(blur+threshold)", 10);
+
+            w = m2.cols;
+            h = m2.rows;
+            type = m2.type();
+
+            *od = new uchar[w*h*m2.elemSize()];
+            memcpy(*od, m2.data, w*h*m2.elemSize());
+        }
+
+        cv::Mat m3(10, 10, CV_8U); m3.setTo(0.0);
+        memcpy(m3.data, data, 100*m3.elemSize());
+
+        Core::printMat(m3, "M3", 10);
+
+        QVERIFY(m3.data != data);
+
+        delete data;
+
+        Core::printMat(m3, "M3", 10);
+
+    }
 }
 
 //*************************************************************************

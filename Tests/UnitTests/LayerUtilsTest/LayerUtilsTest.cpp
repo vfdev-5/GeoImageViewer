@@ -52,9 +52,9 @@ void LayerUtilsTest::initTestCase()
         for (int j=0; j<TEST_MATRIX.cols;j++)
         {
             TEST_MATRIX.at<ushort>(i,j) = (ushort) ( 100 + 1.5*i + 3.4*j +
-                                           (TEST_MATRIX.rows-1-i)*j*0.01 +
-                                           i*(TEST_MATRIX.rows-1-i)*(TEST_MATRIX.cols*0.5-1-j)*0.001 +
-                                           j*j*0.002);
+                                                     (TEST_MATRIX.rows-1-i)*j*0.01 +
+                                                     i*(TEST_MATRIX.rows-1-i)*(TEST_MATRIX.cols*0.5-1-j)*0.001 +
+                                                     j*j*0.002);
         }
     }
 
@@ -212,8 +212,8 @@ void LayerUtilsTest::test_FileReadWriteMethods()
     cv::Mat m = provider->getImageData();
     cv::Mat m2;
     TEST_MATRIX.convertTo(m2, m.depth());
-//    Core::displayMat(m, true, "m");
-//    Core::displayMat(m2, true, "m2");
+    //    Core::displayMat(m, true, "m");
+    //    Core::displayMat(m2, true, "m2");
     QVERIFY(checkMatrices(m,m2,NO_DATA_VALUE));
     // Check geo info :
     QVERIFY( Core::compareProjections(provider->fetchProjectionRef(), PROJECTION_STR) );
@@ -240,30 +240,30 @@ void LayerUtilsTest::test_Mat2QImage()
         }
     }
 
-//    Core::printMat(rgbaSource, "SRC");
+    //    Core::printMat(rgbaSource, "SRC");
 
     QImage im = Core::fromMat(rgbaSource).copy();
 
-//    std::cout << "Print QImage :"<< std::endl;
-//    for (int i=0;i<10;i++)
-//    {
-//        for (int j=0;j<10;j++)
-//        {
-//            QRgb rgba = im.pixel(j,i);
-//            std::cout << "(";
-//            std::cout << qRed(rgba) << " "
-//                      << qGreen(rgba) << " "
-//                      << qBlue(rgba) << " "
-//                      << qAlpha(rgba);
-//            std::cout << ")";
-//        }
-//        std::cout << std::endl;
-//    }
-//    std::cout << "------"<< std::endl;
+    //    std::cout << "Print QImage :"<< std::endl;
+    //    for (int i=0;i<10;i++)
+    //    {
+    //        for (int j=0;j<10;j++)
+    //        {
+    //            QRgb rgba = im.pixel(j,i);
+    //            std::cout << "(";
+    //            std::cout << qRed(rgba) << " "
+    //                      << qGreen(rgba) << " "
+    //                      << qBlue(rgba) << " "
+    //                      << qAlpha(rgba);
+    //            std::cout << ")";
+    //        }
+    //        std::cout << std::endl;
+    //    }
+    //    std::cout << "------"<< std::endl;
 
-//    QLabel * label = new QLabel();
-//    label->setPixmap(QPixmap::fromImage(im));
-//    label->show();
+    //    QLabel * label = new QLabel();
+    //    label->setPixmap(QPixmap::fromImage(im));
+    //    label->show();
 
     for (int i=0;i<rgbaSource.rows;i++)
     {
@@ -280,12 +280,12 @@ void LayerUtilsTest::test_Mat2QImage()
     }
 
     cv::Mat rgbaDst = Core::fromQImage(im);
-//    Core::displayMat(rgbaSource, true, "DST");
+    //    Core::displayMat(rgbaSource, true, "DST");
 
     QVERIFY(Core::isEqual(rgbaDst, rgbaSource));
 
-//    label->hide();
-//    delete label;
+    //    label->hide();
+    //    delete label;
 
 }
 
@@ -306,10 +306,170 @@ void LayerUtilsTest::test_displayMat()
 
     cv::Mat dst = Core::displayMat(src, false, "SRC", false);
     cv::cvtColor(dst, dst, cv::COLOR_RGB2BGR);
-//    Core::printMat(dst, "DST");
+    //    Core::printMat(dst, "DST");
     cv::destroyAllWindows();
 
     QVERIFY(Core::isEqual(dst, src));
+
+}
+
+//*************************************************************************
+
+void LayerUtilsTest::test_computeMask()
+{
+    float noDataValue = -1;
+    cv::Mat inputImage(10, 10, CV_32FC3);
+    inputImage.setTo(noDataValue);
+
+    for (int i=4; i<7; i++)
+    {
+        for (int j=3; j<8; j++)
+        {
+            inputImage.at<cv::Vec3f>(i, j) = cv::Vec3f(i*j + j, i, j);
+        }
+    }
+    inputImage.at<cv::Vec3f>(0, 0) = cv::Vec3f(-1, 0, 0);
+    inputImage.at<cv::Vec3f>(0, 1) = cv::Vec3f(-1, -1, 0);
+    inputImage.at<cv::Vec3f>(0, 2) = cv::Vec3f(0, -1, -1);
+    inputImage.at<cv::Vec3f>(0, 3) = cv::Vec3f(0, 0, -1);
+    inputImage.at<cv::Vec3f>(0, 4) = cv::Vec3f(-1, 0, -1);
+
+    cv::Mat unmask, mask = Core::computeMask(inputImage, noDataValue, &unmask);
+
+    // Check result
+    QVERIFY(mask.at<cv::Vec3f>(0,0)[0] == 0 && mask.at<cv::Vec3f>(0,0)[1] == 1 && mask.at<cv::Vec3f>(0,0)[2] == 1);
+    QVERIFY(mask.at<cv::Vec3f>(0,1)[0] == 0 && mask.at<cv::Vec3f>(0,1)[1] == 0 && mask.at<cv::Vec3f>(0,1)[2] == 1);
+    QVERIFY(mask.at<cv::Vec3f>(0,2)[0] == 1 && mask.at<cv::Vec3f>(0,2)[1] == 0 && mask.at<cv::Vec3f>(0,2)[2] == 0);
+    QVERIFY(mask.at<cv::Vec3f>(0,3)[0] == 1 && mask.at<cv::Vec3f>(0,3)[1] == 1 && mask.at<cv::Vec3f>(0,3)[2] == 0);
+    QVERIFY(mask.at<cv::Vec3f>(0,4)[0] == 0 && mask.at<cv::Vec3f>(0,4)[1] == 1 && mask.at<cv::Vec3f>(0,4)[2] == 0);
+    QVERIFY(unmask.at<cv::Vec3f>(0,0)[0] == 1 && unmask.at<cv::Vec3f>(0,0)[1] == 0 && unmask.at<cv::Vec3f>(0,0)[2] == 0);
+    QVERIFY(unmask.at<cv::Vec3f>(0,1)[0] == 1 && unmask.at<cv::Vec3f>(0,1)[1] == 1 && unmask.at<cv::Vec3f>(0,1)[2] == 0);
+    QVERIFY(unmask.at<cv::Vec3f>(0,2)[0] == 0 && unmask.at<cv::Vec3f>(0,2)[1] == 1 && unmask.at<cv::Vec3f>(0,2)[2] == 1);
+    QVERIFY(unmask.at<cv::Vec3f>(0,3)[0] == 0 && unmask.at<cv::Vec3f>(0,3)[1] == 0 && unmask.at<cv::Vec3f>(0,3)[2] == 1);
+    QVERIFY(unmask.at<cv::Vec3f>(0,4)[0] == 1 && unmask.at<cv::Vec3f>(0,4)[1] == 0 && unmask.at<cv::Vec3f>(0,4)[2] == 1);
+
+    for (int i=0; i<10; i++)
+    {
+        for (int j=0; j<10; j++)
+        {
+            if (i==0 && j >= 0 && j < 5)
+                continue;
+
+            if (i >=4 && i<7 && j>=3 && j<8)
+            {
+                QVERIFY(mask.at<cv::Vec3f>(i,j) == cv::Vec3f(1, 1, 1));
+                QVERIFY(unmask.at<cv::Vec3f>(i,j) == cv::Vec3f(0, 0, 0));
+            }
+            else
+            {
+                QVERIFY(mask.at<cv::Vec3f>(i,j) != cv::Vec3f(1, 1, 1));
+                QVERIFY(unmask.at<cv::Vec3f>(i,j) != cv::Vec3f(0, 0, 0));
+            }
+        }
+    }
+}
+
+//*************************************************************************
+
+void LayerUtilsTest::test_joinContours()
+{
+    // Test cross overlapping
+    {
+        // Init
+        QVector< QPolygon > contours(2);
+        QPolygon & c1 = contours[0];
+        QPolygon & c2 = contours[1];
+
+        c1 << QPoint(-3, 2) << QPoint(-1, 2) << QPoint(1, 2)
+           << QPoint(3, 2) << QPoint(3, -2) << QPoint(1, -2)
+           << QPoint(-1, -2) << QPoint(-3, -2) << QPoint(-3, 2);
+        c1.translate(5, 5);
+
+        c2 << QPoint(-2, -2) << QPoint(-2, -1) << QPoint(-2, 1)
+           << QPoint(-2, 2) << QPoint(2, 2) << QPoint(2, 1)
+           << QPoint(2, -1) << QPoint(2, -2) << QPoint(-2, -2);
+        c2.translate(5, 5);
+
+        std::vector<std::vector<cv::Point> > cc;
+        cv::Mat v1(10, 10, CV_8U, cv::Scalar::all(0));
+        Core::toStdContours(contours, cc);
+        for (int i=0;i<cc.size();i++)
+            cv::drawContours(v1, cc, i, cv::Scalar::all(i+1), CV_FILLED);
+//        Core::printMat(v1, "Cross", 10);
+
+        int count = Core::joinOvrlContours(contours);
+        QVERIFY(count > 0);
+        QVERIFY(contours.size() == 1);
+
+        cv::Mat v2(10, 10, CV_8U, cv::Scalar::all(0));
+        Core::toStdContours(contours, cc);
+        for (int i=0;i<cc.size();i++)
+            cv::drawContours(v2, cc, i, cv::Scalar::all(i+1), CV_FILLED);
+//        Core::printMat(v2, "Cross", 10);
+
+        // Compare matrices
+        v1 = v1 > 0;
+        v2 = v2 > 0;
+        QVERIFY(cv::countNonZero(v1-v2) == 0);
+
+    }
+
+    // Test circular + smth overlapping
+    {
+        // Init
+        QVector< QPolygon > contours(7);
+        QPolygon & c0 = contours[0];
+        QPolygon & c1 = contours[1];
+        QPolygon & c2 = contours[2];
+        QPolygon & c3 = contours[3];
+        QPolygon & c4 = contours[4];
+        QPolygon & c5 = contours[5];
+        QPolygon & c6 = contours[6];
+
+        c0 << QPoint(8, 8) << QPoint(8, 10) << QPoint(10, 10)
+           << QPoint(10, 8) << QPoint(8, 8);
+
+        c1 << QPoint(0, 0) << QPoint(0, 2) << QPoint(6, 2)
+           << QPoint(6, 0) << QPoint(0, 0);
+
+        c2 << QPoint(4, 0) << QPoint(4, 6) << QPoint(6, 6)
+           << QPoint(6, 0) << QPoint(4, 0);
+
+        c3 << QPoint(0, 4) << QPoint(0, 6) << QPoint(6, 6)
+           << QPoint(6, 4) << QPoint(0, 4);
+
+        c4 << QPoint(0, 0) << QPoint(0, 6) << QPoint(2, 6)
+           << QPoint(2, 0) << QPoint(0, 0);
+
+        c5 << QPoint(8, 2) << QPoint(8, 6) << QPoint(10, 6)
+           << QPoint(10, 2) << QPoint(8, 2);
+
+        c6 << QPoint(8, 4) << QPoint(10, 4) << QPoint(10, 0)
+           << QPoint(8, 0) << QPoint(8, 4);
+
+        std::vector<std::vector<cv::Point> > cc;
+        cv::Mat v1(12, 12, CV_8U, cv::Scalar::all(0));
+        Core::toStdContours(contours, cc);
+        for (int i=0;i<cc.size();i++)
+            cv::drawContours(v1, cc, i, cv::Scalar::all(i+1), CV_FILLED);
+//        Core::printMat(v1, "Circular", 12);
+
+        int count = Core::joinOvrlContours(contours);
+        QVERIFY(count > 0);
+        QVERIFY(contours.size() == 3);
+
+        cv::Mat v2(12, 12, CV_8U, cv::Scalar::all(0));
+        Core::toStdContours(contours, cc);
+        for (int i=0;i<cc.size();i++)
+            cv::drawContours(v2, cc, i, cv::Scalar::all(i+1), CV_FILLED);
+//        Core::printMat(v2, "Circular", 12);
+
+        // Compare matrices
+        v1 = v1 > 0;
+        v2 = v2 > 0;
+        QVERIFY(cv::countNonZero(v1-v2) == 0);
+
+    }
 
 }
 

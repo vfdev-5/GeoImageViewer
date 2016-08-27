@@ -65,8 +65,10 @@ cv::Mat GIV_DLL_EXPORT computeMask(const cv::Mat &data, float noDataValue, cv::M
 /*!
   \brief vectorizeAsPolygons method to vectorize input image (should be 8-bit single-channel) as polygons.
   Inner contours are not vectorized
+  \param externalOnly, set true for only external contours extraction
+  \param approx, set true for approximativ contours
   */
-QVector<QPolygonF> GIV_DLL_EXPORT vectorizeAsPolygons(const cv::Mat & inputImage);
+QVector<QPolygonF> GIV_DLL_EXPORT vectorizeAsPolygons(const cv::Mat & inputImage, bool externalOnly=true, bool approx=true);
 
 //******************************************************************************
 // Conversion methods - DO NOT COPY INTERNAL DATA
@@ -89,6 +91,58 @@ inline cv::Mat fromQImage(QImage & image)
 {
     return cv::Mat(image.height(), image.width(), CV_8UC4, image.bits());
 }
+
+//******************************************************************************
+// Contours Manipulations
+//******************************************************************************
+
+inline void toStdContour(const QVector<QPoint> & c, std::vector<cv::Point> & out)
+{
+    out.clear();
+    out.resize(c.size());
+    for(int i=0; i< c.size(); i++)
+    {
+        out[i].x = c[i].x();
+        out[i].y = c[i].y();
+    }
+}
+
+inline void toQPolygon(const std::vector<cv::Point> & c, QPolygon & out)
+{
+    out.clear();
+    out.resize(c.size());
+    for(int i=0; i< c.size(); i++)
+    {
+        out[i].setX(c[i].x);
+        out[i].setY(c[i].y);
+    }
+}
+
+inline void toStdContours(const QVector<QPolygon> & cc, std::vector<std::vector<cv::Point> > & out)
+{
+    out.clear();
+    out.resize(cc.size());
+    for (int i=0; i<cc.size(); i++)
+    {
+        toStdContour(cc[i], out[i]);
+    }
+}
+
+inline void toQPolygons(const std::vector<std::vector<cv::Point> > & cc, QVector<QPolygon> & out)
+{
+    out.clear();
+    out.resize(cc.size());
+    for (int i=0; i<cc.size(); i++)
+    {
+        toQPolygon(cc[i], out[i]);
+    }
+}
+
+/*!
+  Method to join overlapping contour
+  \returns number of joined contours
+  */
+int GIV_DLL_EXPORT joinOvrlContours(QVector<QPolygon > &contours);
 
 
 //******************************************************************************
@@ -164,7 +218,6 @@ bool GIV_DLL_EXPORT isGeoProjection(const QString & prStr);
  * \param
  * \return true if successful
  */
-//bool computeNormalizedHistogram(ImageLayer * layer, int histSize=1000, bool isRough=true, ProgressReporter *reporter=0);
 bool GIV_DLL_EXPORT computeNormalizedHistogram(const cv::Mat & data, const cv::Mat & noDataMask,
                                 QVector<double> & minValues, QVector<double> & maxValues,
                                 QVector< QVector<double> > & bandHistograms,

@@ -10,7 +10,9 @@ include_directories(${GDAL_INCLUDE_DIR})
 link_libraries(${GDAL_LIBRARY})
 
 ## include & link to Qt :
-SET(INSTALL_QT_DLLS OFF)
+if(WIN32)
+    SET(INSTALL_QT_DLLS OFF)
+endif(WIN32)
 include(Qt)
 
 ## search files:
@@ -59,5 +61,7 @@ foreach(module ${modules})
     INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/Lib/${module} DESTINATION include FILES_MATCHING PATTERN "*.h" )
 endforeach()
 
+## install editable function resources
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/Lib/Resources/EditableFunction DESTINATION bin/Resources)
 
 

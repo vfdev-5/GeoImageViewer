@@ -201,7 +201,7 @@
   <customwidget>
    <class>Gui::ColorManipulationView</class>
    <extends>QWidget</extends>
-   <header>Gui/colormanipulationview.h</header>
+   <header>Gui/ColorManipulationView.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

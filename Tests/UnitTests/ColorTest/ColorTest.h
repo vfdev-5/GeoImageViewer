@@ -18,6 +18,8 @@ class ColorTest : public QObject
 private slots:
     void test();
     void test2();
+    void test3();
+    void test4();
 private:
 
 };

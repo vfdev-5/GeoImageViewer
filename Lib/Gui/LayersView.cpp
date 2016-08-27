@@ -24,7 +24,7 @@ LayersView::LayersView(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    ui->_editor->setNameFilter(QStringList()
+    ui->_editor->setPropertyUnfilter(QStringList()
                                << "objectName"
                                << "filePath"
                                << "fileToOpen"
@@ -118,6 +118,7 @@ void LayersView::addLayer(Core::BaseLayer *layer)
     QString layerName = tr("Layer %1 (%2)")
             .arg(index + 1)
             .arg(layer->getType());
+
     QListWidgetItem * item = new QListWidgetItem(layerName);
     item->setFlags(Qt::ItemIsSelectable |
                    Qt::ItemIsEditable |

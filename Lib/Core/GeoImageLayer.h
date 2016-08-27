@@ -62,7 +62,7 @@ class GIV_DLL_EXPORT GeoImageLayer : public GeoShapeLayer
     Q_CLASSINFO("metadata","label:Image metadata")
 
 public:
-    explicit GeoImageLayer(QObject *parent = 0);
+    explicit GeoImageLayer(QGraphicsItem *item, QObject *parent = 0);
 
     virtual bool canSave()
     { return true; }

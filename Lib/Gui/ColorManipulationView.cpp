@@ -10,17 +10,17 @@
 #include "ColorManipulationView.h"
 
 
-namespace std {
+//namespace std {
 
-template<>
-struct less<QGradientStop> : public std::binary_function<QGradientStop, QGradientStop, bool>
-{
-    bool
-    operator()(const QGradientStop& __x, const QGradientStop& __y) const
-    { return __x.first < __y.first; }
-};
+//template<>
+//struct less<QGradientStop> : public std::binary_function<QGradientStop, QGradientStop, bool>
+//{
+//    bool
+//    operator()(const QGradientStop& __x, const QGradientStop& __y) const
+//    { return __x.first < __y.first; }
+//};
 
-}
+//}
 
 namespace Gui
 {
@@ -53,10 +53,10 @@ inline void copyPositions(const QGradientStops & src, QGradientStops & dst)
     }
 }
 
-void orderStops(QGradientStops * stops)
-{
-    qSort(stops->begin(), stops->end(), std::less<QGradientStop>());
-}
+//void orderStops(QGradientStops * stops)
+//{
+//    qSort(stops->begin(), stops->end(), std::less<QGradientStop>());
+//}
 
 void printStops(const QGradientStops & stops)
 {

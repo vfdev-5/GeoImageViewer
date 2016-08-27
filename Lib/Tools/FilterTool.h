@@ -30,6 +30,11 @@ class GIV_DLL_EXPORT FilterTool : public ImageCreationTool
     PROPERTY_ACCESSORS(double, opacity, getOpacity, setOpacity)
     Q_CLASSINFO("opacity","label:Transparency;minValue:0.0;maxValue:1.0")
 
+    Q_PROPERTY_WITH_ACCESSORS(QColor, color, getColor, setColor)
+    Q_CLASSINFO("color","label:Color")
+
+
+
 public:
 
     FilterTool(QGraphicsScene* scene, QGraphicsView * view, QObject * parent = 0);

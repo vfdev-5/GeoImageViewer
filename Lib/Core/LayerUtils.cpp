@@ -177,7 +177,7 @@ cv::Mat displayMat(const cv::Mat & inputImage0, bool showMinMax, const QString &
 {
     QString windowNameS;
     if (windowName.isEmpty())
-        windowNameS = "Input_Image";
+        windowNameS = "'Input_Image'";
     else
         windowNameS = windowName;
 
@@ -227,7 +227,7 @@ cv::Mat displayMat(const cv::Mat & inputImage0, bool showMinMax, const QString &
         int maxdim = inputImage.rows > inputImage.cols ? inputImage.rows : inputImage.cols;
         if (maxdim > displayLimit)
         {
-            SD_TRACE( "displayMat : " + windowNameS + ", Image size is rescaled" );
+            SD_TRACE( "displayMat : '" + windowNameS + "', Image size is rescaled" );
             double f = maxdim * 1.0 / displayLimit;
             cv::resize(inputImage, inputImage, cv::Size(0,0), 1.0/f, 1.0/f);
         }
@@ -277,8 +277,8 @@ cv::Mat displayMat(const cv::Mat & inputImage0, bool showMinMax, const QString &
 
        if (showMinMax)
        {
-           SD_TRACE( QString( "Image " + windowNameS + ", min/max : %1, %2" ).arg( min[index] ).arg( max[index] ) );
-           SD_TRACE( QString( "Image " + windowNameS + ", min/max using mean/std : %1, %2").arg( nmin[index] ).arg(  nmax[index] ) );
+           SD_TRACE( QString( "Image '" + windowNameS + "', min/max : %1, %2" ).arg( min[index] ).arg( max[index] ) );
+           SD_TRACE( QString( "Image '" + windowNameS + "', min/max using mean/std : %1, %2").arg( nmin[index] ).arg(  nmax[index] ) );
        }
        double a(1.0);
        double b(0.0);
@@ -331,7 +331,15 @@ bool isEqual(const cv::Mat &src, const cv::Mat &dst, double tol)
 }
 
 //******************************************************************************
+/*!
+    Method to compute the mask of the data ignoring pixels with noDataValue.
+    \param data input matrix can be of any depth and number of channels
+    \param unmask is optional output parameter to obtain no-data mask (complementary of returned mask)
 
+    \return output mask will have the same number of channels as \param data
+    mask pixel value equals 1 if there is a data different of noDataValue
+    in the corresponding channel in \param data.
+ */
 cv::Mat computeMask(const cv::Mat &data, float noDataValue, cv::Mat * unmask)
 {
     cv::Mat mask;
@@ -347,42 +355,61 @@ cv::Mat computeMask(const cv::Mat &data, float noDataValue, cv::Mat * unmask)
 
 //******************************************************************************
 
-QVector<QPolygonF> vectorizeAsPolygons(const cv::Mat & inputImage)
+QVector<QPolygonF> vectorizeAsPolygons(const cv::Mat & inputImage, bool externalOnly, bool approx)
 {
     QVector<QPolygonF> output;
 
     if (inputImage.type() != CV_8U)
         return output;
 
+
+    std::vector<std::vector<cv::Point> > contours;
+    int mode = externalOnly ? cv::RETR_EXTERNAL : cv::RETR_CCOMP;
+    int method = approx ? cv::CHAIN_APPROX_NONE : cv::CHAIN_APPROX_SIMPLE;
+    cv::findContours(inputImage, contours, mode, method);
+
+    std::vector<std::vector<cv::Point> >::iterator it = contours.begin();
+    for (;it != contours.end(); ++it)
+    {
+        const std::vector<cv::Point> & contour = *it;
+        QPolygonF c;
+        for (int i=0;i<contour.size();i++)
+        {
+            c << QPointF(contour[i].x, contour[i].y);
+        }
+        // close polygon:
+        c << QPointF(contour[0].x, contour[0].y);
+        output << c;
+    }
+
     // - contours represents array of array of contour points
     // - hierarchy represents array of (next, prev, 1st child, parent) contour indices
     // e.g. if hierarchy[i]["parent"] = -1 -> outer contour
     // e.g. if hierarchy[i]["parent"] > 0 -> inner contour
-    std::vector<std::vector<cv::Point> > contours;
-    std::vector<cv::Vec4i> hierarchy;
-    cv::findContours(inputImage, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+//    std::vector<std::vector<cv::Point> > contours;
+//    std::vector<cv::Vec4i> hierarchy;
+//    cv::findContours(inputImage, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+//    if (hierarchy.size() > 0)
+//    {
+//        int index = 0;
+//        while (index >= 0)
+//        {
+//            // if has parent -> skip because it has been already added
+//            if (hierarchy[index][3] >= 0)
+//                continue;
 
-    if (hierarchy.size() > 0)
-    {
-        int index = 0;
-        while (index >= 0)
-        {
-            // if has parent -> skip because it has been already added
-            if (hierarchy[index][3] >= 0)
-                continue;
-
-            std::vector<cv::Point> contour = contours[index];
-            QPolygonF c;
-            for (int i=0;i<contour.size();i++)
-            {
-                c << QPointF(contour[i].x, contour[i].y);
-            }
-            // close polygon:
-            c << QPointF(contour[0].x, contour[0].y);
-            output << c;
-            index = hierarchy[index][0];
-        }
-    }
+//            std::vector<cv::Point> contour = contours[index];
+//            QPolygonF c;
+//            for (int i=0;i<contour.size();i++)
+//            {
+//                c << QPointF(contour[i].x, contour[i].y);
+//            }
+//            // close polygon:
+//            c << QPointF(contour[0].x, contour[0].y);
+//            output << c;
+//            index = hierarchy[index][0];
+//        }
+//    }
 
     return output;
 }
@@ -880,6 +907,46 @@ bool writeToFile(const QString &outputFilename0, const cv::Mat &image,
 
     return true;
 
+}
+
+//******************************************************************************
+
+int joinOvrlContours(QVector<QPolygon> &contours)
+{
+    int count = contours.size();
+    QVector< QPolygon >::iterator it1 = contours.begin();
+    QVector< QPolygon >::iterator it2;
+    bool erase = false;
+    for (;it1 != contours.end();)
+    {
+        QPolygon & p1 = *it1;
+        it2 = it1+1;
+        for (;it2 != contours.end();)
+        {
+            QPolygon & p2 = *it2;
+
+            QPolygon ints = p1.intersected(p2);
+            if (ints.isEmpty())
+            {
+                ++it2;
+                continue;
+            }
+            p1 = p1.united(p2);
+            contours.erase(it2);
+            erase = true;
+            break;
+        }
+
+        if (erase)
+        {
+            erase = false;
+        }
+        else
+        {
+            ++it1;
+        }
+    }
+    return count - contours.size();
 }
 
 //******************************************************************************

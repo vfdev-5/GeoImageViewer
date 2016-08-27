@@ -17,7 +17,10 @@ namespace Filters
 
 AbstractFilter::AbstractFilter(QObject *parent) :
     QObject(parent),
-    _filterType(Type)
+    _filterType(Type),
+    _verbose(false),
+    _noDataValue(0.0),
+    _maskByValue(-12345)
 {
 
 }
@@ -37,7 +40,6 @@ cv::Mat AbstractFilter::apply(const cv::Mat &src) const
         // and 0.0 values where src data = noDataValue
         cv::Mat mask, unmask;
         mask = Core::computeMask(src, _noDataValue, &unmask);
-
 
         cv::Mat srcToProcess = src.mul(mask);
 
@@ -59,31 +61,42 @@ cv::Mat AbstractFilter::apply(const cv::Mat &src) const
 //            return res;
 //        }
 
-        // Write noDataValue:
-        unmask = unmask.mul(_noDataValue);
-        if (res.type() == unmask.type())
+        // Check output size with mask size
+        if (res.cols == unmask.cols &&
+                res.rows == unmask.rows &&
+                res.channels() == unmask.channels())
         {
-            res = unmask + res;
+            // Write noDataValue:
+            unmask = unmask.mul(_noDataValue);
+            if (res.type() == unmask.type())
+            {
+                res = unmask + res;
+            }
+            else
+            {
+                cv::Mat m;
+                unmask.convertTo(m, res.depth());
+                res = m + res;
+            }
         }
-        else
-        {
-            cv::Mat m;
-            unmask.convertTo(m, res.depth());
-            res = m + res;
-        }
-
         return res;
     }
     catch (const cv::Exception & e)
     {
-//        SD_TRACE(QString("OpenCV Error in \'%1\' :\n %2")
-//               .arg(getName())
-//               .arg(e.msg.c_str()));
         _errorMessage = tr("OpenCV Error in \'%1\' :\n %2")
                 .arg(getName())
                 .arg(e.msg.c_str());
         return cv::Mat();
     }
+}
+
+//******************************************************************************
+
+void AbstractFilter::verboseDisplayImage(const QString &winname, const cv::Mat &img) const
+{
+    cv::Mat * out = new cv::Mat(img.clone());
+//    SD_TRACE1("verboseDisplayImage : *out->refcount=%1", *out->refcount); // *out->refcount == 1
+    emit verboseImage(winname, out);
 }
 
 //******************************************************************************

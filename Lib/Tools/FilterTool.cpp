@@ -47,7 +47,8 @@ FilterTool::FilterTool(QGraphicsScene *scene, QGraphicsView *view, QObject *pare
     _cursorShapeZValue(1000),
     _size(100),
     _isValid(false),
-    _opacity(0.5)
+    _opacity(0.5),
+    _color(Qt::green)
 {
     _toolType = Type;
 

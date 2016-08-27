@@ -79,13 +79,27 @@ QWidget * createVectorDWidget(const QVector<double> & v)
 /*!
   \class PropertyEditor
   \brief Widget that allows to display/edit object properties. Call setup() method on
-    the object and Ui is automatically updated.
+    the object and Ui is automatically updated. To filter names use the methods
+    setPropertyFilter() and setPropertyUnfilter(). The method setPropertyFilter() specifies
+    list of properties desired to be shown. The method setPropertyUnfilter() specifies
+    list of properties non-desired to be shown. Two filters can not work together.
+    Once one is specified, second is cleared
 
     Annotations as Q_CLASSINFO("size","label:Size;minValue:1;maxValue:500")
+    or Q_CLASSINFO("size","label:Size;minValue:1;maxValue:500;step:2")
     allows to replace and configure property editor widget. In the example property with the name
     'size' will be labelled as 'Size' and minValue/maxValue properties of the editor spinbox will
-    be set to 1 and 500
+    be set to 1 and 500 with step = 2 (or 1 by default)
+    Other examples:
+    Q_CLASSINFO("type","label:Type of filtering;possibleValues:Small,Normal,Large")
 
+    Availables options :
+    * label:<a label name> = property label name shown by PropertyEditor
+    * minValue:1,
+    * maxValue:20,
+    * step:2 = min/max values and step for spinboxes for int/float/double type properties
+    * possibleValues:a,b,c = enum values for string properties
+    //* optional:<any char> = creates a checkbox before the property widget representation
 
 */
 
@@ -93,7 +107,6 @@ QWidget * createVectorDWidget(const QVector<double> & v)
 
 PropertyEditor::PropertyEditor(QWidget *parent) :
     QWidget(parent),
-//    _frame(0),
     _object(0)
 {
     _scrollArea = new QScrollArea(this);
@@ -147,7 +160,9 @@ void PropertyEditor::setup(QObject * object)
     {
         QMetaProperty property = metaObject->property(i);
         QString name = property.name();
-        if (!_filter.contains(name))
+
+        if ( (!_filterPos.isEmpty() && _filterPos.contains(name)) ||
+             (!_filterNeg.isEmpty() && !_filterNeg.contains(name)))
         {
 
             QHash<QString, QString> options = propertyOptionsMap.value(name);
@@ -247,7 +262,12 @@ QWidget * PropertyEditor::editableWidget(const QVariant &value, const QHash<QStr
         if (options.contains("possibleValues"))
         {
             QComboBox * editor = new QComboBox();
-            // ....
+            foreach (QString item, options["possibleValues"].split(","))
+            {
+                editor->addItem(item);
+            }
+            editor->setCurrentText(value.toString());
+            connect(editor, SIGNAL(currentIndexChanged(QString)), this, SLOT(onStringPropertyChanged()));
             out = editor;
         }
         else
@@ -273,13 +293,21 @@ QWidget * PropertyEditor::editableWidget(const QVariant &value, const QHash<QStr
             int maxValue = options["maxValue"].toInt();
             editor->setMinimum(minValue);
             editor->setMaximum(maxValue);
-            editor->setSingleStep(1);
+            if (options.contains("step"))
+            {
+                int step = options["step"].toInt();
+                editor->setSingleStep(step);
+            }
+            else
+            {
+                editor->setSingleStep(1);
+            }
         }
         editor->setValue(value.toInt());
         connect(editor, SIGNAL(editingFinished()), this, SLOT(onIntPropertyChanged()));
         out = editor;
     }
-    else if (value.type() == QVariant::Double)
+    else if (value.type() == QVariant::Double || value.type() == QMetaType::Float)
     {
         QDoubleSpinBox * editor = new QDoubleSpinBox();
         if (options.contains("minValue") && options.contains("maxValue"))
@@ -288,13 +316,25 @@ QWidget * PropertyEditor::editableWidget(const QVariant &value, const QHash<QStr
             double maxValue = options["maxValue"].toDouble();
             editor->setMinimum(minValue);
             editor->setMaximum(maxValue);
-            editor->setSingleStep(qAbs(maxValue-minValue)*0.01);
+            if (options.contains("step"))
+            {
+                double step = options["step"].toDouble();
+                editor->setSingleStep(step);
+            }
+            else
+            {
+                editor->setSingleStep(qAbs(maxValue-minValue)*0.01);
+            }
         }
         editor->setValue(value.toDouble());
         connect(editor, SIGNAL(editingFinished()), this, SLOT(onDoublePropertyChanged()));
         out = editor;
     }
 
+//    if (options.contains("optional"))
+//    {
+////        QWidget * box =
+//    }
 
     return out;
 }
@@ -351,10 +391,19 @@ QWidget * PropertyEditor::readableWidget(const QVariant &value)
         SD_TRACE(QString("onPropertyChanged : failed to write new property value !")); \
     }
 
+//******************************************************************************
 
 void PropertyEditor::onStringPropertyChanged()
 {
-    OnPropertyChanged(QLineEdit, edit->text());
+    QObject * s = sender();
+    if (qobject_cast<QLineEdit*>(s))
+    {
+        OnPropertyChanged(QLineEdit, edit->text());
+    }
+    else if (qobject_cast<QComboBox*>(s))
+    {
+        OnPropertyChanged(QComboBox, edit->currentText());
+    }
 }
 
 //******************************************************************************

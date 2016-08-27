@@ -4,11 +4,16 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QSettings>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QDialogButtonBox>
 
 // Project
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 #include "Filters/FiltersManager.h"
+#include "Filters/AbstractFilter.h"
+#include "Gui/PropertyEditor.h"
 
 
 //******************************************************************************
@@ -55,6 +60,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // connect actions:
     connect(ui->actionExit, SIGNAL(triggered()), this, SLOT(onExitActionTriggered()));
     connect(ui->actionOpen_Image, SIGNAL(triggered()), this, SLOT(onOpenImageActionTriggered()));
+    connect(ui->actionSettings, SIGNAL(triggered()), this, SLOT(onSettingsActionTriggered()));
 
     //
     QSettings settings("GeoImageViewer_dot_com", "GIV");
@@ -85,10 +91,39 @@ void MainWindow::onExitActionTriggered()
 
 //******************************************************************************
 
+void MainWindow::onSettingsActionTriggered()
+{
+    QDialog d;
+    d.setLayout(new QVBoxLayout());
+
+    Gui::PropertyEditor editor;
+    editor.setPropertyFilter(QStringList () << "backgroundColor");
+    editor.setup(&_viewer);
+
+    d.layout()->addWidget(&editor);
+
+    QDialogButtonBox * buttons = new QDialogButtonBox(QDialogButtonBox::Ok |
+                                                      QDialogButtonBox::Cancel);
+    connect(buttons, &QDialogButtonBox::accepted, &d, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &d, &QDialog::reject);
+    d.layout()->addWidget(buttons);
+
+
+    if (d.exec() == QDialog::Accepted)
+    {
+//        QSettings settings("GeoImageViewer_dot_com", "GIV");
+//        settings.setValue("GeoImageViewer/backgroundColor", saveGeometry());
+    }
+
+}
+
+//******************************************************************************
+
 void MainWindow::closeEvent(QCloseEvent * event)
 {
     QSettings settings("GeoImageViewer_dot_com", "GIV");
-    settings.setValue("geometry", saveGeometry());
+    settings.setValue("MainWindow/geometry", saveGeometry());
+
     QMainWindow::closeEvent(event);
 }
 

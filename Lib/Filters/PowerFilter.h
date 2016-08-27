@@ -16,8 +16,8 @@ class GIV_DLL_EXPORT PowerFilter : public AbstractFilter
 {
     Q_OBJECT
 
-    Q_PROPERTY(double power READ getPower WRITE setPower)
-    PROPERTY_ACCESSORS(double, power, getPower, setPower)
+    Q_PROPERTY_WITH_ACCESSORS(double, power, getPower, setPower)
+
 
 public:
     PowerFilter(QObject *parent = 0);
